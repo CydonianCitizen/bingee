@@ -4,6 +4,11 @@ Ricerca svolta il 2026-09-12 su TV Time, Trakt, Serializd, Simkl, Showly, Movieb
 Sofa Time, Sequel e Letterboxd. Ogni lacuna elencata è stata verificata nel codice di Bingee `1.2.0`,
 non dedotta dalla documentazione.
 
+Questo è un documento di ricerca storico sulla baseline indicata; priorità, confronti esterni e
+proposte non definiscono lo scope corrente. Per v1.2.5 valgono la
+[roadmap canonica](../BINGEE_DEVELOPMENT_ROADMAP_AND_CHECKLIST.md) e il contratto di
+[Backup v3](backup-format-v3.md), che ha sostituito v2 come formato di export.
+
 Contesto rilevante: **TV Time ha chiuso il 15 luglio 2026**. Chi migra ha in mano un export che oggi
 Bingee legge solo in parte.
 

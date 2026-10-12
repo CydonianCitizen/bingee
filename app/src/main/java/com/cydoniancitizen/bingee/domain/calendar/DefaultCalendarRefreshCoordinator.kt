@@ -20,6 +20,7 @@ import com.cydoniancitizen.bingee.domain.repository.SeriesRepository
 import com.cydoniancitizen.bingee.domain.repository.TmdbCredentialRepository
 import java.time.Clock
 import java.time.LocalDate
+import java.util.concurrent.atomic.AtomicInteger
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlinx.coroutines.CancellationException
@@ -27,8 +28,7 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.supervisorScope
-import kotlinx.coroutines.sync.Semaphore
-import kotlinx.coroutines.sync.withPermit
+import kotlinx.coroutines.yield
 
 @Singleton
 internal class DefaultCalendarRefreshCoordinator @Inject constructor(
@@ -58,13 +58,17 @@ internal class DefaultCalendarRefreshCoordinator @Inject constructor(
         val entries = if (background) distinct.take(BackgroundRefreshPlanner.TITLE_LIMIT) else distinct
         if (entries.isEmpty()) return noWorkSummary()
         val tmdbAvailable = credentialRepository.status.value.canRefresh()
-        val semaphore = Semaphore(REMOTE_CONCURRENCY_LIMIT)
         val counts = supervisorScope {
-            entries.map { entry ->
+            val next = AtomicInteger()
+            val results = arrayOfNulls<RefreshCounts>(entries.size)
+            List(minOf(entries.size, REMOTE_CONCURRENCY_LIMIT)) {
                 async {
-                    semaphore.withPermit {
-                        try {
-                            refreshEntry(entry, tmdbAvailable, background)
+                    while (true) {
+                        val index = next.getAndIncrement()
+                        if (index >= entries.size) break
+                        if (index % 128 == 0) yield()
+                        results[index] = try {
+                            refreshEntry(entries[index], tmdbAvailable, background)
                         } catch (cancelled: CancellationException) {
                             throw cancelled
                         } catch (_: Throwable) {
@@ -72,7 +76,9 @@ internal class DefaultCalendarRefreshCoordinator @Inject constructor(
                         }
                     }
                 }
-            }.awaitAll().fold(RefreshCounts(), RefreshCounts::plus)
+            }.awaitAll()
+            // Preserve target ordering when selecting the representative error.
+            results.fold(RefreshCounts()) { total, result -> total + checkNotNull(result) }
         }
 
         val finalized = if (counts.succeeded > 0) finalizeSuccessfulWrites(counts) else counts

@@ -4,7 +4,6 @@ import com.cydoniancitizen.bingee.core.model.MediaSource
 import com.cydoniancitizen.bingee.core.model.MediaType
 import com.cydoniancitizen.bingee.core.model.PersonalRating
 import com.cydoniancitizen.bingee.core.model.PersonalViewingEntry
-import com.cydoniancitizen.bingee.core.model.WatchedEpisodeActivity
 import java.text.NumberFormat
 import java.time.Instant
 import java.time.LocalDate
@@ -124,10 +123,14 @@ fun calculateWatchedStatistics(
     entries: List<PersonalViewingEntry>,
     zoneId: ZoneId,
     currentDate: LocalDate,
-    selectedYear: Int
+    selectedYear: Int,
+    checkCancelled: () -> Unit = {}
 ): WatchedStatistics {
     // TMDB reuses one ID for an unrelated movie and series, so identity needs the type (ADR 0028).
-    val uniqueEntries = entries.distinctBy { it.mediaRef to it.mediaType }
+    val uniqueEntries = entries.distinctBy {
+        checkCancelled()
+        it.mediaRef to it.mediaType
+    }
     val completedTitles = uniqueEntries.filter(PersonalViewingEntry::isCompletedTitle)
     val viewedTitles = uniqueEntries.filter(PersonalViewingEntry::isViewingTasteEligible)
 
@@ -138,7 +141,7 @@ fun calculateWatchedStatistics(
     val seriesTitles = viewedTitles.filter { it.mediaType == MediaType.SERIES }
     val movieWatchTimeMinutes = movieTitles.sumOf { it.movieRuntimeMinutes?.toLong() ?: 0L }
     val seriesWatchTimeMinutes = seriesTitles.sumOf { it.watchedRegularRuntimeMinutes }
-    val personalRatingStatistics = calculatePersonalRatingStatistics(viewedTitles)
+    val personalRatingStatistics = calculatePersonalRatingStatistics(viewedTitles, checkCancelled)
 
     return WatchedStatistics(
         moviesWatchedCount = moviesWatchedCount,
@@ -149,21 +152,28 @@ fun calculateWatchedStatistics(
         movieWatchTimeIncomplete = movieTitles.any { it.movieRuntimeMinutes == null },
         seriesWatchTimeIncomplete = seriesTitles.any { it.watchedRegularEpisodesWithoutRuntime > 0 },
         personalRatingStatistics = personalRatingStatistics,
-        movieGenres = topGenreStatistics(movieTitles),
-        seriesGenres = topGenreStatistics(seriesTitles),
+        movieGenres = topGenreStatistics(movieTitles, checkCancelled),
+        seriesGenres = topGenreStatistics(seriesTitles, checkCancelled),
         monthlyViewing = calculateMonthlyViewing(
             entries = uniqueEntries,
             zoneId = zoneId,
             currentDate = currentDate,
-            selectedYear = selectedYear
+            selectedYear = selectedYear,
+            checkCancelled = checkCancelled
         )
     )
 }
 
-fun calculatePersonalRatingStatistics(entries: List<PersonalViewingEntry>): PersonalRatingStatistics {
+fun calculatePersonalRatingStatistics(
+    entries: List<PersonalViewingEntry>,
+    checkCancelled: () -> Unit = {}
+): PersonalRatingStatistics {
     val ratedTitles = entries
         .asSequence()
-        .distinctBy { it.mediaRef to it.mediaType }
+        .distinctBy {
+            checkCancelled()
+            it.mediaRef to it.mediaType
+        }
         .filter { it.personalRating != null }
         .sortedWith(
             compareByDescending<PersonalViewingEntry> { it.personalRatingUpdatedAt != null }
@@ -198,58 +208,74 @@ fun formatPersonalRatingAverage(value: Double, locale: Locale): String = NumberF
     }
     .format(value)
 
-private data class DatedViewingActivity(val mediaType: MediaType, val watchedDate: LocalDate, val runtimeMinutes: Int?)
+private class MonthlyAccumulator {
+    var movieMinutes = 0L
+    var seriesMinutes = 0L
+    var movieTimeIncomplete = false
+    var seriesTimeIncomplete = false
+}
 
 private fun calculateMonthlyViewing(
     entries: List<PersonalViewingEntry>,
     zoneId: ZoneId,
     currentDate: LocalDate,
-    selectedYear: Int
+    selectedYear: Int,
+    checkCancelled: () -> Unit
 ): MonthlyViewingStatistics {
-    val datedActivities = entries.flatMap { entry ->
-        when (entry.mediaType) {
-            MediaType.MOVIE -> entry.movieWatchedAt?.let {
-                listOf(
-                    DatedViewingActivity(MediaType.MOVIE, it.atZone(zoneId).toLocalDate(), entry.movieRuntimeMinutes)
-                )
-            }.orEmpty()
-            MediaType.SERIES -> entry.watchedRegularEpisodeActivities.map { activity ->
-                activity.toDatedViewingActivity(zoneId)
+    // Keep only the requested year and the current-year fallback, never a second copy of the history.
+    val requested = Array(12) { MonthlyAccumulator() }
+    val current = if (selectedYear == currentDate.year) requested else Array(12) { MonthlyAccumulator() }
+    var firstYear = currentDate.year
+    fun record(type: MediaType, watchedAt: Instant, runtime: Int?) {
+        checkCancelled()
+        val date = watchedAt.atZone(zoneId).toLocalDate()
+        if (date.isAfter(currentDate)) return
+        firstYear = minOf(firstYear, date.year)
+        val bucket = when (date.year) {
+            selectedYear -> requested[date.monthValue - 1]
+            currentDate.year -> current[date.monthValue - 1]
+            else -> return
+        }
+        when (type) {
+            MediaType.MOVIE -> {
+                bucket.movieMinutes += runtime?.toLong() ?: 0L
+                bucket.movieTimeIncomplete = bucket.movieTimeIncomplete || runtime == null
+            }
+            MediaType.SERIES -> {
+                bucket.seriesMinutes += runtime?.toLong() ?: 0L
+                bucket.seriesTimeIncomplete = bucket.seriesTimeIncomplete || runtime == null
             }
         }
-    }.filter { !it.watchedDate.isAfter(currentDate) }
-
-    val availableYears = datedActivities
-        .map { it.watchedDate.year }
-        .filter { it <= currentDate.year }
-        .minOrNull()
-        ?.let { firstYear -> (firstYear..currentDate.year).toList().asReversed() }
-        ?: listOf(currentDate.year)
-    val year = selectedYear.takeIf { it in availableYears } ?: currentDate.year
-    val months = (1..12).map { month ->
-        val activities = datedActivities.filter { it.watchedDate.year == year && it.watchedDate.monthValue == month }
-        val movieActivities = activities.filter { it.mediaType == MediaType.MOVIE }
-        val seriesActivities = activities.filter { it.mediaType == MediaType.SERIES }
-        MonthlyViewingData(
-            year = year,
-            month = month,
-            movieMinutes = movieActivities.sumOf { it.runtimeMinutes?.toLong() ?: 0L },
-            seriesMinutes = seriesActivities.sumOf { it.runtimeMinutes?.toLong() ?: 0L },
-            movieTimeIncomplete = movieActivities.any { it.runtimeMinutes == null },
-            seriesTimeIncomplete = seriesActivities.any { it.runtimeMinutes == null }
-        )
     }
+    entries.forEach { entry ->
+        checkCancelled()
+        when (entry.mediaType) {
+            MediaType.MOVIE -> entry.movieWatchedAt?.let { record(MediaType.MOVIE, it, entry.movieRuntimeMinutes) }
+            MediaType.SERIES -> entry.watchedRegularEpisodeActivities.forEach {
+                record(MediaType.SERIES, it.watchedAt, it.runtimeMinutes)
+            }
+        }
+    }
+    val availableYears = (firstYear..currentDate.year).toList().asReversed()
+    val year = selectedYear.takeIf { it in firstYear..currentDate.year } ?: currentDate.year
+    val buckets = if (year == selectedYear) requested else current
     return MonthlyViewingStatistics(
         currentYear = currentDate.year,
         currentMonth = currentDate.monthValue,
         selectedYear = year,
         availableYears = availableYears,
-        months = months
+        months = buckets.mapIndexed { index, bucket ->
+            MonthlyViewingData(
+                year = year,
+                month = index + 1,
+                movieMinutes = bucket.movieMinutes,
+                seriesMinutes = bucket.seriesMinutes,
+                movieTimeIncomplete = bucket.movieTimeIncomplete,
+                seriesTimeIncomplete = bucket.seriesTimeIncomplete
+            )
+        }
     )
 }
-
-private fun WatchedEpisodeActivity.toDatedViewingActivity(zoneId: ZoneId): DatedViewingActivity =
-    DatedViewingActivity(MediaType.SERIES, watchedAt.atZone(zoneId).toLocalDate(), runtimeMinutes)
 
 fun relativeViewingNormalization(months: List<MonthlyViewingData>): List<Float> {
     val maximum = months.maxOfOrNull { it.totalMinutes } ?: return emptyList()
@@ -259,13 +285,17 @@ fun relativeViewingNormalization(months: List<MonthlyViewingData>): List<Float> 
 
 fun calculateTasteStatistics(
     entries: List<PersonalViewingEntry>,
-    scope: StatisticsMediaScope = StatisticsMediaScope.ALL
+    scope: StatisticsMediaScope = StatisticsMediaScope.ALL,
+    checkCancelled: () -> Unit = {}
 ): TasteStatistics = TasteStatistics(
     scope = scope,
     rankedGenres = rankedGenreStatistics(
         entries
             .asSequence()
-            .distinctBy { it.mediaRef to it.mediaType }
+            .distinctBy {
+                checkCancelled()
+                it.mediaRef to it.mediaType
+            }
             .filter(PersonalViewingEntry::isViewingTasteEligible)
             .filter { entry ->
                 when (scope) {
@@ -274,7 +304,8 @@ fun calculateTasteStatistics(
                     StatisticsMediaScope.SERIES -> entry.mediaType == MediaType.SERIES
                 }
             }
-            .toList()
+            .toList(),
+        checkCancelled
     )
 )
 
@@ -284,12 +315,16 @@ fun relativeGenreNormalization(counts: List<Int>): List<Float> {
     return counts.map { it.coerceAtLeast(0).toFloat() / maximum }
 }
 
-private fun topGenreStatistics(entries: List<PersonalViewingEntry>): List<GenreStatistic> =
-    rankedGenreStatistics(entries).take(3)
+private fun topGenreStatistics(entries: List<PersonalViewingEntry>, checkCancelled: () -> Unit): List<GenreStatistic> =
+    rankedGenreStatistics(entries, checkCancelled).take(3)
 
-private fun rankedGenreStatistics(entries: List<PersonalViewingEntry>): List<GenreStatistic> {
+private fun rankedGenreStatistics(
+    entries: List<PersonalViewingEntry>,
+    checkCancelled: () -> Unit
+): List<GenreStatistic> {
     val counts = linkedMapOf<Pair<MediaSource, Long>, GenreStatistic>()
     entries.forEach { entry ->
+        checkCancelled()
         entry.genres
             .filter { it.source != null && it.genreId != null }
             .distinctBy { it.source!! to it.genreId!! }

@@ -608,6 +608,30 @@ class BackupJsonCodecTest {
         }
     }
 
+    @Test
+    fun utf8ValidationHandlesBufferBoundariesAndInvalidBytesAfterRoot() {
+        val document = fullDocument()
+        val overview = "é".repeat(7_000) + "🎬"
+        val encoded = BackupJsonCodec.encode(
+            document.copy(
+                data = document.data.copy(
+                    media = document.data.media.map { it.copy(overview = overview) }
+                )
+            )
+        )
+        val parsed = BackupJsonCodec.parse(encoded) as BackupParseResult.Success
+        assertEquals(overview, parsed.document.data.media.first().overview)
+        val invalid = encoded + byteArrayOf(0xC3.toByte())
+        assertEquals(
+            BackupFailureKind.INVALID_UTF8,
+            (BackupJsonCodec.parse(invalid) as BackupParseResult.Failure).failure.kind
+        )
+        assertEquals(
+            BackupFailureKind.INVALID_UTF8,
+            (BackupJsonCodec.parse(invalid.inputStream()) as BackupParseResult.Failure).failure.kind
+        )
+    }
+
     private fun parseSchemaVersion(value: String): Int = (
         BackupJsonCodec.parse(
             replaceInteger("schemaVersion", value)

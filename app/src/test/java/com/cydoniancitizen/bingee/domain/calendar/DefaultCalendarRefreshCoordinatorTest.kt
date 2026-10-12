@@ -323,6 +323,26 @@ class DefaultCalendarRefreshCoordinatorTest {
         assertEquals(0, details.activeCalls)
     }
 
+    @Test
+    fun largeManualRefreshKeepsOnlyThreeWorkersAndCancellationStopsThem() = runTest {
+        val details = FakeDetailsRepository { _, _ -> awaitCancellation() }
+        val refresh = async {
+            coordinator(
+                (1..10_000).map {
+                    entry(it.toString(), MediaType.MOVIE)
+                },
+                details,
+                FakeSeriesRepository(),
+                FakeCalendarRepository()
+            ).refresh()
+        }
+        runCurrent()
+        assertEquals(3, details.activeCalls)
+        assertEquals(3, refresh.children.single().children.count())
+        refresh.cancelAndJoin()
+        assertEquals(0, details.activeCalls)
+    }
+
     private fun coordinator(
         entries: List<LibraryEntry>,
         details: FakeDetailsRepository,

@@ -15,9 +15,16 @@ import com.cydoniancitizen.bingee.core.result.AppResult
 import com.cydoniancitizen.bingee.data.library.DefaultLibraryRepository
 import com.cydoniancitizen.bingee.data.library.local.BingeeDatabase
 import com.cydoniancitizen.bingee.data.library.local.EpisodeEntity
+import com.cydoniancitizen.bingee.data.library.local.EpisodeWatchProgressEntity
+import com.cydoniancitizen.bingee.data.library.local.ExternalRefEntity
+import com.cydoniancitizen.bingee.data.library.local.LibraryMembershipEntity
 import com.cydoniancitizen.bingee.data.library.local.MediaDetailsEntity
 import com.cydoniancitizen.bingee.data.library.local.MediaEntity
+import com.cydoniancitizen.bingee.data.library.local.MediaRatingEntity
+import com.cydoniancitizen.bingee.data.library.local.MovieWatchProgressEntity
 import com.cydoniancitizen.bingee.data.library.local.SeasonEntity
+import com.cydoniancitizen.bingee.data.library.local.SeriesStateOverrideEntity
+import com.cydoniancitizen.bingee.data.library.local.SeriesWatchProgressEntity
 import com.cydoniancitizen.bingee.data.settings.AppLanguage
 import com.cydoniancitizen.bingee.data.settings.AppTheme
 import com.cydoniancitizen.bingee.data.settings.DataStoreReleaseNotificationPreferences
@@ -77,6 +84,64 @@ class BackupDataStoreTest {
     @After
     fun tearDown() {
         database.close()
+    }
+
+    @Test
+    fun portableSnapshotExcludesCacheAndRetainsEveryOwnershipPath() = runBlocking<Unit> {
+        val dao = database.portableSnapshotDao()
+        store.readPortableData() // Complete the preference bridge before comparing database snapshots.
+        val ids = (0..8).map { index ->
+            val type = if (index in 4..6 || index == 8) MediaType.SERIES else MediaType.MOVIE
+            val id = dao.insertMedia(
+                MediaEntity(
+                    mediaType = type, title = "Title $index", originalTitle = null,
+                    overview = "Cached metadata $index", posterUrl = null, releaseDate = null,
+                    createdAt = exportedAt, metadataUpdatedAt = exportedAt, isFavorite = index == 0
+                )
+            )
+            dao.insertExternalRef(ExternalRefEntity(id, MediaSource.TMDB, type, (1000 + index).toString()))
+            id
+        }
+        dao.insertMembership(LibraryMembershipEntity(ids[1], exportedAt))
+        dao.insertRating(MediaRatingEntity(ids[2], 8, exportedAt, exportedAt))
+        dao.insertMovieProgress(MovieWatchProgressEntity(ids[3], exportedAt))
+        dao.insertSeriesProgress(SeriesWatchProgressEntity(ids[4], completedAt = exportedAt))
+        dao.insertSeriesStateOverride(SeriesStateOverrideEntity(ids[5]))
+        for (index in listOf(4, 5, 6, 8)) {
+            val season = dao.insertSeason(
+                SeasonEntity(
+                    localMediaId = ids[index], source = MediaSource.TMDB, externalId = "season-$index",
+                    seasonNumber = 0, name = "Specials", overview = null, posterUrl = null, airDate = null,
+                    episodeCount = 1, metadataUpdatedAt = exportedAt, episodesFetchedAt = exportedAt
+                )
+            )
+            val episode = dao.insertEpisode(
+                EpisodeEntity(
+                    localSeasonId = season, source = MediaSource.TMDB, externalId = "episode-$index",
+                    episodeNumber = 1, title = "Episode $index", overview = null, airDate = null,
+                    runtimeMinutes = 25, stillUrl = null, metadataUpdatedAt = exportedAt
+                )
+            )
+            if (index == 6) dao.insertEpisodeProgress(EpisodeWatchProgressEntity(episode, exportedAt))
+        }
+        val full = dao.readSnapshot()
+        val selected = ids.take(7).toSet()
+        val selectedSeasons = full.seasons.filter { it.localMediaId in selected }
+        val seasonIds = selectedSeasons.map { it.localSeasonId }.toSet()
+        val expected = full.copy(
+            media = full.media.filter { it.localMediaId in selected },
+            refs = full.refs.filter { it.localMediaId in selected },
+            genres = full.genres.filter { it.localMediaId in selected },
+            seasons = selectedSeasons,
+            episodes = full.episodes.filter { it.localSeasonId in seasonIds }
+        )
+        assertEquals(expected, dao.readSnapshot(includeCache = false))
+        val exported = store.readPortableData()
+        assertEquals((1000..1006).map(Int::toString), exported.media.map { it.primaryRef.externalId })
+        assertEquals(3, exported.seasons.size)
+        assertEquals(3, exported.episodes.size)
+        assertEquals(1, exported.episodeProgress.size)
+        assertEquals(full, dao.readSnapshot())
     }
 
     @Test

@@ -38,28 +38,31 @@ import javax.inject.Inject
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.Job
+import kotlinx.coroutines.awaitCancellation
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.mapLatest
+import kotlinx.coroutines.flow.transformLatest
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
-private sealed interface StatisticsUpdate {
-    data class Ready(
-        val today: LocalDate,
-        val entries: List<PersonalViewingEntry>,
-        val statistics: WatchedStatistics,
-        val tasteStatistics: TasteStatistics
-    ) : StatisticsUpdate
-
-    data class Failed(val today: LocalDate, val error: AppError) : StatisticsUpdate
-}
+private data class StatisticsUpdate(
+    val today: LocalDate,
+    val statistics: WatchedStatistics,
+    val tasteStatistics: TasteStatistics,
+    val error: AppError?
+)
 
 enum class ProfileSortOption {
     RECENTLY_ADDED,
@@ -131,15 +134,34 @@ internal class ProfileViewModel @Inject constructor(
     private val mutableUiState = MutableStateFlow(ProfileUiState(today = dateSource.currentDate()))
     val uiState: StateFlow<ProfileUiState> = mutableUiState.asStateFlow()
 
-    private var rawEntries: List<LibraryEntry> = emptyList()
     private var personalViewingEntries: List<PersonalViewingEntry> = emptyList()
-    private var libraryEntriesJob: Job? = null
-    private var personalViewingJob: Job? = null
+    private val rawEntries = MutableStateFlow<List<LibraryEntry>>(emptyList())
+    private val collectionRequests = MutableStateFlow(CollectionRequest(mutableUiState.value))
+    private val statisticsRequests = MutableStateFlow(StatisticsRequest())
+    private val libraryRetries = MutableStateFlow(0L)
+    private val statisticsRetries = MutableStateFlow(0L)
 
     init {
-        observeDisplayModes()
-        observeLibraryEntries()
-        observePersonalViewing()
+        viewModelScope.launch {
+            mutableUiState.subscriptionCount
+                .map { it > 0 }
+                .distinctUntilChanged()
+                .transformLatest { subscribed ->
+                    if (!subscribed) delay(5_000)
+                    emit(subscribed)
+                }
+                .collectLatest { subscribed ->
+                    if (subscribed) {
+                        coroutineScope {
+                            launch { observeDisplayModes() }
+                            launch { observeLibraryEntries() }
+                            launch { observeCollection() }
+                            launch { observePersonalViewing() }
+                            awaitCancellation()
+                        }
+                    }
+                }
+        }
     }
 
     fun setCollection(collection: ProfileCollection) {
@@ -258,35 +280,24 @@ internal class ProfileViewModel @Inject constructor(
 
     fun retry() {
         mutableUiState.update { it.copy(isLoading = true, loadError = null) }
-        observeLibraryEntries()
+        libraryRetries.update { it + 1 }
     }
 
     fun retryStatistics() {
         mutableUiState.update { it.copy(isStatisticsLoading = true, statisticsError = null) }
-        observePersonalViewing()
+        statisticsRetries.update { it + 1 }
     }
 
     fun setStatisticsMediaScope(scope: StatisticsMediaScope) {
-        val entries = personalViewingEntries
-        viewModelScope.launch {
-            val taste = withContext(statisticsDispatcher) { calculateTasteStatistics(entries, scope) }
-            mutableUiState.update { it.copy(statisticsMediaScope = scope, tasteStatistics = taste) }
-        }
+        mutableUiState.update { it.copy(statisticsMediaScope = scope) }
+        statisticsRequests.update { it.copy(scope = scope) }
     }
 
     fun setStatisticsViewingYear(year: Int) {
-        val current = mutableUiState.value
-        val availableYears = current.statistics.monthlyViewing.availableYears
+        val availableYears = mutableUiState.value.statistics.monthlyViewing.availableYears
         if (availableYears.isNotEmpty() && year !in availableYears) return
-        val currentDate = dateSource.currentDate()
-        val localZone = ZoneId.systemDefault()
-        val entries = personalViewingEntries
-        viewModelScope.launch {
-            val statistics = withContext(statisticsDispatcher) {
-                calculateWatchedStatistics(entries, localZone, currentDate, year)
-            }
-            mutableUiState.update { it.copy(statistics = statistics, selectedStatisticsMonth = null) }
-        }
+        mutableUiState.update { it.copy(selectedStatisticsMonth = null) }
+        statisticsRequests.update { it.copy(year = year.takeUnless { it == dateSource.currentDate().year }) }
     }
 
     fun setStatisticsViewingMonth(month: Int?) {
@@ -298,189 +309,235 @@ internal class ProfileViewModel @Inject constructor(
         mutableUiState.update { it.copy(selectedStatisticsMonth = month) }
     }
 
-    private fun observeDisplayModes() {
-        viewModelScope.launch {
-            displayModePreferences.observeDisplayModes().collectLatest { modes ->
-                mutableUiState.update { it.copy(displayModes = modes) }
-            }
+    private suspend fun observeDisplayModes() {
+        displayModePreferences.observeDisplayModes().collectLatest { modes ->
+            mutableUiState.update { it.copy(displayModes = modes) }
         }
     }
 
-    private fun observeLibraryEntries() {
-        libraryEntriesJob?.cancel()
-        libraryEntriesJob = viewModelScope.launch {
-            libraryRepository.observeEntries(LibraryQuery()).collectLatest { result ->
+    private suspend fun observeLibraryEntries() {
+        libraryRetries.flatMapLatest { libraryRepository.observeEntries(LibraryQuery()) }
+            .collectLatest { result ->
                 when (result) {
                     is AppResult.Success -> {
-                        rawEntries = result.value
+                        val dashboard = withContext(statisticsDispatcher) {
+                            val context = currentCoroutineContext()
+                            val entries = result.value
+                            Triple(
+                                selectWatchingPreview(entries, checkCancelled = context::ensureActive),
+                                selectFavoritePreview(entries, checkCancelled = context::ensureActive),
+                                countCollections(entries, context::ensureActive)
+                            )
+                        }
+                        rawEntries.value = result.value
                         mutableUiState.update {
                             it.copy(
                                 isLoading = false,
-                                loadError = null
+                                loadError = null,
+                                watching = dashboard.first,
+                                favorites = dashboard.second,
+                                collectionCounts = dashboard.third
                             )
                         }
-                        updateDashboard(result.value)
-                        refilter()
                     }
-                    is AppResult.Failure -> {
-                        mutableUiState.update { it.copy(isLoading = false, loadError = result.error) }
+                    is AppResult.Failure -> mutableUiState.update {
+                        it.copy(isLoading = false, loadError = result.error)
                     }
                 }
             }
-        }
     }
 
-    private fun observePersonalViewing() {
-        personalViewingJob?.cancel()
-        personalViewingJob = viewModelScope.launch {
-            combine(
-                libraryRepository.observePersonalViewing(),
-                dateSource.observeDate()
-            ) { result, currentDate -> result to currentDate }
-                // Aggregation walks the whole personal history, so it stays off the main thread, and
-                // mapLatest drops half-finished work when Room invalidates again mid-calculation.
-                .mapLatest { (result, currentDate) ->
-                    when (result) {
-                        is AppResult.Success -> aggregate(result.value, currentDate)
-                        is AppResult.Failure -> StatisticsUpdate.Failed(currentDate, result.error)
-                    }
+    private suspend fun observePersonalViewing() {
+        combine(
+            statisticsRetries.flatMapLatest { libraryRepository.observePersonalViewing() },
+            dateSource.observeDate(),
+            statisticsRequests
+        ) { result, currentDate, request -> Triple(result, currentDate, request) }
+            .mapLatest { (result, currentDate, request) ->
+                if (result is AppResult.Success) personalViewingEntries = result.value
+                val entries = personalViewingEntries
+                val update = withContext(statisticsDispatcher) {
+                    val context = currentCoroutineContext()
+                    StatisticsUpdate(
+                        today = currentDate,
+                        statistics = calculateWatchedStatistics(
+                            entries,
+                            ZoneId.systemDefault(),
+                            currentDate,
+                            request.year ?: currentDate.year,
+                            context::ensureActive
+                        ),
+                        tasteStatistics = calculateTasteStatistics(entries, request.scope, context::ensureActive),
+                        error = (result as? AppResult.Failure)?.error
+                    )
                 }
-                .flowOn(statisticsDispatcher)
-                .collectLatest { update ->
-                    when (update) {
-                        is StatisticsUpdate.Ready -> {
-                            personalViewingEntries = update.entries
-                            mutableUiState.update {
-                                it.copy(
-                                    today = update.today,
-                                    statistics = update.statistics,
-                                    tasteStatistics = update.tasteStatistics,
-                                    isStatisticsLoading = false,
-                                    statisticsError = null
-                                )
-                            }
-                        }
-                        is StatisticsUpdate.Failed -> mutableUiState.update {
-                            it.copy(
-                                today = update.today,
-                                isStatisticsLoading = false,
-                                statisticsError = update.error
-                            )
-                        }
-                    }
+                request to update
+            }
+            .collect { (request, update) ->
+                // A dispatched result may already be queued when the user makes another selection.
+                if (request != statisticsRequests.value) return@collect
+                mutableUiState.update {
+                    it.copy(
+                        today = update.today,
+                        statistics = update.statistics,
+                        tasteStatistics = update.tasteStatistics,
+                        isStatisticsLoading = false,
+                        statisticsError = update.error
+                    )
                 }
-        }
+            }
     }
 
-    private fun aggregate(entries: List<PersonalViewingEntry>, currentDate: LocalDate): StatisticsUpdate.Ready {
-        val previousMonthly = mutableUiState.value.statistics.monthlyViewing
-        val selectedYear = previousMonthly.selectedYear
-            .takeIf { it > 0 && it != previousMonthly.currentYear }
-            ?: currentDate.year
-        return StatisticsUpdate.Ready(
-            today = currentDate,
-            entries = entries,
-            statistics = calculateWatchedStatistics(
-                entries = entries,
-                zoneId = ZoneId.systemDefault(),
-                currentDate = currentDate,
-                selectedYear = selectedYear
-            ),
-            tasteStatistics = calculateTasteStatistics(
-                entries,
-                mutableUiState.value.statisticsMediaScope
-            )
-        )
+    private suspend fun observeCollection() {
+        combine(rawEntries, collectionRequests) { entries, request -> entries to request }
+            .mapLatest { (entries, request) ->
+                val sorted = withContext(statisticsDispatcher) {
+                    val context = currentCoroutineContext()
+                    filterCollection(entries, request, context::ensureActive)
+                }
+                Triple(entries, request, sorted)
+            }
+            .collect { (entries, request, sorted) ->
+                if (request == collectionRequests.value && entries === rawEntries.value) {
+                    mutableUiState.update { it.copy(entries = sorted) }
+                }
+            }
     }
 
     private fun refilter() {
-        val state = mutableUiState.value
-        val allRaw = rawEntries
+        collectionRequests.value = CollectionRequest(mutableUiState.value)
+    }
+}
 
-        val filtered = allRaw.filter { entry ->
-            val matchesCollection = if (state.isWatchingCollection) {
-                entry.toContinueWatchingItem()?.let(ContinueWatchingPolicy::isContinueWatching) == true
-            } else {
-                when (state.collection) {
-                    ProfileCollection.WATCHED -> if (state.isAbandonedCollection) {
-                        entry.inLibrary && entry.mediaType == MediaType.SERIES &&
-                            entry.serialState == SeriesTrackingState.ABANDONED
-                    } else {
-                        entry.inLibrary && entry.isWatched()
-                    }
-                    ProfileCollection.WATCH_LATER -> when (entry.mediaType) {
-                        MediaType.SERIES -> entry.serialState == SeriesTrackingState.WATCH_LATER
-                        MediaType.MOVIE -> !entry.isWatched() && entry.inLibrary
-                    }
-                    ProfileCollection.FAVORITES -> entry.isFavorite
+private data class StatisticsRequest(val year: Int? = null, val scope: StatisticsMediaScope = StatisticsMediaScope.ALL)
+
+private data class CollectionRequest(
+    val collection: ProfileCollection,
+    val category: ProfileCategory,
+    val sortOption: ProfileSortOption,
+    val searchQuery: String,
+    val isAbandonedCollection: Boolean,
+    val isWatchingCollection: Boolean
+) {
+    constructor(state: ProfileUiState) : this(
+        state.collection,
+        state.category,
+        state.sortOption,
+        state.searchQuery,
+        state.isAbandonedCollection,
+        state.isWatchingCollection
+    )
+}
+
+private fun filterCollection(
+    allRaw: List<LibraryEntry>,
+    state: CollectionRequest,
+    checkCancelled: () -> Unit
+): List<LibraryEntry> {
+    val filtered = allRaw.filter { entry ->
+        checkCancelled()
+        val matchesCollection = if (state.isWatchingCollection) {
+            entry.toContinueWatchingItem()?.let(ContinueWatchingPolicy::isContinueWatching) == true
+        } else {
+            when (state.collection) {
+                ProfileCollection.WATCHED -> if (state.isAbandonedCollection) {
+                    entry.inLibrary && entry.mediaType == MediaType.SERIES &&
+                        entry.serialState == SeriesTrackingState.ABANDONED
+                } else {
+                    entry.inLibrary && entry.isWatched()
                 }
+                ProfileCollection.WATCH_LATER -> when (entry.mediaType) {
+                    MediaType.SERIES -> entry.serialState == SeriesTrackingState.WATCH_LATER
+                    MediaType.MOVIE -> !entry.isWatched() && entry.inLibrary
+                }
+                ProfileCollection.FAVORITES -> entry.isFavorite
             }
-            val matchesCategory = entry.belongsToCategory(state.category)
-            val matchesSearch = if (state.searchQuery.isBlank()) {
-                true
-            } else {
-                entry.title.contains(state.searchQuery, ignoreCase = true) ||
-                    entry.originalTitle?.contains(state.searchQuery, ignoreCase = true) == true
-            }
-
-            matchesCollection && matchesCategory && matchesSearch
+        }
+        val matchesCategory = entry.belongsToCategory(state.category)
+        val matchesSearch = if (state.searchQuery.isBlank()) {
+            true
+        } else {
+            entry.title.contains(state.searchQuery, ignoreCase = true) ||
+                entry.originalTitle?.contains(state.searchQuery, ignoreCase = true) == true
         }
 
-        val sorted = when (state.sortOption) {
-            ProfileSortOption.RECENTLY_ADDED -> when {
-                state.isWatchingCollection -> filtered.sortedByDescending {
-                    (it.progress as? LibraryProgress.Series)?.progress?.lastWatchedAt ?: Instant.MIN
-                }
-                state.collection == ProfileCollection.FAVORITES -> filtered.sortedWith(
-                    compareByDescending<LibraryEntry> { it.favoriteAddedAt ?: Instant.MIN }
-                        .thenBy { it.title.lowercase(Locale.ROOT) }
-                        .thenBy { it.mediaRef.source.name }
-                        .thenBy { it.mediaRef.externalId }
-                )
-                else -> filtered.sortedByDescending { it.addedAt }
-            }
-            ProfileSortOption.TITLE -> filtered.sortedBy { it.title.lowercase() }
-            ProfileSortOption.RATING -> filtered.sortedWith(
-                compareByDescending<LibraryEntry> { it.personalRating?.value ?: -1 }
-                    .thenBy { it.title.lowercase() }
-            )
-            ProfileSortOption.PROGRESS -> filtered.sortedWith(
-                compareByDescending<LibraryEntry> { it.progressSortMetric() }
-                    .thenBy { it.title.lowercase() }
-            )
-        }
-
-        mutableUiState.update { it.copy(entries = sorted) }
+        matchesCollection && matchesCategory && matchesSearch
     }
 
-    private fun updateDashboard(entries: List<LibraryEntry>) {
-        mutableUiState.update {
-            it.copy(
-                watching = selectWatchingPreview(entries),
-                favorites = selectFavoritePreview(entries),
-                collectionCounts = countCollections(entries)
+    checkCancelled()
+    val sorted = when (state.sortOption) {
+        ProfileSortOption.RECENTLY_ADDED -> when {
+            state.isWatchingCollection -> filtered.sortedByDescending {
+                checkCancelled()
+                (it.progress as? LibraryProgress.Series)?.progress?.lastWatchedAt ?: Instant.MIN
+            }
+            state.collection == ProfileCollection.FAVORITES -> filtered.sortedWith(
+                compareByDescending<LibraryEntry> {
+                    checkCancelled()
+                    it.favoriteAddedAt ?: Instant.MIN
+                }
+                    .thenBy { it.title.lowercase(Locale.ROOT) }
+                    .thenBy { it.mediaRef.source.name }
+                    .thenBy { it.mediaRef.externalId }
             )
+            else -> filtered.sortedByDescending {
+                checkCancelled()
+                it.addedAt
+            }
         }
+        ProfileSortOption.TITLE -> filtered.sortedBy {
+            checkCancelled()
+            it.title.lowercase()
+        }
+        ProfileSortOption.RATING -> filtered.sortedWith(
+            compareByDescending<LibraryEntry> {
+                checkCancelled()
+                it.personalRating?.value ?: -1
+            }
+                .thenBy { it.title.lowercase() }
+        )
+        ProfileSortOption.PROGRESS -> filtered.sortedWith(
+            compareByDescending<LibraryEntry> {
+                checkCancelled()
+                it.progressSortMetric()
+            }
+                .thenBy { it.title.lowercase() }
+        )
     }
+
+    checkCancelled()
+    return sorted
 }
 
 internal const val PROFILE_PREVIEW_LIMIT = 7
 
 internal fun selectWatchingPreview(
     entries: Iterable<LibraryEntry>,
-    limit: Int = PROFILE_PREVIEW_LIMIT
+    limit: Int = PROFILE_PREVIEW_LIMIT,
+    checkCancelled: () -> Unit = {}
 ): List<ContinueWatchingItem> = ContinueWatchingPolicy.select(
-    entries.mapNotNull(LibraryEntry::toContinueWatchingItem)
+    entries.mapNotNull {
+        checkCancelled()
+        it.toContinueWatchingItem()
+    },
+    checkCancelled
 ).take(limit.coerceAtLeast(0))
 
 internal fun selectFavoritePreview(
     entries: Iterable<LibraryEntry>,
-    limit: Int = PROFILE_PREVIEW_LIMIT
+    limit: Int = PROFILE_PREVIEW_LIMIT,
+    checkCancelled: () -> Unit = {}
 ): List<LibraryEntry> = entries.asSequence()
-    .filter(LibraryEntry::isFavorite)
+    .filter {
+        checkCancelled()
+        it.isFavorite
+    }
     // ponytail: legacy favorites have no timestamp; identity tie-break keeps ordering honest until re-favorited.
     .sortedWith(
-        compareByDescending<LibraryEntry> { it.favoriteAddedAt ?: Instant.MIN }
+        compareByDescending<LibraryEntry> {
+            checkCancelled()
+            it.favoriteAddedAt ?: Instant.MIN
+        }
             .thenBy { it.title.lowercase(Locale.ROOT) }
             .thenBy { it.mediaRef.source.name }
             .thenBy { it.mediaRef.externalId }
@@ -488,19 +545,28 @@ internal fun selectFavoritePreview(
     .take(limit.coerceAtLeast(0))
     .toList()
 
-internal fun countCollections(entries: Iterable<LibraryEntry>): ProfileCollectionCounts {
-    val all = entries.toList()
-    return ProfileCollectionCounts(
-        watchLater = all.count { entry ->
-            entry.inLibrary && when (entry.mediaType) {
-                MediaType.SERIES -> entry.serialState == SeriesTrackingState.WATCH_LATER
-                MediaType.MOVIE -> !entry.isWatched()
+internal fun countCollections(
+    entries: Iterable<LibraryEntry>,
+    checkCancelled: () -> Unit = {}
+): ProfileCollectionCounts {
+    var watchLater = 0
+    var watched = 0
+    var favorites = 0
+    var abandoned = 0
+    entries.forEach { entry ->
+        checkCancelled()
+        if (entry.isFavorite) favorites++
+        if (entry.inLibrary) {
+            if (entry.isWatched()) watched++
+            if (when (entry.mediaType) {
+                    MediaType.SERIES -> entry.serialState == SeriesTrackingState.WATCH_LATER
+                    MediaType.MOVIE -> !entry.isWatched()
+                }
+            ) {
+                watchLater++
             }
-        },
-        watched = all.count { it.inLibrary && it.isWatched() },
-        favorites = all.count(LibraryEntry::isFavorite),
-        abandoned = all.count {
-            it.inLibrary && it.mediaType == MediaType.SERIES && it.serialState == SeriesTrackingState.ABANDONED
+            if (entry.mediaType == MediaType.SERIES && entry.serialState == SeriesTrackingState.ABANDONED) abandoned++
         }
-    )
+    }
+    return ProfileCollectionCounts(watchLater, watched, favorites, abandoned)
 }

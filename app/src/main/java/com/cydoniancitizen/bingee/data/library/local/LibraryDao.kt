@@ -161,7 +161,9 @@ internal abstract class LibraryDao {
     @Query(
         """
         WITH regular_episode_activity AS (
-            SELECT seasons.local_media_id, COUNT(*) AS watched_regular_episodes
+            SELECT seasons.local_media_id, COUNT(*) AS watched_regular_episodes,
+                   COALESCE(SUM(episodes.runtime_minutes), 0) AS watched_regular_runtime_minutes,
+                   SUM(CASE WHEN episodes.runtime_minutes IS NULL THEN 1 ELSE 0 END) AS watched_regular_episodes_without_runtime
             FROM seasons
             INNER JOIN episodes USING(local_season_id)
             INNER JOIN episode_watch_progress USING(local_episode_id)
@@ -182,23 +184,8 @@ internal abstract class LibraryDao {
                series_watch_progress.completed_at AS series_completed_at,
                series_watch_progress.watched_date AS series_watched_date,
                COALESCE(media_details.runtime_minutes, media_entries.runtime_minutes) AS movie_runtime_minutes,
-               COALESCE((
-                   SELECT SUM(episodes.runtime_minutes)
-                   FROM episodes
-                   INNER JOIN seasons USING(local_season_id)
-                    INNER JOIN episode_watch_progress USING(local_episode_id)
-                    WHERE seasons.local_media_id = media_entries.local_media_id
-                      AND seasons.season_number > 0
-                ), 0) AS watched_regular_runtime_minutes,
-               (
-                   SELECT COUNT(*)
-                   FROM episodes
-                   INNER JOIN seasons USING(local_season_id)
-                    INNER JOIN episode_watch_progress USING(local_episode_id)
-                    WHERE seasons.local_media_id = media_entries.local_media_id
-                      AND seasons.season_number > 0
-                      AND episodes.runtime_minutes IS NULL
-               ) AS watched_regular_episodes_without_runtime
+               COALESCE(regular_episode_activity.watched_regular_runtime_minutes, 0) AS watched_regular_runtime_minutes,
+               COALESCE(regular_episode_activity.watched_regular_episodes_without_runtime, 0) AS watched_regular_episodes_without_runtime
         FROM media_entries
         INNER JOIN external_refs AS selected_ref
           ON selected_ref.local_media_id = media_entries.local_media_id

@@ -1,6 +1,5 @@
 package com.cydoniancitizen.bingee.feature.details
 
-import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
@@ -12,30 +11,33 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyListScope
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.selection.toggleable
+import androidx.compose.foundation.shape.CornerSize
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TriStateCheckbox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.key
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.BlurredEdgeTreatment
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
+import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.painterResource
@@ -61,13 +63,7 @@ import com.cydoniancitizen.bingee.core.result.AppError
 import com.cydoniancitizen.bingee.core.ui.formatLocalized
 import com.cydoniancitizen.bingee.core.ui.toUiError
 
-/**
- * The series part of the Details list: a heading with overall progress, then one lazy item per season,
- * so a long-running series composes only the seasons on screen.
- *
- * ponytail: an expanded season still composes all its episodes at once; split episodes into their own
- * items if a single season ever runs to hundreds of episodes.
- */
+/** Headers and episodes belong to the same lazy list, with provider-qualified identity. */
 internal fun LazyListScope.tvSeriesItems(
     state: SeriesDetailUiState,
     onToggleExpanded: (CachedSeason) -> Unit,
@@ -79,7 +75,7 @@ internal fun LazyListScope.tvSeriesItems(
 ) {
     val content = state.content
     if (content == SeriesContentState.NotApplicable) return
-    item(key = "seriesProgress") {
+    detailSectionItem(key = "seriesProgress", contentType = "heading") {
         Column(
             modifier = modifier.fillMaxWidth(),
             verticalArrangement = Arrangement.spacedBy(BingeeDimensions.contentSpacing)
@@ -117,23 +113,65 @@ internal fun LazyListScope.tvSeriesItems(
     }
     if (content !is SeriesContentState.Ready) return
     val seasonItems: (List<CachedSeason>) -> Unit = { seasons ->
-        items(seasons, key = { "season:${it.season.externalRef.source}:${it.season.externalRef.externalId}" }) {
-            SeasonCard(
-                it,
-                state,
-                onToggleExpanded,
-                onRetrySeason,
-                onToggleEpisode,
-                onToggleSeason,
-                onOpenSettings,
-                modifier
-            )
+        seasons.forEach { season ->
+            val ref = season.season.externalRef
+            val hasEpisodes = ref in state.expandedSeasons && season.episodesFetchedAt != null &&
+                season.episodes.isNotEmpty()
+            item(key = "season:${ref.source}:${ref.externalId}", contentType = "seasonHeader") {
+                SeasonCard(season, state, onToggleExpanded, onRetrySeason, onToggleSeason, onOpenSettings, modifier)
+            }
+            if (hasEpisodes) {
+                itemsIndexed(
+                    season.episodes,
+                    key = { _, episode ->
+                        "episode:${episode.episode.externalRef.source}:${episode.episode.externalRef.externalId}"
+                    },
+                    contentType = { _, _ -> "episode" }
+                ) { index, episode ->
+                    val last = index == season.episodes.lastIndex
+                    Surface(
+                        modifier = modifier.fillMaxWidth().padding(
+                            bottom = if (last) BingeeDimensions.contentSpacing else 0.dp
+                        ),
+                        color = CardDefaults.cardColors().containerColor,
+                        shape = if (last) {
+                            MaterialTheme.shapes.medium.copy(
+                                topStart = CornerSize(0.dp),
+                                topEnd = CornerSize(0.dp)
+                            )
+                        } else {
+                            RectangleShape
+                        }
+                    ) {
+                        Column(
+                            Modifier.padding(
+                                start = BingeeDimensions.contentSpacing,
+                                end = BingeeDimensions.contentSpacing,
+                                top = BingeeDimensions.elementSpacing / 2,
+                                bottom = if (last) {
+                                    BingeeDimensions.contentSpacing
+                                } else {
+                                    BingeeDimensions.elementSpacing /
+                                        2
+                                }
+                            )
+                        ) {
+                            EpisodeRow(
+                                episode = episode,
+                                hideSpoilers = state.hideSpoilers,
+                                pending = episode.episode.externalRef in state.pendingEpisodes,
+                                onToggle = { onToggleEpisode(episode) }
+                            )
+                        }
+                    }
+                }
+            }
         }
     }
     seasonItems(content.seasons.filter { it.season.seasonNumber > 0 })
     val specials = content.seasons.filter { it.season.seasonNumber == 0 }
     if (specials.isNotEmpty()) {
-        item(key = "specialsTitle") {
+        detailSectionItem(key = "specialsTitle", contentType = "heading") {
             Text(
                 text = stringResource(R.string.detail_specials_title),
                 modifier = modifier.semantics { heading() },
@@ -143,7 +181,9 @@ internal fun LazyListScope.tvSeriesItems(
         seasonItems(specials)
     }
     if (content.seasons.isEmpty()) {
-        item(key = "seasonsEmpty") { Text(stringResource(R.string.detail_seasons_empty), modifier = modifier) }
+        detailSectionItem(key = "seasonsEmpty", contentType = "status") {
+            Text(stringResource(R.string.detail_seasons_empty), modifier = modifier)
+        }
     }
 }
 
@@ -168,7 +208,6 @@ private fun SeasonCard(
     state: SeriesDetailUiState,
     onToggleExpanded: (CachedSeason) -> Unit,
     onRetrySeason: (CachedSeason) -> Unit,
-    onToggleEpisode: (TrackedEpisode) -> Unit,
     onToggleSeason: (CachedSeason) -> Unit,
     onOpenSettings: () -> Unit,
     modifier: Modifier
@@ -184,13 +223,25 @@ private fun SeasonCard(
             } else {
                 stringResource(R.string.detail_season_fallback, season.season.seasonNumber)
             }
-    Card(modifier = modifier.fillMaxWidth()) {
+    val hasEpisodes = expanded && season.episodesFetchedAt != null && season.episodes.isNotEmpty()
+    Card(
+        modifier = modifier.fillMaxWidth().padding(bottom = if (hasEpisodes) 0.dp else BingeeDimensions.contentSpacing),
+        shape = if (hasEpisodes) {
+            MaterialTheme.shapes.medium.copy(
+                bottomStart = CornerSize(0.dp),
+                bottomEnd = CornerSize(0.dp)
+            )
+        } else {
+            MaterialTheme.shapes.medium
+        }
+    ) {
         Column(
-            // Expanding a season changes this card's height by the whole episode list; without the
-            // animation everything below it jumps that distance in a single frame.
-            modifier = Modifier
-                .animateContentSize()
-                .padding(BingeeDimensions.contentSpacing),
+            modifier = Modifier.padding(
+                start = BingeeDimensions.contentSpacing,
+                end = BingeeDimensions.contentSpacing,
+                top = BingeeDimensions.contentSpacing,
+                bottom = if (hasEpisodes) BingeeDimensions.elementSpacing / 2 else BingeeDimensions.contentSpacing
+            ),
             verticalArrangement = Arrangement.spacedBy(BingeeDimensions.elementSpacing)
         ) {
             SeasonHeader(
@@ -237,30 +288,8 @@ private fun SeasonCard(
                         }
                     }
                 }
-                if (season.episodesFetchedAt != null) {
-                    if (season.episodes.isEmpty()) {
-                        Text(stringResource(R.string.detail_episodes_empty))
-                    } else {
-                        // A plain Column, not a LazyColumn: this section already lives inside the
-                        // screen's scrolling list, where a nested scroller steals the drag gesture
-                        // and the height cap it needs silently truncates long seasons.
-                        Column(
-                            modifier = Modifier.fillMaxWidth(),
-                            verticalArrangement = Arrangement.spacedBy(BingeeDimensions.elementSpacing)
-                        ) {
-                            season.episodes.forEach { episode ->
-                                val episodeRef = episode.episode.externalRef
-                                key(episodeRef.source.name, episodeRef.externalId) {
-                                    EpisodeRow(
-                                        episode = episode,
-                                        hideSpoilers = state.hideSpoilers,
-                                        pending = episodeRef in state.pendingEpisodes,
-                                        onToggle = { onToggleEpisode(episode) }
-                                    )
-                                }
-                            }
-                        }
-                    }
+                if (season.episodesFetchedAt != null && season.episodes.isEmpty()) {
+                    Text(stringResource(R.string.detail_episodes_empty))
                 }
             }
         }

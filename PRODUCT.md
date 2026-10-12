@@ -24,7 +24,9 @@ The primary workflow is offline-capable Android use with optional TMDB metadata 
 
 ## Capabilities and Constraints
 
-TMDB is the current provider. Serial progress excludes specials and Season 0. Watching is derived from current regular episode availability and progress; caught-up is not persisted. No social, recommendation, account, cloud-sync, or anime features are in scope for this milestone.
+TMDB is the only runtime media provider. Animation and anime returned by TMDB use the ordinary Movie/TV Series paths; no Jikan integration or separate anime model exists. Serial progress excludes specials and Season 0. Watching is derived from current regular episode availability and progress; caught-up is not persisted. No social, recommendation, account, or cloud-sync features are in scope for this milestone.
+
+Development targets v1.2.5 / versionCode 9: proven dead-code cleanup, canonical documentation sync and measured performance follow-up before the larger UI cycle. C01–C07 are implemented; the remaining performance work and release gate stay in the [canonical roadmap](BINGEE_DEVELOPMENT_ROADMAP_AND_CHECKLIST.md#v125-checklist). Room schema 9, Backup v3 export with v1/v2/v3 restore, and the experimental documented TV Time JSON ZIP import define the current data boundaries. Portable preferences live in Room; permission and notification enablement remain device-specific.
 
 ## Brand Commitments
 

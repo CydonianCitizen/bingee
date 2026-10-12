@@ -1,6 +1,6 @@
 # TV Time source format profile v1
 
-Status: supported-source design contract only; no production parser is implemented.
+Status: implemented experimental source-profile contract, used by the production parser and additive importer. See [ADR 0019](../adr/0019-tv-time-import-implementation.md) and [current architecture](../architecture.md#experimental-tv-time-import).
 
 Reviewed: 2026-08-04
 Evidence: TVTIME-SAMPLE-001 (private local evidence)
@@ -41,7 +41,12 @@ Apply the existing local evidence limits before reading entries:
 - no encrypted or symbolic-link-like entries;
 - nested archives are unsupported.
 
-Extraction must be into a private bounded temporary root. Do not follow links, overwrite files, or mutate Room before full parse and user confirmation.
+The implementation copies the selected ZIP into a bounded app-private cache file, inspects its central directory and streams selected entries without extracting an entry tree. It closes the archive and removes the temporary copy on completion, failure or cancellation. Do not follow links, overwrite files, or mutate Room before full parse and user confirmation.
+
+Additional parser limits are JSON depth 64, 32 MiB per JSON record, 8,192 characters per string,
+100,000 list items and 2,000 retained warnings. Aggregate title/season/episode limits are
+50,000 / 100,000 / 100,000, shared with [Backup v3](../backup-format-v3.md). These limits do not
+broaden the supported source profile.
 
 ## Text contract
 
@@ -196,16 +201,13 @@ No field is available for original title, episode air date, direct TMDB ID, or r
 
 ## Duplicate and error behavior
 
-The source sample had no duplicates or conflicts. The future parser must still:
-
-- detect duplicate object keys;
-- detect repeated root IDs and repeated episode IDs;
-- detect same ID with conflicting title/year/context;
-- preserve first-class warnings and source location;
-- never silently choose a winner;
-- allow review or skip.
-
-Malformed or structurally invalid records are rejected individually only under an explicit policy; the archive-level validation result must remain visible. No database write occurs before the complete preview is confirmed.
+The source sample had no duplicates or conflicts. The implemented parser rejects duplicate JSON
+object keys, repeated identities and conflicting qualified identities or season/episode context;
+it never silently chooses a winner. Unsafe structure or document-level identity conflicts reject
+the archive. Semantically invalid records whose structure is safe remain in the invalid summary;
+unknown fields produce bounded warnings with structural locations, without retaining their values.
+Valid but unresolved matches require review or skip. No database write occurs before the complete
+preview is confirmed.
 
 ## Unsupported and unresolved behavior
 

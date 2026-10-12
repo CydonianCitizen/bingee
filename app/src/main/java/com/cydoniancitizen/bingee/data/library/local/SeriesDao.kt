@@ -193,8 +193,9 @@ internal abstract class SeriesDao {
                 localEpisodeId = null
             )
             candidateStates += state
-            byRef.entries.removeIf { it.value === state }
-            byNumber.entries.removeIf { it.value === state }
+            val previous = state.episode
+            if (byRef[previous.externalId] === state) byRef.remove(previous.externalId)
+            if (byNumber[previous.episodeNumber] === state) byNumber.remove(previous.episodeNumber)
             state.episode = candidate.copy(
                 localEpisodeId = state.localEpisodeId ?: 0,
                 localSeasonId = storedSeason.localSeasonId

@@ -492,6 +492,25 @@ class HomeScreenTest {
             .assertContentDescriptionEquals(context.getString(R.string.home_open_event_details, longEvent.title))
     }
 
+    @Test
+    fun largeReleaseGroupIsLazyAndLastEventStillOpensItsTitle() {
+        val events = (1..100).map {
+            event("$it", ReleaseSubjectType.MEDIA, ReleaseEventType.MOVIE_RELEASE, MediaType.MOVIE)
+        }
+        val opened = AtomicReference<ExternalMediaRef>()
+        setHome(
+            HomeUiState(
+                content = HomeContentState.Events(listOf(ReleaseDateGroup(today, ReleaseDateCategory.TODAY, events))),
+                today = today
+            ),
+            onOpenDetails = { ref, _ -> opened.set(ref) }
+        )
+        composeRule.onNodeWithText("Title 100").assertDoesNotExist()
+        assertTrue(composeRule.onAllNodes(hasText("Title", substring = true)).fetchSemanticsNodes().size < 20)
+        composeRule.scrollListTo(hasText("Title 100")).assertIsDisplayed().performClick()
+        assertEquals(events.last().mediaRef, opened.get())
+    }
+
     private fun setHome(
         state: HomeUiState,
         onRefresh: () -> Unit = {},

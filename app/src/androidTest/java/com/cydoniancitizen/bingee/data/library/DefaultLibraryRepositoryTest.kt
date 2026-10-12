@@ -73,12 +73,17 @@ class DefaultLibraryRepositoryTest {
     private lateinit var database: BingeeDatabase
     private lateinit var repository: DefaultLibraryRepository
     private lateinit var dateSource: TestCalendarDateSource
+    private val continuationQueries = AtomicInteger()
     private val now = Instant.parse("2026-08-01T10:00:00Z")
 
     @Before
     fun createRepository() {
         val context = ApplicationProvider.getApplicationContext<Context>()
-        database = Room.inMemoryDatabaseBuilder(context, BingeeDatabase::class.java).build()
+        database = Room.inMemoryDatabaseBuilder(context, BingeeDatabase::class.java)
+            .setQueryCallback({ sql, _ ->
+                if (sql.contains("AS next_episode_source")) continuationQueries.incrementAndGet()
+            }, java.util.concurrent.Executor { it.run() })
+            .build()
         dateSource = TestCalendarDateSource(today())
         repository =
             DefaultLibraryRepository(
@@ -912,6 +917,58 @@ class DefaultLibraryRepositoryTest {
             .single { it.localMediaId == localMediaId }
         assertEquals(1, currentProgress.trackableEpisodes)
         assertEquals(1, currentProgress.watchedEpisodes)
+    }
+
+    @Test
+    fun simultaneousContinuationConsumersShareOneDailyQueryAndSeeUpdates() = runBlocking {
+        val first = repository.observeContinueWatching().produceIn(this)
+        val second = repository.observeContinueWatching().produceIn(this)
+        val third = repository.observeContinueWatching().produceIn(this)
+        listOf(first, second, third).forEach { it.nextMatching { result -> result is AppResult.Success } }
+        assertEquals(1, continuationQueries.get())
+
+        val series = mediaResult().copy(
+            externalRef = ExternalMediaRef(MediaSource.TMDB, "100"),
+            mediaType = MediaType.SERIES
+        )
+        repository.add(series)
+        storeSeries("100", 3)
+        database.watchProgressDao().markEpisodeWatched(MediaSource.TMDB, "100-episode-1", today(), now)
+        listOf(first, second, third).forEach { channel ->
+            channel.nextMatching { result ->
+                result is AppResult.Success &&
+                    result.value.singleOrNull()?.nextEpisode == EpisodePosition(1, 2)
+            }
+        }
+        first.cancel()
+        second.cancel()
+        database.watchProgressDao().markEpisodeWatched(MediaSource.TMDB, "100-episode-2", today(), now.plusSeconds(1))
+        third.nextMatching { result ->
+            result is AppResult.Success &&
+                result.value.singleOrNull()?.nextEpisode == EpisodePosition(1, 3)
+        }
+        third.cancel()
+    }
+
+    @Test
+    fun sharedContinuationDeliversReadFailureAndRecoversWithoutLosingConsumers() = runBlocking<Unit> {
+        val consumer = repository.observeContinueWatching().produceIn(this)
+        var renamed = false
+        try {
+            consumer.nextMatching { it is AppResult.Success }
+            // Only this disposable in-memory fixture loses a table temporarily.
+            database.openHelper.writableDatabase.execSQL("ALTER TABLE episodes RENAME TO episodes_probe")
+            renamed = true
+            dateSource.advanceTo(today().plusDays(1))
+            val failure = consumer.nextMatching { it is AppResult.Failure } as AppResult.Failure
+            assertEquals(AppError.LocalStorageFailure, failure.error)
+            database.openHelper.writableDatabase.execSQL("ALTER TABLE episodes_probe RENAME TO episodes")
+            renamed = false
+            consumer.nextMatching { it is AppResult.Success }
+        } finally {
+            if (renamed) database.openHelper.writableDatabase.execSQL("ALTER TABLE episodes_probe RENAME TO episodes")
+            consumer.cancel()
+        }
     }
 
     private fun mediaResult() = MediaSearchResult(

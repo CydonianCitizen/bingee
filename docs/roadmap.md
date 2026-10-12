@@ -8,6 +8,13 @@ This document retains earlier delivery summaries. The [canonical development roa
 - C04–C07 move fake-only search and observation fallbacks into the debug source set, require explicit repository implementations, and remove the unused completion getter and import timestamp flag. Production Room reads, timestamp precision and import warnings remain intact; targeted regressions cover the relocated fake behavior.
 - Instrumented membership regressions now use the existing observable entry API. All 70 selected instrumented tests passed on a physical HONOR CMA-LX1 running Android 13; a bounded optimized-release smoke also passed. The remaining performance scenarios and the rest of the v1.2.5 checklist remain pending.
 - A partial synthetic baseline on the same device covers 100/1,000/10,000 titles, 1,000/25,000/100,000 watched episodes, 30 process-cold launches and nine season expansion/collapse cycles in an isolated optimized release. Search and statistics checks pass; expansion cost grows markedly at 300 episodes, supporting the existing lazy-episode work item. Full performance coverage and implementation remain pending; temporary evidence stays in `.audit/`.
+- Canonical documentation now distinguishes development v1.2.5/code 9, current Room 9/Backup v3, the implemented TV Time profile, and historical ADRs. The old tracked audit report is archived under ignored `.audit/`; [v1.2.5 implementation notes](release-notes-1.2.5.md) cover completed cleanup and remaining work.
+
+The software optimization batch implements widget instance gating, Profile consumer ownership and
+off-Main calculations, shared Continue Watching reads, consolidated Personal Viewing runtime SQL,
+lazy episodes/releases, direct episode-map reconciliation, single-pass monthly statistics and bounded
+manual-refresh workers. Functional verification and physical-device measurement status remain
+separate in the [performance checklist](checklist-1.2.5-performance.md).
 
 ## Implemented in `v1.2.4`
 
@@ -50,7 +57,7 @@ See [v1.2.3 release notes](release-notes-1.2.3.md) for the changed behavior. The
 
 ## Current data portability hardening
 
-- Room v8 stores portable appearance, spoiler, and collection-view settings with the other restorable preferences; Backup v3 exports them, keeps v1/v2 imports compatible, and rejects documents that exceed the 50 MiB or v3 record ceilings. TV Time shares the current 50,000-media, 100,000-season, and 100,000-episode limits. Legacy v1/v2 episode reads retain their 500,000-record ceiling.
+- Current Room v9 stores portable appearance, spoiler, and collection-view settings with the other restorable preferences. Room v8 introduced their one-time DataStore bridge; v9 adds recoverable technical notification claims. Backup v3 exports portable data, keeps v1/v2 imports compatible, and rejects documents that exceed the 50 MiB or v3 record ceilings. TV Time shares the current 50,000-media, 100,000-season, and 100,000-episode limits. Legacy v1/v2 episode reads retain their 500,000-record ceiling.
 
 ## Deferred
 

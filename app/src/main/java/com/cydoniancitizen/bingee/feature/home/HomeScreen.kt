@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyItemScope
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
@@ -42,7 +43,6 @@ import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.key
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -151,9 +151,9 @@ internal fun HomeContent(
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
             contentPadding = PaddingValues(BingeeDimensions.screenPadding),
-            verticalArrangement = Arrangement.spacedBy(BingeeDimensions.contentSpacing)
+            verticalArrangement = Arrangement.Top
         ) {
-            item(key = "title") {
+            homeSectionItem(key = "title") {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically
@@ -172,7 +172,7 @@ internal fun HomeContent(
                 }
             }
             state.lastSuccessfulRefreshAt?.let {
-                item(key = "lastUpdated") {
+                homeSectionItem(key = "lastUpdated") {
                     Text(
                         stringResource(R.string.home_last_updated, it.localized()),
                         style = MaterialTheme.typography.labelMedium
@@ -181,7 +181,7 @@ internal fun HomeContent(
             }
             // An empty item would still take a gap in the list, so Idle adds none.
             if (state.refresh != HomeRefreshState.Idle) {
-                item(key = "refresh") {
+                homeSectionItem(key = "refresh") {
                     RefreshFeedback(
                         refresh = state.refresh,
                         onRetry = onRefresh,
@@ -193,16 +193,16 @@ internal fun HomeContent(
 
             // Personal release calendar stays above general discovery content.
             when (val content = state.content) {
-                HomeContentState.Loading -> item(key = "loading") {
+                HomeContentState.Loading -> homeSectionItem(key = "loading") {
                     LoadingState(stringResource(R.string.home_loading))
                 }
-                HomeContentState.Empty -> item(key = "empty") {
+                HomeContentState.Empty -> homeSectionItem(key = "empty") {
                     EmptyState(
                         title = stringResource(R.string.home_empty_title),
                         body = stringResource(R.string.home_empty_body)
                     )
                 }
-                is HomeContentState.Error -> item(key = "error") {
+                is HomeContentState.Error -> homeSectionItem(key = "error") {
                     val error = content.error.toUiError()
                     ErrorState(
                         title = stringResource(R.string.home_local_error_title),
@@ -211,22 +211,29 @@ internal fun HomeContent(
                         onRetry = onRetryLocal
                     )
                 }
-                // One item per date keeps the tighter spacing between a date and its releases.
-                is HomeContentState.Events -> items(
-                    content.groups,
-                    key = { "date:${it.date}" },
-                    contentType = { "dateGroup" }
-                ) { group ->
-                    Column(verticalArrangement = Arrangement.spacedBy(BingeeDimensions.elementSpacing)) {
-                        DateHeader(group)
-                        group.events.forEach { event ->
-                            key(event.stableKey) {
-                                ReleaseEventCard(
-                                    event = event,
-                                    category = group.category,
-                                    onClick = { onOpenDetails(event.mediaRef, event.mediaType) }
-                                )
-                            }
+                is HomeContentState.Events -> content.groups.forEach { group ->
+                    item(key = "date:${group.date}", contentType = "dateHeader") {
+                        Box(Modifier.padding(bottom = BingeeDimensions.elementSpacing)) { DateHeader(group) }
+                    }
+                    items(
+                        group.events,
+                        key = { "release:${it.stableKey}" },
+                        contentType = { "release" }
+                    ) { event ->
+                        Box(
+                            Modifier.padding(
+                                bottom = if (event ==
+                                    group.events.last()
+                                ) {
+                                    BingeeDimensions.contentSpacing
+                                } else {
+                                    BingeeDimensions.elementSpacing
+                                }
+                            )
+                        ) {
+                            ReleaseEventCard(event, group.category, onClick = {
+                                onOpenDetails(event.mediaRef, event.mediaType)
+                            })
                         }
                     }
                 }
@@ -245,7 +252,7 @@ internal fun HomeContent(
                 }
             }
             localReadError?.let { (titleRes, error) ->
-                item(key = "localReadError") {
+                homeSectionItem(key = "localReadError") {
                     ErrorState(
                         title = stringResource(titleRes),
                         message = stringResource(error.toUiError().messageRes),
@@ -276,14 +283,14 @@ internal fun HomeContent(
             )
 
             if (state.continueWatching.isNotEmpty()) {
-                item(key = "continueWatchingTitle") {
+                homeSectionItem(key = "continueWatchingTitle") {
                     Text(
                         text = stringResource(R.string.home_continue_watching),
                         modifier = Modifier.semantics { heading() },
                         style = MaterialTheme.typography.titleLarge
                     )
                 }
-                item(key = "continueWatching") {
+                homeSectionItem(key = "continueWatching") {
                     val continueWatchingState = rememberLazyListState()
                     // Each card spans the row, so the section keeps the screen's side margins like the calendar
                     // cards; snapping stops a swipe on a whole card rather than between two.
@@ -419,14 +426,14 @@ private fun LazyListScope.featuredRow(
     onOpenDetails: (ExternalMediaRef, MediaType) -> Unit
 ) {
     if (items.isEmpty()) return
-    item(key = "featuredTitle:$titleRes") {
+    homeSectionItem(key = "featuredTitle:$titleRes") {
         Text(
             text = stringResource(titleRes),
             modifier = Modifier.semantics { heading() },
             style = MaterialTheme.typography.titleLarge
         )
     }
-    item(key = "featuredRow:$titleRes") {
+    homeSectionItem(key = "featuredRow:$titleRes") {
         LazyRow(
             horizontalArrangement = Arrangement.spacedBy(BingeeDimensions.elementSpacing),
             contentPadding = PaddingValues(vertical = 4.dp)
@@ -708,3 +715,9 @@ private fun mediumDateTimeFormatter(): DateTimeFormatter {
 private fun java.time.LocalDate.localized(): String = fullDateFormatter().format(this)
 
 private fun Instant.localized(): String = mediumDateTimeFormatter().withZone(ZoneId.systemDefault()).format(this)
+
+private fun LazyListScope.homeSectionItem(key: String, content: @Composable LazyItemScope.() -> Unit) {
+    item(key = key, contentType = key.substringBefore(':')) {
+        Box(Modifier.padding(bottom = BingeeDimensions.contentSpacing)) { content() }
+    }
+}

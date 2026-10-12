@@ -513,6 +513,49 @@ class WatchedStatisticsTest {
         assertEquals(1, calculateTasteStatistics(listOf(duplicate, duplicate)).rankedGenres.single().titleCount)
     }
 
+    @Test
+    fun invalidYearFallsBackToCurrentBucketsAndRespectsLocalFutureDates() {
+        val stats = calculateWatchedStatistics(
+            listOf(
+                movie("boundary", watchedAt = instant("2025-12-31T23:30:00Z"), runtimeMinutes = 90),
+                movie("future", watchedAt = instant("2026-01-01T23:30:00Z"), runtimeMinutes = 200),
+                movie("old", watchedAt = instant("2024-03-01T12:00:00Z"), runtimeMinutes = 30)
+            ),
+            ZoneId.of("Europe/Rome"),
+            LocalDate.of(2026, 1, 1),
+            2023
+        ).monthlyViewing
+
+        assertEquals(2026, stats.selectedYear)
+        assertEquals(listOf(2026, 2025, 2024), stats.availableYears)
+        assertEquals(90L, stats.months[0].movieMinutes)
+        assertEquals(90L, stats.months.sumOf { it.totalMinutes })
+    }
+
+    @Test
+    fun cancellationStopsWalkingLargeEpisodeHistory() {
+        var reads = 0
+        val activities = object : AbstractList<WatchedEpisodeActivity>() {
+            override val size = 100_000
+            override fun get(index: Int): WatchedEpisodeActivity {
+                reads++
+                return WatchedEpisodeActivity(Instant.EPOCH, 45)
+            }
+        }
+        try {
+            calculateWatchedStatistics(
+                listOf(series("large", watchedEpisodes = activities.size, activities = activities)),
+                zone,
+                LocalDate.of(2026, 8, 17),
+                2026,
+                checkCancelled = { if (reads >= 64) throw kotlinx.coroutines.CancellationException() }
+            )
+            throw AssertionError("Expected cancellation")
+        } catch (_: kotlinx.coroutines.CancellationException) {
+            assertEquals(64, reads)
+        }
+    }
+
     private fun movie(
         id: String,
         watchedAt: Instant? = null,

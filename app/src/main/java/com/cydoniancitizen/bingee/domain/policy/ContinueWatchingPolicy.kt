@@ -8,14 +8,21 @@ import java.time.Instant
 import java.util.Locale
 
 object ContinueWatchingPolicy {
-    fun select(items: Iterable<ContinueWatchingItem>): List<ContinueWatchingItem> = items
-        .filter(::isContinueWatching)
-        .sortedWith(
-            compareByDescending<ContinueWatchingItem> { it.updatedAt ?: Instant.MIN }
-                .thenBy { it.title.lowercase(Locale.ROOT) }
-                .thenBy { it.mediaRef.source.name }
-                .thenBy { it.mediaRef.externalId }
-        )
+    fun select(items: Iterable<ContinueWatchingItem>, checkCancelled: () -> Unit = {}): List<ContinueWatchingItem> =
+        items
+            .filter {
+                checkCancelled()
+                isContinueWatching(it)
+            }
+            .sortedWith(
+                compareByDescending<ContinueWatchingItem> {
+                    checkCancelled()
+                    it.updatedAt ?: Instant.MIN
+                }
+                    .thenBy { it.title.lowercase(Locale.ROOT) }
+                    .thenBy { it.mediaRef.source.name }
+                    .thenBy { it.mediaRef.externalId }
+            )
 
     fun isContinueWatching(item: ContinueWatchingItem): Boolean = item.mediaType == MediaType.SERIES &&
         resolveSeriesTrackingState(item.inLibrary, item.progress, item.isAbandoned) ==

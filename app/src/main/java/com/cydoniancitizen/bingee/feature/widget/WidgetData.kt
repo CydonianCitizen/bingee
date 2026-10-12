@@ -29,7 +29,10 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.flowOf
 
 internal const val WIDGET_UPCOMING_LIMIT = 2
 
@@ -41,6 +44,53 @@ internal data class WidgetSnapshot(
     /** The in-app theme choice, which widgets follow because the launcher never sees the app's night mode. */
     val theme: AppTheme
 )
+
+/** Presence by type, not instance count: Glance renders newly placed/resized instances itself. */
+internal data class WidgetTargets(val continueWatching: Boolean = false, val upNext: Boolean = false) {
+    val isEmpty: Boolean get() = !continueWatching && !upNext
+}
+
+/** Only installed types observe data; an initial update also reconciles idle sessions on restart. */
+@OptIn(ExperimentalCoroutinesApi::class)
+internal fun observeWidgetUpdates(
+    installed: Flow<WidgetTargets>,
+    snapshots: (WidgetTargets) -> Flow<WidgetSnapshot>
+): Flow<WidgetTargets> = installed.distinctUntilChanged().flatMapLatest { targets ->
+    if (targets.isEmpty) {
+        emptyFlow()
+    } else {
+        flow {
+            var previous: WidgetSnapshot? = null
+            snapshots(targets).collect { current ->
+                val old = previous
+                val watchingChanged = old == null || old.theme != current.theme ||
+                    !old.watching.sameWidgetContent(current.watching)
+                val upcomingChanged = old == null || (old.today != current.today && current.upcoming.isNotEmpty()) ||
+                    old.upcoming.size != current.upcoming.size ||
+                    old.upcoming.indices.any { !old.upcoming[it].sameWidgetContent(current.upcoming[it]) }
+                val changed = WidgetTargets(
+                    continueWatching = targets.continueWatching && watchingChanged,
+                    upNext = targets.upNext && (watchingChanged || upcomingChanged)
+                )
+                previous = current
+                if (!changed.isEmpty) emit(changed)
+            }
+        }
+    }
+}
+
+private fun ContinueWatchingItem?.sameWidgetContent(other: ContinueWatchingItem?): Boolean =
+    if (this == null || other == null) {
+        this == other
+    } else {
+        mediaRef == other.mediaRef && mediaType == other.mediaType && title == other.title &&
+            posterUrl == other.posterUrl && nextEpisode == other.nextEpisode && nextEpisodeRef == other.nextEpisodeRef
+    }
+
+private fun ReleaseEvent.sameWidgetContent(other: ReleaseEvent): Boolean =
+    mediaRef == other.mediaRef && mediaType == other.mediaType && eventDate == other.eventDate &&
+        title == other.title && posterUrl == other.posterUrl && seasonNumber == other.seasonNumber &&
+        episodeNumber == other.episodeNumber
 
 /** Today's and later releases in calendar order; past ones belong to the app's "recent" section. */
 internal fun selectUpcoming(events: List<ReleaseEvent>, today: LocalDate): List<ReleaseEvent> =
@@ -65,6 +115,7 @@ internal fun widgetDayLabel(
 @EntryPoint
 @InstallIn(SingletonComponent::class)
 internal interface WidgetEntryPoint {
+    fun widgetUpdater(): BingeeWidgetUpdater
     fun libraryRepository(): LibraryRepository
     fun releaseCalendarRepository(): ReleaseCalendarRepository
     fun watchProgressRepository(): WatchProgressRepository
@@ -75,13 +126,14 @@ internal interface WidgetEntryPoint {
 internal fun Context.widgetEntryPoint(): WidgetEntryPoint =
     EntryPointAccessors.fromApplication(applicationContext, WidgetEntryPoint::class.java)
 
-internal fun observeWidgetSnapshot(context: Context): Flow<WidgetSnapshot> {
+internal fun observeWidgetSnapshot(context: Context, includeUpcoming: Boolean = true): Flow<WidgetSnapshot> {
     val entryPoint = context.widgetEntryPoint()
     return observeWidgetSnapshot(
         watching = entryPoint.libraryRepository().observeContinueWatching(),
         events = entryPoint.releaseCalendarRepository()::observeEvents,
         dates = entryPoint.calendarDateSource().observeDate(),
-        themes = entryPoint.appearancePreferences().observeTheme()
+        themes = entryPoint.appearancePreferences().observeTheme(),
+        includeUpcoming = includeUpcoming
     )
 }
 
@@ -90,9 +142,11 @@ internal fun observeWidgetSnapshot(
     watching: Flow<AppResult<List<ContinueWatchingItem>>>,
     events: (LocalDate) -> Flow<AppResult<List<ReleaseEvent>>>,
     dates: Flow<LocalDate>,
-    themes: Flow<AppTheme>
+    themes: Flow<AppTheme>,
+    includeUpcoming: Boolean = true
 ): Flow<WidgetSnapshot> = dates.flatMapLatest { today ->
-    combine(watching, events(today), themes) { progress, releases, theme ->
+    val releases = if (includeUpcoming) events(today) else flowOf(AppResult.Success(emptyList()))
+    combine(watching, releases, themes) { progress, releases, theme ->
         WidgetSnapshot(
             watching = (progress as? AppResult.Success)?.value?.firstOrNull(),
             upcoming = selectUpcoming((releases as? AppResult.Success)?.value.orEmpty(), today),
@@ -100,7 +154,12 @@ internal fun observeWidgetSnapshot(
             theme = theme
         )
     }
-}.distinctUntilChanged()
+}.distinctUntilChanged { old, current ->
+    old.theme == current.theme && old.watching.sameWidgetContent(current.watching) &&
+        (old.today == current.today || current.upcoming.isEmpty()) &&
+        old.upcoming.size == current.upcoming.size &&
+        old.upcoming.indices.all { old.upcoming[it].sameWidgetContent(current.upcoming[it]) }
+}
 
 /**
  * Widgets draw through RemoteViews, which cannot take a hardware bitmap or load a URL, so the poster is

@@ -1404,13 +1404,13 @@ Acceptance review of #1–#5 confirms the required implementations, permanent re
 
 - [x] Bump to v1.2.5 / code 9.
 - [ ] Complete the [performance checklist](docs/checklist-1.2.5-performance.md), recording evidence and decisions for conditional items.
-- [ ] Run fresh repo-wide Ponytail dead-code audit.
-- [ ] Re-evaluate every known historical dead-code candidate.
+- [x] Run fresh repo-wide Ponytail dead-code audit.
+- [x] Re-evaluate every known historical dead-code candidate.
 - [ ] Remove only proven dead production code.
 - [ ] Remove obsolete resources/tests/fixtures only with evidence.
 - [ ] Do not perform architecture rewrites.
-- [ ] Perform full canonical documentation sync.
-- [ ] Scan all tracked Markdown links.
+- [x] Perform full canonical documentation sync.
+- [x] Scan all tracked Markdown links.
 - [ ] Confirm `.audit/` ignored and canonical `docs/` tracked.
 - [ ] Run mandatory GLOBAL audit after each cleanup batch.
 - [ ] Run final v1.2.5 global audit.
@@ -1434,6 +1434,12 @@ The remaining four candidates are reconfirmed and implemented. C04 moves fake-on
 The 154 targeted JVM tests in 17 suites pass, including three new regressions for fake continuation eligibility/order, error recovery/cancellation, and the inclusive calendar bound. The full host gate passes: global Spotless, 469 JVM tests in 81 suites with zero failures/errors/skips, lint with zero errors and 51 pre-existing warnings, debug build, AndroidTest APK build and optimized release build. Compiled release classes exclude the debug helpers. A scoped global source audit covers all eleven A5 categories and finds no introduced unresolved P0/P1, dead code or unjustified abstraction; local file links and the diff check pass.
 
 The widget performance item was initially mistaken for this cleanup scope: its prepared patch is parked only under ignored `.audit/` and is not included in the source tree. New device/emulator verification is deferred at the owner's request. Temporary evidence remains ignored under `.audit/v1.2.5-c04-c07/`. This batch does not complete performance work, full documentation sync, final milestone audit or the release gate. No staging or commit is performed.
+
+## Documentation sync and local-link scan — 2026-10-11
+
+Current documentation now agrees with development v1.2.5/code 9, Room 9, Backup v3 export with v1/v2/v3 restore, the implemented TV Time JSON ZIP profile and its limits, actual Library/Profile observations, and CI's offline smoke selection. README, PRODUCT, AGENTS, architecture, privacy, backup/import docs, roadmap, contribution/security guidance and ADR index were reviewed against source. The linked ADR index identifies superseded decisions; historical ADR bodies, old release notes, Room exports and JSON schemas are unchanged. The new v1.2.5 implementation notes describe completed cleanup while retaining the remaining performance/release work. Historical competitor research is labelled with its baseline. The old tracked `audit-24-09.md` report is archived byte-for-byte in ignored `.audit/archived/`.
+
+The host gate `spotlessCheck testDebugUnitTest lintDebug assembleDebug --offline --console=plain` passes in 34s (one task executed, 62 up-to-date). Gradle reuses the unchanged-source results: 469 JVM tests in 81 suites, zero failures/errors/skips, and lint with zero errors and 51 existing warnings; this is not a fresh test execution. The local-link scan covers tracked Markdown plus the new implementation notes, including heading anchors. A fresh global source audit covers all eleven A5 categories and finds no introduced unresolved P0/P1, dead code or unjustified abstraction. Evidence stays ignored under `.audit/v1.2.5-docs/`. No application code, dependency, schema or Android runtime behavior changes; no device operation, staging, commit or push is performed. Performance work, final milestone audit and release gate remain open.
 
 # v1.3.0 checklist — Details
 

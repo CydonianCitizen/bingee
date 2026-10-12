@@ -4,6 +4,13 @@
 
 Questo repository contiene un'app Android open source, local-first, per tenere traccia di film, serie TV e, in una fase successiva, anime.
 
+Stato corrente: sviluppo v1.2.5 / versionCode 9, Room 9 e backup JSON v3 con restore v1/v2/v3.
+TMDB è l'unico provider runtime; animazione e anime presenti su TMDB seguono i normali percorsi
+Movie/TV Series. Non esistono integrazione Jikan o modelli anime dedicati. La
+[roadmap canonica](BINGEE_DEVELOPMENT_ROADMAP_AND_CHECKLIST.md) distingue lavoro completato,
+prestazioni ancora da migliorare e gate di release. Le sezioni MVP descrivono i vincoli originari;
+lo stato implementato è documentato in [architecture](docs/architecture.md).
+
 La promessa fondamentale del prodotto è:
 
 > La cronologia dell'utente appartiene all'utente e resta utilizzabile anche senza account, backend proprietario o continuità del servizio.
@@ -110,8 +117,10 @@ Non implementare salvo milestone esplicita:
 - disponibilità streaming/JustWatch;
 - raccomandazioni personalizzate;
 - sincronizzazione Android/iOS;
-- Jikan/anime;
-- import automatico da servizi terzi;
+- Jikan e strutture specifiche per anime;
+- import automatico da servizi terzi o formati non pianificati; l'import manuale sperimentale del
+  solo profilo TV Time JSON ZIP documentato è già approvato da
+  [ADR 0019](docs/adr/0019-tv-time-import-implementation.md);
 - deduplicazione cross-provider;
 - precisione delle notifiche al minuto;
 - architettura a microservizi;
@@ -209,7 +218,7 @@ Separare almeno:
 Identità esterna minima:
 
 ```kotlin
-enum class MediaSource { TMDB, JIKAN }
+enum class MediaSource { TMDB, IMDB }
 
 data class ExternalMediaRef(
     val source: MediaSource,
@@ -220,6 +229,10 @@ data class ExternalMediaRef(
 Regole:
 
 - non usare il solo `externalId` come chiave globale;
+- il tipo media completa l'identità del titolo: TMDB può assegnare lo stesso ID a un film e a una
+  serie non correlati. `IMDB` è un riferimento qualificato, non un secondo provider runtime;
+  la navigazione richiede il riferimento TMDB. TVDB, IMDb e UUID TV Time di provenienza import
+  restano nei namespace separati dell'import, secondo ADR 0019;
 - non usare titolo e anno come identità persistente;
 - mantenere un ID locale stabile per entità possedute dal database;
 - salvare gli ID esterni di stagioni ed episodi quando il provider li espone;
@@ -250,6 +263,13 @@ Regole:
 - `release_events`;
 - `sync_metadata` o timestamp equivalenti;
 - preferenze tramite DataStore, salvo ragione specifica per Room.
+
+La ragione approvata per le preferenze portabili è il restore transazionale: tema, lingua, spoiler,
+sei modalità della raccolta e categorie/anticipo notifiche sono in Room
+([ADR 0031](docs/adr/0031-portable-user-preferences-backup-v3-room-v8.md)). Enablement
+notifiche, first-run e cursori tecnici di refresh restano in DataStore; i permessi Android restano
+gestiti dal sistema. Lo schema reale versionato è sotto `app/schemas/`, distinto da questo elenco
+concettuale e dai numeri storici delle milestone.
 
 Non salvare un solo `next_air_date` per titolo: il calendario deve poter rappresentare più eventi.
 
@@ -302,6 +322,7 @@ Non mostrare stack trace o messaggi Retrofit direttamente all'utente.
 ## 11. API key TMDB
 
 - La key viene fornita dall'utente.
+- Il formato supportato è il TMDB API Read Access Token; una v3 query API key non è supportata.
 - Non inserirla in sorgenti, risorse, manifest o build pubbliche.
 - Non includerla nei log, nei crash report, negli export o nei test snapshot.
 - Conservare preferibilmente configurazione e segreto separati.

@@ -260,14 +260,46 @@ class MediaDetailsScreenTest {
         )
 
         scrollTo(hasText("Season 1"))
-        // Three episodes plus the season's own checkbox and the Details Favorite toggle. Each episode
-        // publishes exactly one target: its trailing Checkbox must not add a second, or TalkBack would
-        // offer every episode twice.
-        composeRule.onAllNodes(isToggleable()).assertCountEquals(5)
+        // Offscreen episodes are lazy; each composed row still exposes exactly one checkbox target.
+        val title = context.getString(R.string.detail_episode_title, 2, "Unwatched episode")
+        scrollTo(hasText(title))
+        composeRule.onAllNodes(hasText(title) and isToggleable()).assertCountEquals(1)
         // The tap lands on the title, not on the checkbox: the whole row is the target.
         composeRule.onNodeWithText(
             context.getString(R.string.detail_episode_title, 2, "Unwatched episode")
         ).performScrollTo().performClick()
+        assertTrue(toggled.get())
+    }
+
+    @Test
+    fun largeExpandedSeasonKeepsOffscreenEpisodesLazyAndPreservesToggleAfterScroll() {
+        val base = season(1, "Long season", expanded = true)
+        val episodes = (1..300).map { number ->
+            tracked(
+                base.season.seriesRef,
+                base.season.externalRef,
+                1,
+                number,
+                "Episode $number",
+                EpisodeWatchState.Unwatched
+            )
+        }
+        val long = base.copy(season = base.season.copy(episodeCount = 300), episodes = episodes)
+        val toggled = AtomicBoolean()
+        setDetails(
+            seriesState(listOf(long)).let {
+                it.copy(series = it.series.copy(expandedSeasons = setOf(long.season.externalRef)))
+            },
+            onToggleEpisode = { toggled.set(it.episode.episodeNumber == 300) }
+        )
+        scrollTo(hasText("Long season"))
+        val lastTitle = context.getString(R.string.detail_episode_title, 300, "Episode 300")
+        composeRule.onNodeWithText(lastTitle).assertDoesNotExist()
+        // The viewport and prefetch, rather than all 300 episodes, bound the semantics tree.
+        assertTrue(composeRule.onAllNodes(isToggleable()).fetchSemanticsNodes().size < 20)
+        scrollTo(hasText(lastTitle))
+        composeRule.onAllNodes(hasText(lastTitle) and isToggleable()).assertCountEquals(1)
+        composeRule.onNodeWithText(lastTitle).performClick()
         assertTrue(toggled.get())
     }
 

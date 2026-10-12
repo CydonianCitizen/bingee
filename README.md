@@ -122,6 +122,8 @@ The [v1.2.3 changes](docs/release-notes-1.2.3.md) clarify collection membership 
 
 The implemented [v1.2.4 changes](docs/release-notes-1.2.4.md) keep active widgets current, fix changed-title notification/widget navigation, expose recoverable local Home read errors, preserve shared progress observations through transient failures, and size the Statistics radar from its own container. UI tests use localized resources and semantics. The [canonical checklist](BINGEE_DEVELOPMENT_ROADMAP_AND_CHECKLIST.md#v124-checklist) tracks the remaining hardware-efficiency audit and final release gates; these notes describe implemented work, not a published release.
 
+The [v1.2.5 implementation notes](docs/release-notes-1.2.5.md) cover the completed C01–C07 cleanup. Fake-only helpers live in debug, unused production APIs and aliases are removed, and existing Room behavior is preserved. The [v1.2.5 checklist](BINGEE_DEVELOPMENT_ROADMAP_AND_CHECKLIST.md#v125-checklist) tracks documentation, targeted performance work and the remaining release verification.
+
 WorkManager maintains a bounded batch of up to 20 followed titles approximately once per day when network is available, rotating through the least recently attempted titles so that ones TMDB keeps rejecting cannot hold back the rest. A separate network-free worker evaluates cached Room events for optional local notifications. Notifications are disabled by default; Settings requests Android notification permission only after the user enables them and supports same-day, one-day, three-day, or seven-day lead times plus movie, season, and episode categories. Android may delay work because of Doze, battery optimization, constraints, or device policy; Bingee promises no exact notification time.
 
 Your Bingee → Settings → Data & backup emits backup v3, including media history, watch progress, ratings, portable preferences, and ordered genre metadata. Restore accepts v1/v2/v3 and validates the complete file before one Room transaction. Theme, language, spoiler visibility, and the six collection display modes travel with the backup; Android notification permission and enablement and credentials stay device-specific. Legacy v1/v2 files retain their 500,000-episode reader ceiling; v3 exports and TV Time use the current 100,000-episode ceiling.
@@ -134,7 +136,7 @@ Bingee supports one TMDB credential format: the API Read Access Token available 
 
 The accepted token is encrypted with AES-256-GCM using key material held by Android Keystore. Ciphertext is stored in `noBackupFilesDir`, separate from ordinary Preferences DataStore settings and excluded from cloud backup and device transfer. The token is never included in Bingee data exports. Startup trusts a previously validated stored token and does not perform automatic remote validation.
 
-Bingee has no account or proprietary backend. Without a usable TMDB credential, the application shell and future local data remain available while remote metadata features stay disabled. Search reads the credential only inside the protected data/network boundary; query text is not logged or stored. See [privacy notes](docs/privacy.md).
+Bingee has no account or proprietary backend. Without a usable TMDB credential, the application shell and saved local data remain available while remote metadata features stay disabled. Search reads the credential only inside the protected data/network boundary; query text is not logged or stored. See [privacy notes](docs/privacy.md).
 
 This product uses the TMDB API but is not endorsed or certified by TMDB. The official TMDB attribution logo is shown in Your Bingee → Settings/About. Credentials are never part of JSON backup files.
 
@@ -159,7 +161,7 @@ Feature UI depends on immutable domain models and repository contracts, never pr
 
 ## Versioning
 
-The project follows Semantic Versioning. The current Android release is `1.2.2` with `versionCode` 6. Historical milestone documents may use older version numbers.
+The project follows Semantic Versioning. The current development version is `1.2.5` with `versionCode` 9, as defined in [app/build.gradle.kts](app/build.gradle.kts). Room schema 9 and Backup format 3 have independent versions. Implementation notes and a development version bump do not announce a published release; historical milestone documents retain their original version numbers.
 
 ## Contributing
 

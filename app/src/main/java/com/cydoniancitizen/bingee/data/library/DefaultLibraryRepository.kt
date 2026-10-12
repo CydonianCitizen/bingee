@@ -43,6 +43,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
@@ -72,7 +73,9 @@ internal class DefaultLibraryRepository @Inject constructor(
      */
     private val libraryProgress: Flow<Result<List<LibraryDao.LibraryProgressRow>>> =
         dateSource.observeDate()
-            .flatMapLatest { today -> libraryDao.observeLibraryProgress(today).map { Result.success(it) } }
+            .flatMapLatest { today ->
+                libraryDao.observeLibraryProgress(today).distinctUntilChanged().map { Result.success(it) }
+            }
             // ponytail: fixed-delay resubscribe, enough for a transient read failure; add backoff only if
             // a real failure mode turns out to persist for longer than a user waits on the retry button.
             .retryWhen { cause, _ ->
@@ -90,9 +93,9 @@ internal class DefaultLibraryRepository @Inject constructor(
         libraryDao.observeLibraryItems(
             query.mediaFilter.mediaType,
             query.searchQuery.toSqlLikePattern()
-        ),
+        ).distinctUntilChanged(),
         libraryProgress,
-        ratingDao.observeActiveLibraryRatings()
+        ratingDao.observeActiveLibraryRatings().distinctUntilChanged()
     ) { rows, progressResult, ratings ->
         progressResult.map { progressRows ->
             val progressByMedia = progressRows.associateBy { it.localMediaId }
@@ -129,10 +132,10 @@ internal class DefaultLibraryRepository @Inject constructor(
         }
 
     override fun observePersonalViewing(): Flow<AppResult<List<PersonalViewingEntry>>> = combine(
-        libraryDao.observePersonalViewing(),
+        libraryDao.observePersonalViewing().distinctUntilChanged(),
         libraryProgress,
-        libraryDao.observePersonalViewingGenres(),
-        libraryDao.observePersonalViewingActivities()
+        libraryDao.observePersonalViewingGenres().distinctUntilChanged(),
+        libraryDao.observePersonalViewingActivities().distinctUntilChanged()
     ) { rows, progressResult, genreRows, activityRows ->
         progressResult.map { progressRows ->
             val progressByMedia = progressRows.associateBy { it.localMediaId }
@@ -151,12 +154,36 @@ internal class DefaultLibraryRepository @Inject constructor(
                 )
             }
         }
-    }.asPersistenceResult { it.getOrThrow() }
+    }.asPersistenceResult { it.getOrThrow() }.flowOn(projectionDispatcher)
 
-    override fun observeContinueWatching(): Flow<AppResult<List<ContinueWatchingItem>>> =
+    // Home, the updater and active Glance sessions observe the same daily projection.
+    private val continueWatching: Flow<AppResult<List<ContinueWatchingItem>>> =
         dateSource.observeDate().flatMapLatest { today ->
-            libraryDao.observeContinueWatchingRows(MediaSource.TMDB, today)
-        }.asPersistenceResult { rows -> ContinueWatchingPolicy.select(rows.map { it.toDomain() }) }
+            libraryDao.observeContinueWatchingRows(MediaSource.TMDB, today).distinctUntilChanged()
+        }
+            .map { rows ->
+                AppResult.Success(
+                    ContinueWatchingPolicy.select(
+                        rows.map {
+                            it.toDomain()
+                        }
+                    )
+                ) as AppResult<List<ContinueWatchingItem>>
+            }
+            .retryWhen { cause, _ ->
+                emit(AppResult.Failure(cause.toPersistenceError()))
+                delay(PROGRESS_RETRY_DELAY_MILLIS)
+                true
+            }
+            .flowOn(projectionDispatcher)
+            .shareIn(
+                scope = progressScope,
+                // One-shot callers must not inherit a stopped observer's replay after a write.
+                started = SharingStarted.WhileSubscribed(stopTimeoutMillis = 0, replayExpirationMillis = 0),
+                replay = 1
+            )
+
+    override fun observeContinueWatching(): Flow<AppResult<List<ContinueWatchingItem>>> = continueWatching
 
     override suspend fun add(result: MediaSearchResult): AppResult<LibraryEntry> {
         val prepared =

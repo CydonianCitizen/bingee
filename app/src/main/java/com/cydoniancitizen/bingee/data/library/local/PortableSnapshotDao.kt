@@ -7,6 +7,19 @@ import androidx.room.Query
 import androidx.room.Transaction
 import kotlinx.coroutines.flow.Flow
 
+// All user-owned state makes its parent title portable, including history outside the library.
+private const val PORTABLE_MEDIA_IDS = """
+    SELECT local_media_id FROM library_entries
+    UNION SELECT local_media_id FROM media_ratings
+    UNION SELECT local_media_id FROM movie_watch_progress
+    UNION SELECT local_media_id FROM series_watch_progress
+    UNION SELECT local_media_id FROM series_state_overrides
+    UNION SELECT local_media_id FROM media_entries WHERE is_favorite = 1
+    UNION SELECT s.local_media_id FROM episode_watch_progress p
+      JOIN episodes e ON e.local_episode_id = p.local_episode_id
+      JOIN seasons s ON s.local_season_id = e.local_season_id
+"""
+
 internal data class PortableSnapshotRows(
     val media: List<MediaEntity>,
     val refs: List<ExternalRefEntity>,
@@ -24,26 +37,40 @@ internal data class PortableSnapshotRows(
 
 @Dao
 internal abstract class PortableSnapshotDao {
-    @Query("SELECT * FROM media_genres ORDER BY local_media_id, genre_order")
-    protected abstract suspend fun getGenres(): List<MediaGenreEntity>
+    @Query(
+        "SELECT * FROM media_genres WHERE :includeCache OR local_media_id IN ($PORTABLE_MEDIA_IDS) ORDER BY local_media_id, genre_order"
+    )
+    protected abstract suspend fun getGenres(includeCache: Boolean): List<MediaGenreEntity>
 
     @Insert(onConflict = OnConflictStrategy.ABORT)
     abstract suspend fun insertGenres(genres: List<MediaGenreEntity>)
 
-    @Query("SELECT * FROM media_entries ORDER BY local_media_id")
-    protected abstract suspend fun getMedia(): List<MediaEntity>
+    @Query(
+        "SELECT * FROM media_entries WHERE :includeCache OR local_media_id IN ($PORTABLE_MEDIA_IDS) ORDER BY local_media_id"
+    )
+    protected abstract suspend fun getMedia(includeCache: Boolean): List<MediaEntity>
 
-    @Query("SELECT * FROM external_refs ORDER BY source, external_id")
-    protected abstract suspend fun getRefs(): List<ExternalRefEntity>
+    @Query(
+        "SELECT * FROM external_refs WHERE :includeCache OR local_media_id IN ($PORTABLE_MEDIA_IDS) ORDER BY source, external_id"
+    )
+    protected abstract suspend fun getRefs(includeCache: Boolean): List<ExternalRefEntity>
 
     @Query("SELECT * FROM library_entries ORDER BY local_media_id")
     protected abstract suspend fun getMemberships(): List<LibraryMembershipEntity>
 
-    @Query("SELECT * FROM seasons ORDER BY local_season_id")
-    protected abstract suspend fun getSeasons(): List<SeasonEntity>
+    @Query(
+        "SELECT * FROM seasons WHERE :includeCache OR local_media_id IN ($PORTABLE_MEDIA_IDS) ORDER BY local_season_id"
+    )
+    protected abstract suspend fun getSeasons(includeCache: Boolean): List<SeasonEntity>
 
-    @Query("SELECT * FROM episodes ORDER BY local_episode_id")
-    protected abstract suspend fun getEpisodes(): List<EpisodeEntity>
+    @Query(
+        """
+        SELECT * FROM episodes WHERE :includeCache OR local_season_id IN (
+            SELECT local_season_id FROM seasons WHERE local_media_id IN ($PORTABLE_MEDIA_IDS)
+        ) ORDER BY local_episode_id
+    """
+    )
+    protected abstract suspend fun getEpisodes(includeCache: Boolean): List<EpisodeEntity>
 
     @Query("SELECT * FROM episode_watch_progress ORDER BY local_episode_id")
     protected abstract suspend fun getEpisodeProgress(): List<EpisodeWatchProgressEntity>
@@ -151,11 +178,11 @@ internal abstract class PortableSnapshotDao {
     abstract suspend fun deletePreferences()
 
     @Transaction
-    open suspend fun readSnapshot(): PortableSnapshotRows = PortableSnapshotRows(
-        media = getMedia(), refs = getRefs(), memberships = getMemberships(),
-        genres = getGenres(),
-        seasons = getSeasons(),
-        episodes = getEpisodes(), episodeProgress = getEpisodeProgress(),
+    open suspend fun readSnapshot(includeCache: Boolean = true): PortableSnapshotRows = PortableSnapshotRows(
+        media = getMedia(includeCache), refs = getRefs(includeCache), memberships = getMemberships(),
+        genres = getGenres(includeCache),
+        seasons = getSeasons(includeCache),
+        episodes = getEpisodes(includeCache), episodeProgress = getEpisodeProgress(),
         movieProgress = getMovieProgress(), seriesProgress = getSeriesProgress(),
         seriesStateOverrides = getSeriesStateOverrides(),
         ratings = getRatings(),

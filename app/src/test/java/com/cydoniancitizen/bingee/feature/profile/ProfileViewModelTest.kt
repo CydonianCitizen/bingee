@@ -29,13 +29,21 @@ import com.cydoniancitizen.bingee.testutil.TestCalendarDateSource
 import java.io.IOException
 import java.time.Instant
 import java.time.LocalDate
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.emitAll
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.test.TestScope
+import kotlinx.coroutines.test.UnconfinedTestDispatcher
+import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.resetMain
+import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import org.junit.After
@@ -117,6 +125,7 @@ class ProfileViewModelTest {
 
         // Switch to WATCH_LATER
         viewModel.setCollection(ProfileCollection.WATCH_LATER)
+        testDispatcher.scheduler.advanceUntilIdle()
         assertEquals(1, viewModel.uiState.value.entries.size)
         assertEquals("2", viewModel.uiState.value.entries.first().mediaRef.externalId)
     }
@@ -154,11 +163,13 @@ class ProfileViewModelTest {
 
         // TITLE -> Alpha, Zebra
         viewModel.setSortOption(ProfileSortOption.TITLE)
+        testDispatcher.scheduler.advanceUntilIdle()
         assertEquals("Alpha", viewModel.uiState.value.entries[0].title)
         assertEquals("Zebra", viewModel.uiState.value.entries[1].title)
 
         // RATING -> Alpha (9), Zebra (5)
         viewModel.setSortOption(ProfileSortOption.RATING)
+        testDispatcher.scheduler.advanceUntilIdle()
         assertEquals("Alpha", viewModel.uiState.value.entries[0].title)
     }
 
@@ -175,12 +186,16 @@ class ProfileViewModelTest {
         assertEquals(1, statistics.episodesWatchedCount)
 
         viewModel.onSearchQueryChanged("watched")
+        testDispatcher.scheduler.advanceUntilIdle()
         assertSame(statistics, viewModel.uiState.value.statistics)
         viewModel.setSortOption(ProfileSortOption.TITLE)
+        testDispatcher.scheduler.advanceUntilIdle()
         assertSame(statistics, viewModel.uiState.value.statistics)
         viewModel.setCollection(ProfileCollection.WATCH_LATER)
+        testDispatcher.scheduler.advanceUntilIdle()
         assertSame(statistics, viewModel.uiState.value.statistics)
         viewModel.setCategory(ProfileCategory.TV_SERIES)
+        testDispatcher.scheduler.advanceUntilIdle()
         assertSame(statistics, viewModel.uiState.value.statistics)
         assertEquals(1, repo.observeEntriesCalls)
         assertEquals(1, repo.observePersonalViewingCalls)
@@ -316,6 +331,7 @@ class ProfileViewModelTest {
 
         assertTrue(viewModel.uiState.value.entries.isEmpty())
         viewModel.setCollection(ProfileCollection.FAVORITES)
+        testDispatcher.scheduler.advanceUntilIdle()
         assertEquals(listOf("removed"), viewModel.uiState.value.entries.map { it.mediaRef.externalId })
     }
 
@@ -332,10 +348,12 @@ class ProfileViewModelTest {
 
         testDispatcher.scheduler.advanceUntilIdle()
         viewModel.setCategory(ProfileCategory.TV_SERIES)
+        testDispatcher.scheduler.advanceUntilIdle()
 
         assertTrue(viewModel.uiState.value.entries.isEmpty())
         assertEquals(null, removed.serialState)
         viewModel.setCollection(ProfileCollection.FAVORITES)
+        testDispatcher.scheduler.advanceUntilIdle()
         assertEquals(listOf("removed-series"), viewModel.uiState.value.entries.map { it.mediaRef.externalId })
     }
 
@@ -353,6 +371,7 @@ class ProfileViewModelTest {
 
         testDispatcher.scheduler.advanceUntilIdle()
         viewModel.setCollection(ProfileCollection.FAVORITES)
+        testDispatcher.scheduler.advanceUntilIdle()
         assertEquals(1, viewModel.uiState.value.entries.size)
 
         repo.emitEntries(emptyList())
@@ -423,6 +442,7 @@ class ProfileViewModelTest {
         testDispatcher.scheduler.advanceUntilIdle()
         val initialStatistics = viewModel.uiState.value.statistics
         viewModel.onSearchQueryChanged("First")
+        testDispatcher.scheduler.advanceUntilIdle()
         assertEquals(listOf("First 1"), viewModel.uiState.value.entries.map { it.title })
 
         repo.emit(listOf(first, second))
@@ -448,11 +468,112 @@ class ProfileViewModelTest {
         assertEquals(ProfileViewMode.GRID, prefs.modes.value.watchedMovies)
     }
 
-    private fun createViewModel(
+    @Test
+    fun observersStopWithoutConsumersAndResumeWithFreshData() = runTest {
+        val repo = FakeLibraryRepo(emptyList())
+        val viewModel =
+            ProfileViewModel(
+                repo,
+                FakeDisplayModePrefs(),
+                TestCalendarDateSource(LocalDate.of(2026, 8, 18)),
+                testDispatcher
+            )
+        runCurrent()
+        assertEquals(0, repo.observeEntriesCalls)
+        assertEquals(0, repo.observePersonalViewingCalls)
+        val collector = backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { viewModel.uiState.collect {} }
+        runCurrent()
+        assertEquals(1, repo.activeEntries)
+        assertEquals(1, repo.activeViewing)
+        collector.cancel()
+        advanceTimeBy(4_999)
+        runCurrent()
+        assertEquals(1, repo.activeEntries)
+        advanceTimeBy(1)
+        runCurrent()
+        assertEquals(0, repo.activeEntries)
+        assertEquals(0, repo.activeViewing)
+        repo.emit(
+            listOf(entry("fresh", MediaType.MOVIE, LibraryProgress.Movie(MovieWatchState.Watched(Instant.EPOCH))))
+        )
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { viewModel.uiState.collect {} }
+        runCurrent()
+        assertEquals(1, repo.activeEntries)
+        assertEquals(1, repo.activeViewing)
+        assertEquals(listOf("fresh"), viewModel.uiState.value.entries.map { it.mediaRef.externalId })
+        assertEquals(1, viewModel.uiState.value.statistics.moviesWatchedCount)
+    }
+
+    @Test
+    fun rapidSelectionsAndRoomChangesPublishOnlyLatestSnapshot() = runTest {
+        val repo = FakeLibraryRepo(emptyList(), listOf(viewing("old", MediaType.MOVIE, "Drama", 18)))
+        val viewModel = createViewModel(repo, FakeDisplayModePrefs())
+        runCurrent()
+        viewModel.setStatisticsMediaScope(StatisticsMediaScope.MOVIES)
+        viewModel.setStatisticsMediaScope(StatisticsMediaScope.SERIES)
+        repo.emitViewingResult(AppResult.Success(listOf(viewing("new", MediaType.SERIES, "Comedy", 35))))
+        viewModel.onSearchQueryChanged("old")
+        viewModel.onSearchQueryChanged("fresh")
+        assertEquals("fresh", viewModel.uiState.value.searchQuery)
+        repo.emitEntries(
+            listOf(entry("fresh", MediaType.MOVIE, LibraryProgress.Movie(MovieWatchState.Watched(Instant.EPOCH))))
+        )
+        runCurrent()
+        assertEquals(StatisticsMediaScope.SERIES, viewModel.uiState.value.statisticsMediaScope)
+        assertEquals(StatisticsMediaScope.SERIES, viewModel.uiState.value.tasteStatistics.scope)
+        assertEquals(listOf(35L), viewModel.uiState.value.tasteStatistics.rankedGenres.map { it.genreId })
+        assertEquals(listOf("fresh"), viewModel.uiState.value.entries.map { it.mediaRef.externalId })
+    }
+
+    @Test
+    fun cachedStatisticsCanChangeScopeDuringReadFailureWithoutClearingError() = runTest {
+        val repo =
+            FakeLibraryRepo(
+                emptyList(),
+                listOf(
+                    viewing("movie", MediaType.MOVIE, "Drama", 18),
+                    viewing("series", MediaType.SERIES, "Comedy", 35)
+                )
+            )
+        val viewModel = createViewModel(repo, FakeDisplayModePrefs())
+        runCurrent()
+        repo.emitViewingResult(AppResult.Failure(AppError.LocalStorageFailure))
+        runCurrent()
+        viewModel.setStatisticsMediaScope(StatisticsMediaScope.SERIES)
+        runCurrent()
+        assertEquals(listOf(35L), viewModel.uiState.value.tasteStatistics.rankedGenres.map { it.genreId })
+        assertEquals(AppError.LocalStorageFailure, viewModel.uiState.value.statisticsError)
+    }
+
+    @Test
+    fun pendingPreferenceWriteFinishesWhileObserversAreStopped() = runTest {
+        val gate = CompletableDeferred<Unit>()
+        val prefs = FakeDisplayModePrefs().apply { writeGate = gate }
+        val repo = FakeLibraryRepo(emptyList())
+        val viewModel = ProfileViewModel(repo, prefs, TestCalendarDateSource(LocalDate.of(2026, 8, 18)), testDispatcher)
+        val collector = backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { viewModel.uiState.collect {} }
+        runCurrent()
+        viewModel.setViewMode(ProfileViewMode.GRID)
+        runCurrent()
+        collector.cancel()
+        advanceTimeBy(5_000)
+        runCurrent()
+        assertEquals(0, repo.activeEntries)
+        gate.complete(Unit)
+        runCurrent()
+        assertEquals(ProfileViewMode.GRID, prefs.modes.value.watchedMovies)
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { viewModel.uiState.collect {} }
+        runCurrent()
+        assertEquals(ProfileViewMode.GRID, viewModel.uiState.value.currentViewMode)
+    }
+
+    private fun TestScope.createViewModel(
         repository: LibraryRepository,
         preferences: ProfileDisplayModePreferences,
         dateSource: CalendarDateSource = TestCalendarDateSource(LocalDate.of(2026, 8, 18))
-    ) = ProfileViewModel(repository, preferences, dateSource, testDispatcher)
+    ) = ProfileViewModel(repository, preferences, dateSource, testDispatcher).also { viewModel ->
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { viewModel.uiState.collect {} }
+    }
 
     private fun entry(
         id: String,
@@ -493,6 +614,8 @@ class ProfileViewModelTest {
         private val observedEntries = MutableStateFlow<AppResult<List<LibraryEntry>>>(AppResult.Success(items))
         private val observedViewing =
             MutableStateFlow<AppResult<List<PersonalViewingEntry>>>(AppResult.Success(viewing))
+        var activeEntries = 0
+        var activeViewing = 0
         var observeEntriesCalls = 0
         var observePersonalViewingCalls = 0
 
@@ -513,14 +636,28 @@ class ProfileViewModelTest {
             observedViewing.value = result
         }
 
-        override fun observeEntries(query: LibraryQuery): Flow<AppResult<List<LibraryEntry>>> =
-            observedEntries.also { observeEntriesCalls++ }
+        override fun observeEntries(query: LibraryQuery): Flow<AppResult<List<LibraryEntry>>> = flow {
+            observeEntriesCalls++
+            activeEntries++
+            try {
+                emitAll(observedEntries)
+            } finally {
+                activeEntries--
+            }
+        }
         override fun observeEntry(ref: ExternalMediaRef, mediaType: MediaType): Flow<AppResult<LibraryEntry?>> =
             flowOf(AppResult.Success(null))
         override fun observeMembershipRefs(): Flow<AppResult<Set<Pair<ExternalMediaRef, MediaType>>>> =
             flowOf(AppResult.Success(emptySet()))
-        override fun observePersonalViewing(): Flow<AppResult<List<PersonalViewingEntry>>> =
-            observedViewing.also { observePersonalViewingCalls++ }
+        override fun observePersonalViewing(): Flow<AppResult<List<PersonalViewingEntry>>> = flow {
+            observePersonalViewingCalls++
+            activeViewing++
+            try {
+                emitAll(observedViewing)
+            } finally {
+                activeViewing--
+            }
+        }
         override fun observeContinueWatching(): Flow<AppResult<List<ContinueWatchingItem>>> =
             observeFakeContinueWatching()
         override suspend fun setSeriesAbandoned(ref: ExternalMediaRef, isAbandoned: Boolean): AppResult<Unit> =
@@ -575,12 +712,14 @@ class ProfileViewModelTest {
     private class FakeDisplayModePrefs : ProfileDisplayModePreferences {
         val modes = MutableStateFlow(ProfileDisplayModes())
         var writeFailure: Exception? = null
+        var writeGate: CompletableDeferred<Unit>? = null
         override fun observeDisplayModes(): Flow<ProfileDisplayModes> = modes
         override suspend fun setDisplayMode(
             collection: ProfileCollection,
             category: ProfileCategory,
             mode: ProfileViewMode
         ) {
+            writeGate?.await()
             writeFailure?.let { throw it }
             val current = modes.value
             val updated = when (collection) {

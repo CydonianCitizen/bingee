@@ -16,9 +16,9 @@ import java.io.ByteArrayOutputStream
 import java.io.InputStream
 import java.io.OutputStream
 import java.io.OutputStreamWriter
-import java.io.StringReader
 import java.math.BigDecimal
 import java.nio.ByteBuffer
+import java.nio.CharBuffer
 import java.nio.charset.CharacterCodingException
 import java.nio.charset.CodingErrorAction
 import java.nio.charset.StandardCharsets
@@ -122,9 +122,8 @@ internal object BackupJsonCodec {
 
     fun parse(bytes: ByteArray): BackupParseResult = try {
         if (bytes.size > MAX_BACKUP_BYTES) throw BackupParseFailure(BackupFailureKind.TOO_LARGE)
-        val text = decodeUtf8(bytes)
-        val reader = JsonReader(StringReader(text))
-        val root = JsonParser.parseReader(reader)
+        validateUtf8(bytes)
+        val root = JsonReader(bytes.inputStream().reader(StandardCharsets.UTF_8)).use(JsonParser::parseReader)
         if (!root.isJsonObject) problem(BackupFailureKind.INVALID_STRUCTURE)
         readDocument(root.asJsonObject)
     } catch (failure: BackupParseFailure) {
@@ -153,11 +152,21 @@ internal object BackupJsonCodec {
         return output.toByteArray()
     }
 
-    private fun decodeUtf8(bytes: ByteArray): String = StandardCharsets.UTF_8.newDecoder()
-        .onMalformedInput(CodingErrorAction.REPORT)
-        .onUnmappableCharacter(CodingErrorAction.REPORT)
-        .decode(ByteBuffer.wrap(bytes))
-        .toString()
+    private fun validateUtf8(bytes: ByteArray) {
+        val decoder = StandardCharsets.UTF_8.newDecoder()
+            .onMalformedInput(CodingErrorAction.REPORT)
+            .onUnmappableCharacter(CodingErrorAction.REPORT)
+        val input = ByteBuffer.wrap(bytes)
+        val characters = CharBuffer.allocate(DEFAULT_BUFFER_SIZE)
+        // Preserve validation of every byte before JSON parsing, without a document-sized char buffer
+        // and String. In particular, invalid UTF-8 after the JSON root must still be rejected.
+        while (true) {
+            val result = decoder.decode(input, characters, true)
+            if (result.isError) result.throwException()
+            if (result.isUnderflow) break
+            characters.clear()
+        }
+    }
 
     private fun writeDocument(writer: JsonWriter, document: BackupDocument) {
         writer.beginObject()

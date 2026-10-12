@@ -1,6 +1,8 @@
 package com.cydoniancitizen.bingee.feature.widget
 
+import android.appwidget.AppWidgetManager
 import android.content.Context
+import android.content.Intent
 import android.graphics.Bitmap
 import androidx.annotation.Keep
 import androidx.compose.runtime.Composable
@@ -25,6 +27,7 @@ import androidx.glance.action.actionParametersOf
 import androidx.glance.action.actionStartActivity
 import androidx.glance.action.clickable
 import androidx.glance.appwidget.GlanceAppWidget
+import androidx.glance.appwidget.GlanceAppWidgetManager
 import androidx.glance.appwidget.GlanceAppWidgetReceiver
 import androidx.glance.appwidget.SizeMode
 import androidx.glance.appwidget.action.ActionCallback
@@ -74,12 +77,10 @@ import com.cydoniancitizen.bingee.domain.repository.ReleaseCalendarRepository
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
 import javax.inject.Singleton
-import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlinx.coroutines.flow.drop
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.update
 
 /** "System default" keeps both palettes so the launcher picks by the phone's mode; a fixed choice pins one. */
 private fun widgetColors(theme: AppTheme) = when (theme) {
@@ -95,7 +96,7 @@ private val CheckTint = ColorProvider(Color.White)
 /** Small widget: the poster of the series being watched, with a button for its next episode. */
 internal class ContinueWatchingWidget : GlanceAppWidget() {
     override suspend fun provideGlance(context: Context, id: GlanceId) {
-        val snapshots = observeWidgetSnapshot(context)
+        val snapshots = observeWidgetSnapshot(context, includeUpcoming = false)
         val initial = snapshots.first()
         val initialPoster = initial.watching?.posterUrl?.let { loadWidgetPoster(context, it) }
         provideContent {
@@ -136,15 +137,34 @@ internal class UpNextWidget : GlanceAppWidget() {
 
 class ContinueWatchingWidgetReceiver : GlanceAppWidgetReceiver() {
     override val glanceAppWidget: GlanceAppWidget = ContinueWatchingWidget()
+
+    override fun onReceive(context: Context, intent: Intent) {
+        super.onReceive(context, intent)
+        if (intent.changesWidgetInstances()) context.widgetEntryPoint().widgetUpdater().onInstancesChanged()
+    }
 }
 
 class UpNextWidgetReceiver : GlanceAppWidgetReceiver() {
     override val glanceAppWidget: GlanceAppWidget = UpNextWidget()
+
+    override fun onReceive(context: Context, intent: Intent) {
+        super.onReceive(context, intent)
+        if (intent.changesWidgetInstances()) context.widgetEntryPoint().widgetUpdater().onInstancesChanged()
+    }
 }
 
-internal suspend fun updateBingeeWidgets(context: Context) {
-    ContinueWatchingWidget().updateAll(context)
-    UpNextWidget().updateAll(context)
+private fun Intent.changesWidgetInstances(): Boolean = when (action) {
+    AppWidgetManager.ACTION_APPWIDGET_UPDATE,
+    AppWidgetManager.ACTION_APPWIDGET_ENABLED,
+    AppWidgetManager.ACTION_APPWIDGET_DISABLED,
+    AppWidgetManager.ACTION_APPWIDGET_DELETED,
+    AppWidgetManager.ACTION_APPWIDGET_RESTORED -> true
+    else -> false
+}
+
+internal suspend fun updateBingeeWidgets(context: Context, targets: WidgetTargets = WidgetTargets(true, true)) {
+    if (targets.continueWatching) ContinueWatchingWidget().updateAll(context)
+    if (targets.upNext) UpNextWidget().updateAll(context)
 }
 
 /**
@@ -160,17 +180,30 @@ internal class BingeeWidgetUpdater @Inject constructor(
     private val dateSource: CalendarDateSource,
     private val appearancePreferences: AppearancePreferences
 ) {
-    @OptIn(ExperimentalCoroutinesApi::class)
+    private val instanceChanges = MutableStateFlow(0L)
+
+    // Receivers only signal; the existing application scope owns queries and collector cancellation.
+    fun onInstancesChanged() {
+        instanceChanges.update { it + 1 }
+    }
+
     suspend fun keepWidgetsCurrent() {
-        combine(
-            libraryRepository.observeContinueWatching(),
-            dateSource.observeDate().flatMapLatest { today -> calendarRepository.observeEvents(today) },
-            appearancePreferences.observeTheme()
-        ) { watching, events, theme -> Triple(watching, events, theme) }
-            .distinctUntilChanged()
-            // Widgets render their own state when placed or when the process starts for them.
-            .drop(1)
-            .collect { updateBingeeWidgets(context) }
+        val manager = GlanceAppWidgetManager(context)
+        val installed = instanceChanges.map {
+            WidgetTargets(
+                continueWatching = manager.getGlanceIds(ContinueWatchingWidget::class.java).isNotEmpty(),
+                upNext = manager.getGlanceIds(UpNextWidget::class.java).isNotEmpty()
+            )
+        }
+        observeWidgetUpdates(installed) { targets ->
+            observeWidgetSnapshot(
+                watching = libraryRepository.observeContinueWatching(),
+                events = calendarRepository::observeEvents,
+                dates = dateSource.observeDate(),
+                themes = appearancePreferences.observeTheme(),
+                includeUpcoming = targets.upNext
+            )
+        }.collect { updateBingeeWidgets(context, it) }
     }
 }
 

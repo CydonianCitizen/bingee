@@ -2,7 +2,7 @@
 
 ## Supported versions
 
-Bingee is unreleased. Only the current default branch receives security fixes; there are no supported release versions yet.
+Only the current default branch receives security fixes; older tagged versions do not have a separate maintenance branch. The current development target is v1.2.5. A version bump or implementation note does not imply that its release gate has passed.
 
 ## Reporting a vulnerability
 

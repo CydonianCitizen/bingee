@@ -62,7 +62,7 @@ internal class BackupDataStore @Inject constructor(
         notificationPreferences.preferences.first()
         portableUserPreferences.ensureLegacyBridge()
         return database.withTransaction {
-            val rows = snapshotDao.readSnapshot()
+            val rows = snapshotDao.readSnapshot(includeCache = false)
             val seasonById = rows.seasons.associateBy { it.localSeasonId }
             val watchedEpisodeIds = rows.episodeProgress.map { it.localEpisodeId }.toSet()
             val episodeMediaIds = rows.episodes

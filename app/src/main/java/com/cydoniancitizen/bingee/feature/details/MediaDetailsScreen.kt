@@ -2,6 +2,7 @@ package com.cydoniancitizen.bingee.feature.details
 
 import androidx.annotation.StringRes
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
@@ -11,6 +12,8 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyItemScope
+import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.selection.selectable
@@ -397,11 +400,11 @@ private fun DetailBody(
         state = listState,
         modifier = Modifier.fillMaxSize(),
         contentPadding = contentPadding,
-        verticalArrangement = Arrangement.spacedBy(BingeeDimensions.contentSpacing)
+        verticalArrangement = Arrangement.Top
     ) {
-        item(key = "hero") { DetailHero(details) }
+        detailSectionItem(key = "hero") { DetailHero(details) }
         if (refreshError != null || isStale) {
-            item(key = "banner") {
+            detailSectionItem(key = "banner") {
                 val message = if (refreshError != null) {
                     stringResource(
                         R.string.detail_refresh_failed,
@@ -413,14 +416,14 @@ private fun DetailBody(
                 OfflineBanner(message = message, modifier = sectionModifier)
             }
         }
-        item(key = "chips") {
+        detailSectionItem(key = "chips") {
             DetailChips(
                 statusLabel = stringResource(statusString(details.productionStatus)),
                 genres = details.genres,
                 modifier = sectionModifier
             )
         }
-        item(key = "library") {
+        detailSectionItem(key = "library") {
             val label = stringResource(
                 when {
                     isLibraryUpdating -> R.string.library_action_updating
@@ -447,7 +450,7 @@ private fun DetailBody(
             }
         }
         details.overview?.let { overview ->
-            item(key = "overview") {
+            detailSectionItem(key = "overview") {
                 Column(
                     modifier = sectionModifier,
                     verticalArrangement = Arrangement.spacedBy(BingeeDimensions.elementSpacing)
@@ -460,7 +463,7 @@ private fun DetailBody(
                 }
             }
         }
-        item(key = "rating") {
+        detailSectionItem(key = "rating") {
             RatingSection(
                 state = rating,
                 onSelect = onSelectRating,
@@ -471,7 +474,9 @@ private fun DetailBody(
             )
         }
         if (details.mediaType == MediaType.MOVIE) {
-            item(key = "progress") { MovieProgressSection(movieProgress, onToggleMovieWatched, sectionModifier) }
+            detailSectionItem(key = "progress") {
+                MovieProgressSection(movieProgress, onToggleMovieWatched, sectionModifier)
+            }
         } else {
             tvSeriesItems(
                 state = series,
@@ -483,7 +488,7 @@ private fun DetailBody(
                 modifier = sectionModifier
             )
             if (isInLibrary == true) {
-                item(key = "abandon") {
+                detailSectionItem(key = "abandon") {
                     TextButton(
                         onClick = onToggleSeriesAbandoned,
                         enabled = !isLibraryUpdating,
@@ -498,7 +503,7 @@ private fun DetailBody(
                 }
             }
         }
-        item(key = "watchedDate") {
+        detailSectionItem(key = "watchedDate") {
             WatchedDateSection(
                 watchedDate = watchedDate,
                 today = today,
@@ -509,7 +514,7 @@ private fun DetailBody(
                 modifier = sectionModifier
             )
         }
-        item(key = "metadata") {
+        detailSectionItem(key = "metadata") {
             Column(
                 modifier = sectionModifier,
                 verticalArrangement = Arrangement.spacedBy(BingeeDimensions.elementSpacing)
@@ -776,4 +781,15 @@ private fun PreviousEpisodesDialog(onConfirm: () -> Unit, onDismiss: () -> Unit)
             }
         }
     )
+}
+
+/** Sections keep their outer gap; expanded season rows share one continuous surface. */
+internal fun LazyListScope.detailSectionItem(
+    key: String,
+    contentType: String = key,
+    content: @Composable LazyItemScope.() -> Unit
+) {
+    item(key = key, contentType = contentType) {
+        Box(Modifier.padding(bottom = BingeeDimensions.contentSpacing)) { content() }
+    }
 }

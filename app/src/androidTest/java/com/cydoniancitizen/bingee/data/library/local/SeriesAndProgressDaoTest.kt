@@ -174,6 +174,26 @@ class SeriesAndProgressDaoTest {
     }
 
     @Test
+    fun replacingProviderIdReleasesOldKeysAndKeepsLocalProgress() = runBlocking {
+        storeRegularEpisodes()
+        progressDao.markEpisodeWatched(MediaSource.TMDB, "101", today, now)
+        val original = storedSeason("11").episodes.first().episode.localEpisodeId
+        val result = seriesDao.storeSeasonEpisodes(
+            MediaSource.TMDB,
+            "100",
+            season("11", 1),
+            listOf(episode("replacement", 1), episode("101", 4), episode("replacement", 1, title = "Latest")),
+            now.plusSeconds(60)
+        )
+        assertEquals(2, result.episodes.size)
+        val rows = storedSeason("11").episodes
+        assertEquals(original, rows.first { it.episode.externalId == "replacement" }.episode.localEpisodeId)
+        assertEquals(now, rows.first { it.episode.externalId == "replacement" }.progress?.watchedAt)
+        assertEquals("Latest", rows.first { it.episode.externalId == "replacement" }.episode.title)
+        assertNull(rows.first { it.episode.externalId == "101" }.progress)
+    }
+
+    @Test
     fun libraryProgressAggregatesPersonalRowsAndSkipsMetadataOnlyCache() = runBlocking {
         storeRegularEpisodes()
         val watchedAt = now.minusSeconds(900)
