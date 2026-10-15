@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:aapt="http://schemas.android.com/aapt"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="512"
+    android:viewportHeight="512">
+    <!-- The SVG mark is scaled into the adaptive icon's central 66dp safe circle. -->
+    <group android:pivotX="256" android:pivotY="256"
+        android:scaleX="0.82" android:scaleY="0.82">
+        <!-- Union of the SVG stem, base and bowl; evenOdd keeps both counters transparent. -->
+        <path android:fillType="evenOdd"
+            android:pathData="M128,136 A40,40 0,0 1,208,136 L208,169.340824 A128,128 0,1 1,256,416 L168,416 A40,40 0,0 1,128,376 Z M192,254 Q192,248 197,251 L244,282 Q252,288 244,294 L197,325 Q192,328 192,322 Z M264,254 Q264,248 269,251 L316,282 Q324,288 316,294 L269,325 Q264,328 264,322 Z">
+            <aapt:attr name="android:fillColor">
+                <!-- DarkColorScheme primary, tertiary and secondary in BingeeTheme.kt. -->
+                <gradient android:type="linear"
+                    android:startX="128" android:startY="96"
+                    android:endX="384" android:endY="416">
+                    <item android:offset="0" android:color="#FFCC33" />
+                    <item android:offset="0.65" android:color="#DBC6AB" />
+                    <item android:offset="1" android:color="#C2C7D9" />
+                </gradient>
+            </aapt:attr>
+        </path>
+    </group>
+</vector>

@@ -1,0 +1,34 @@
+<svg xmlns="http://www.w3.org/2000/svg"
+     xmlns:xlink="http://www.w3.org/1999/xlink"
+     width="512" height="512" viewBox="0 0 512 512"
+     role="img" aria-labelledby="title description">
+  <title id="title">bingee app icon</title>
+  <desc id="description">A rounded gold lowercase b with two fast-forward cutouts on a dark squircle.</desc>
+  <defs>
+    <!-- Exact DarkColorScheme colors from BingeeTheme.kt. -->
+    <linearGradient id="brand" x1="128" y1="96" x2="384" y2="416"
+                    gradientUnits="userSpaceOnUse" color-interpolation="sRGB">
+      <stop offset="0" stop-color="#FFCC33"/>
+      <stop offset="0.65" stop-color="#DBC6AB"/>
+      <stop offset="1" stop-color="#C2C7D9"/>
+    </linearGradient>
+    <!-- Symmetric about y=288; the second triangle is an exact translation. -->
+    <path id="forward" d="M192 254 Q192 248 197 251 L244 282
+                          Q252 288 244 294 L197 325 Q192 328 192 322 Z"/>
+    <mask id="cutouts" x="0" y="0" width="512" height="512"
+          maskUnits="userSpaceOnUse" maskContentUnits="userSpaceOnUse"
+          style="mask-type:luminance">
+      <!-- White and black control mask coverage; they are not visible colors. -->
+      <rect width="512" height="512" fill="white"/>
+      <use xlink:href="#forward" fill="black"/>
+      <use xlink:href="#forward" transform="translate(72 0)" fill="black"/>
+    </mask>
+  </defs>
+  <path fill="#141824" d="M128 0 H384 Q512 0 512 128 V384
+                           Q512 512 384 512 H128 Q0 512 0 384 V128 Q0 0 128 0 Z"/>
+  <g fill="url(#brand)" mask="url(#cutouts)">
+    <rect x="128" y="96" width="80" height="320" rx="40"/>
+    <rect x="168" y="288" width="88" height="128"/>
+    <circle cx="256" cy="288" r="128"/>
+  </g>
+</svg>

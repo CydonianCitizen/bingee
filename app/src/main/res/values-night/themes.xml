@@ -2,7 +2,7 @@
     <style name="Theme.Bingee" parent="android:Theme.Material.NoActionBar">
         <item name="android:windowBackground">#141824</item>
         <item name="android:windowSplashScreenBackground">#141824</item>
-        <item name="android:windowSplashScreenAnimatedIcon">@drawable/ic_launcher_monochrome</item>
+        <item name="android:windowSplashScreenAnimatedIcon">@drawable/ic_launcher_foreground</item>
     </style>
 
     <color name="poster_placeholder_tint">#CAC4D0</color>
