@@ -4,8 +4,10 @@ bingee is a package-structured modular monolith in one Android application modul
 
 The agreed v1.2.5/code 9 scope is verified and complete, with Room 9 and Backup v3 unchanged.
 The [canonical roadmap](../BINGEE_DEVELOPMENT_ROADMAP_AND_CHECKLIST.md#v125-checklist) records
-closure and accepted verification limits. The next global audit and optimization study are deferred
-to v1.2.6; this status does not imply that a release has been published.
+closure and accepted verification limits. The subsequent v1.2.6 read-only audit and isolated
+image-cache study have been performed; the owner accepted keeping the current cache configuration.
+That investigation is closed, while final v1.2.6 milestone closure remains unverified. No release
+publication is implied.
 
 ## Current application surface
 
@@ -318,6 +320,16 @@ Season expansion remains state within the existing detail route. There is no sea
 - Opening a title caches details without adding membership. Successful TMDB refresh atomically replaces ordered genre rows with stable TMDB IDs and current localized names. Removing membership retains canonical metadata, external references, details, and genres. Cache pruning is intentionally absent.
 - Unsupported providers return `AppError.UnsupportedData` before any TMDB request.
 - Images use TMDB CDN sizes `w342` for lists, `w500` for detail posters, and `w780` for backdrops. Text remains in Room; image bytes remain Coil-owned.
+
+The owner confirmed on 2026-10-18 that the current Coil 3.4.0 image-cache configuration stays in
+place and the v1.2.6 image-cache investigation is complete. The isolated Android 17/API 37 emulator
+trial with 16 fixed titles did not demonstrate utility in reducing the limit; this conclusion does
+not cover large libraries, other devices or prolonged use. Further measurements are deferred until
+a concrete problem emerges. Numerical thresholds proposed in the temporary report remain
+hypotheses to reassess, not approved requirements. Reports and tools remain under ignored `.audit/`.
+The three index candidates remain deferred to the next Room migration required for other reasons,
+with Android query-plan, non-destructive migration, integrity and latency verification; no schema,
+index, backup or production cache change follows from the investigation.
 
 ## Seasons, episodes, and watch progress
 

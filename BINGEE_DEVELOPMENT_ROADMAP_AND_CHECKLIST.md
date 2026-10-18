@@ -34,14 +34,19 @@ No release publication, signing, tag or commit is implied by this status.
 
 The owner explicitly deferred the next global audit, potential over-engineering/dead-code fixes and
 future optimization study to **v1.2.6**. This replaces the original final-audit requirement for
-v1.2.5; it does not claim that audit was executed. Completed optimizations remain closed. The current
-Film/Series animation and residual frames above 16.7 ms are accepted for this scope. Unexecuted
+v1.2.5; that audit was not executed during the v1.2.5 closure. Completed optimizations remain closed.
+The current Film/Series animation and residual frames above 16.7 ms are accepted for this scope. Unexecuted
 performance matrices are declared limits, not additional v1.2.5 gates. New optimization directions
 require an owner decision on benefits and costs under AGENTS.md section 22.
 
 The [v1.2.5 checklist](#v125-checklist) and [performance closure record](docs/checklist-1.2.5-performance.md#stato-di-chiusura--18-ottobre-2026)
 define the final scope. Earlier dated implementation records below retain their historical
 "in progress" and "gate open" statements; those are superseded by this closure record.
+
+The subsequent v1.2.6 read-only audit and isolated image-cache study have been performed. The owner
+accepted keeping the existing cache configuration and closed that investigation on 2026-10-18.
+Its bounded result and deferrals are recorded in the [v1.2.6 scope](#v126--global-audit-and-targeted-maintenance);
+the whole v1.2.6 milestone has not been declared complete.
 
 ## Global development rule from this point forward
 
@@ -527,7 +532,10 @@ Original criteria, reconciled with the owner's closure decision:
 ## Goal
 
 Audit the current baseline after v1.2.5 without automatically reopening completed optimizations.
-This milestone is planned, not started; implementation requires its own scoped work.
+The owner started the v1.2.6 investigation on 2026-10-18. The approved scope is image-cache
+measurement and isolated experiments, plus database-index planning. The owner has now accepted
+retaining the current image-cache configuration and closed that investigation. The application
+version remains 1.2.5/code 9; the whole milestone still requires its final closure verification.
 
 - Run the deferred read-only global audit with Ponytail, distinguishing defects, proven dead code,
   over-engineering, justified complexity and verification limits.
@@ -541,6 +549,30 @@ This milestone is planned, not started; implementation requires its own scoped w
   regression or an explicit new request; do not turn every unexecuted matrix into a release blocker.
 - Update canonical docs and verify only the changes actually selected. No schema or backup bump
   follows from the app-version change alone.
+
+### Closed image-cache investigation and deferred index review
+
+- The completed study inspected Coil 3.4.0 and measured storage categories, repeated navigation,
+  restart, offline image availability, network activity and loading times on an isolated Android
+  installation, preserving the personal app. On the tested Android 17/API 37 emulator and fixed
+  dataset of 16 titles, no utility was demonstrated for reducing the image-cache limit. The owner
+  confirmed retaining the current production configuration; no lower-limit experiment or change
+  is needed to close this investigation.
+- This result applies only to that device and dataset, not to large libraries or prolonged use.
+  Further measurements are deferred until a concrete problem emerges and are not a closure gate.
+  All numerical thresholds proposed in the temporary report remain hypotheses to reassess, not
+  approved requirements or acceptance criteria. Reports, tools, evidence and the repeatable protocol
+  stay under ignored `.audit/`; no CPU/GPU/RAM/battery benefit is claimed.
+- Revisit `index_seasons_local_media_id`, `index_episodes_local_season_id` and
+  `index_media_genres_source_genre_id` only with the next Room migration required for other reasons.
+  Any removal requires confirmation of the actual Android query plans, non-destructive migration
+  tests, data-integrity checks and paired Android query-latency measurements. No Room version bump,
+  index removal or `VACUUM` is authorized now. The audit's host-SQLite synthetic estimates are not
+  Android measurements and do not establish an immediate reduction of an existing database file.
+  These candidates are deferred work, not outstanding v1.2.6 implementation or closure requirements.
+- Backup-share retention, image-URL compaction, removal of `temp_ui.xml`, general refactors and
+  dependency changes are outside this scope. Any future production image-cache limit would require
+  new evidence and an explicit owner choice before implementation (AGENTS.md section 22).
 
 ---
 
@@ -1797,14 +1829,18 @@ hashes and the applicable 495-JVM/63-Android gate remain unchanged. The owned di
 removed and protected packages/ten widget bindings are preserved. Evidence stays ignored under
 `.audit/observer-lifecycle/`; the overall milestone/release gate remains open.
 
-# v1.2.6 checklist — Audit and maintenance (planned)
+# v1.2.6 checklist — Audit and maintenance (milestone open)
 
-- [ ] Start v1.2.6 / planned code 10 only when that milestone is requested.
-- [ ] Run the deferred global audit and classify evidence-backed findings.
-- [ ] Apply selected dead-code/over-engineering fixes with proportionate verification.
-- [ ] Present future optimization directions with benefits, costs and stop conditions for owner selection.
-- [ ] Keep completed v1.2.5 optimizations closed unless a regression or explicit request justifies reopening.
-- [ ] Align docs and verify the selected scope before closing v1.2.6.
+- [x] Owner requested the v1.2.6 investigation; application code 10 remains planned, not applied.
+- [x] Run the deferred read-only audit and distinguish application dead code, index candidates and optional improvements; no automatic cleanup is authorized.
+- [x] Present optimization directions with benefits, costs and stop conditions; the owner selected retaining the current image-cache configuration, with no additional implementation selected.
+- [x] Preserve completed v1.2.5 optimizations throughout the approved investigation and documentation changes.
+- [x] Complete the isolated image-cache investigation and record the owner's acceptance; reports and tools remain under ignored `.audit/image-cache-126/`. Further measurements await a concrete problem, and proposed thresholds remain unapproved hypotheses.
+- [ ] Verify the remaining v1.2.6 milestone closure criteria and selected-scope checks before declaring the whole milestone complete.
+
+No dead-code/over-engineering fix is currently selected; optional findings do not create an
+implementation gate. The three index candidates are deferred to a migration required for other
+reasons, under the Android verification conditions above, and do not block this milestone.
 
 # v1.3.0 checklist — Details
 

@@ -27,13 +27,27 @@ preserve measured benefits, costs and coverage limits. Residual warm Film/Series
 additional optimization proposals are not new closure requirements. Raw evidence remains ignored
 under `.audit/`; no global performance or battery-life guarantee is claimed.
 
-## Next: `v1.2.6` — planned, not started
+## In progress: `v1.2.6` — investigation and planning
 
-The owner deferred the next global audit, justified over-engineering/dead-code fixes and future
-optimization study to v1.2.6. Completed optimizations stay closed unless a demonstrated regression
-or explicit request warrants reopening. New directions require concrete benefits/costs and an
-owner decision under AGENTS.md section 22. This maintenance step precedes the v1.3 UI cycle; see
-the [canonical plan](../BINGEE_DEVELOPMENT_ROADMAP_AND_CHECKLIST.md#v126--global-audit-and-targeted-maintenance).
+The owner started the v1.2.6 study on 2026-10-18, following the read-only audit, and subsequently
+accepted its recommendation to retain the current Coil image-cache configuration. The image-cache
+investigation is complete: the baseline measurements did not justify reducing the limit on the
+tested Android 17/API 37 emulator with its fixed dataset of 16 titles. This conclusion does not generalize
+to large libraries, other devices or prolonged use. Further image-cache measurements are deferred
+until a concrete problem emerges; they are not an open milestone gate. The numerical thresholds
+proposed in the temporary report remain hypotheses to reassess, not approved requirements.
+Reports, evidence, tools and the repeatable protocol remain under ignored `.audit/`.
+
+Review the two season/episode prefix indices and the genre index with the next Room migration
+required for other reasons. Removal requires Android query-plan confirmation, non-destructive
+migration tests, data-integrity checks and paired latency measurements. No Room bump, index removal
+or `VACUUM` is planned now; host synthetic savings are neither Android results nor immediate file
+shrinkage. Backup-share retention, URL compaction, `temp_ui.xml` removal and general refactors remain
+outside this study. The app remains 1.2.5/code 9; completed v1.2.5 optimizations stay closed. This
+maintenance step precedes the v1.3 UI cycle; see the
+[canonical plan](../BINGEE_DEVELOPMENT_ROADMAP_AND_CHECKLIST.md#v126--global-audit-and-targeted-maintenance).
+No additional implementation is currently selected. Final verification of the v1.2.6 closure
+criteria remains open; completion of this investigation does not close the whole milestone.
 
 ## Implemented in `v1.2.4`
 
