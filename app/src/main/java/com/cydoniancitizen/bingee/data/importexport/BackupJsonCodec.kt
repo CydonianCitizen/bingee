@@ -31,7 +31,6 @@ internal object BackupJsonCodec {
         ensureRestorableLimits(document.data)
         val output = ByteArrayOutputStream(32 * 1024)
         JsonWriter(OutputStreamWriter(SizeLimitedOutputStream(output), StandardCharsets.UTF_8)).use { writer ->
-            writer.setIndent("  ")
             writer.serializeNulls = true
             writeDocument(writer, document)
         }

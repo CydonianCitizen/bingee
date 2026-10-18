@@ -11,6 +11,7 @@ import com.cydoniancitizen.bingee.core.model.ReleaseSubjectIdentity
 import com.cydoniancitizen.bingee.core.model.ReleaseSubjectType
 import com.cydoniancitizen.bingee.core.model.SeriesProgress
 import com.cydoniancitizen.bingee.core.result.AppResult
+import com.cydoniancitizen.bingee.data.settings.AppLanguage
 import com.cydoniancitizen.bingee.data.settings.AppTheme
 import java.time.LocalDate
 import java.util.Locale
@@ -67,7 +68,12 @@ class WidgetDataTest {
         val dates = MutableStateFlow(today)
         val snapshots = mutableListOf<WidgetSnapshot>()
         val job = backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
-            observeWidgetSnapshot(watching, { releases }, dates, themes).collect { snapshots += it }
+            observeWidgetSnapshot(watching, {
+                releases
+            }, dates, themes, MutableStateFlow(AppLanguage.ENGLISH)).collect {
+                snapshots +=
+                    it
+            }
         }
         runCurrent()
         assertEquals(EpisodePosition(1, 2), snapshots.last().watching?.nextEpisode)
@@ -110,7 +116,8 @@ class WidgetDataTest {
                     }
                 },
                 dates = dates,
-                themes = MutableStateFlow(AppTheme.SYSTEM_DEFAULT)
+                themes = MutableStateFlow(AppTheme.SYSTEM_DEFAULT),
+                languages = MutableStateFlow(AppLanguage.ENGLISH)
             ).collect { snapshots += it }
         }
         runCurrent()

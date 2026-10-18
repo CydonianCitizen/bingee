@@ -128,6 +128,48 @@ class WatchedStatisticsTest {
     }
 
     @Test
+    fun ratedSeriesResultsReleaseEpisodeHistoryWithoutChangingViewingTotals() {
+        val activities = listOf(
+            WatchedEpisodeActivity(instant("2026-01-15T12:00:00Z"), 45),
+            WatchedEpisodeActivity(instant("2026-02-15T12:00:00Z"), null),
+            WatchedEpisodeActivity(instant("2026-02-16T12:00:00Z"), 25)
+        )
+        val original = series(
+            "rated-series",
+            watchedEpisodes = 3,
+            rating = 8,
+            watchedRuntimeMinutes = 70,
+            missingRuntimeEpisodes = 1,
+            activities = activities,
+            ratingUpdatedAt = instant("2026-08-01T12:00:00Z"),
+            genres = listOf(Genre("Drama", MediaSource.TMDB, 18))
+        ).copy(
+            title = "Rated series",
+            originalTitle = "Original series",
+            posterUrl = "https://example.test/poster.jpg",
+            releaseDate = LocalDate.of(2020, 1, 1)
+        )
+
+        val statistics = calculateWatchedStatistics(
+            listOf(original),
+            zone,
+            LocalDate.of(2026, 8, 17),
+            2026
+        )
+        val ratedTitle = statistics.personalRatingStatistics.ratedTitles.single()
+
+        assertTrue(ratedTitle.watchedRegularEpisodeActivities.isEmpty())
+        assertEquals(original.copy(watchedRegularEpisodeActivities = emptyList()), ratedTitle)
+        assertEquals(3, original.watchedRegularEpisodeActivities.size)
+        assertEquals(3, statistics.episodesWatchedCount)
+        assertEquals(70L, statistics.seriesWatchTimeMinutes)
+        assertEquals(45L, statistics.monthlyViewing.months[0].seriesMinutes)
+        assertEquals(25L, statistics.monthlyViewing.months[1].seriesMinutes)
+        assertTrue(statistics.monthlyViewing.months[1].seriesTimeIncomplete)
+        assertEquals(8.0, statistics.personalRatingStatistics.averageRating!!, 0.001)
+    }
+
+    @Test
     fun personalRatingDisplayRoundsOnlyAtOneLocalizedDecimal() {
         val stats = calculateWatchedStatistics(
             listOf(

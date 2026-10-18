@@ -1,6 +1,6 @@
-# Contributing to Bingee
+# Contributing to bingee
 
-Thanks for helping build Bingee. The project is early-stage, so small and well-tested changes are especially valuable.
+Thanks for helping build bingee. The project is early-stage, so small and well-tested changes are especially valuable.
 
 ## Prepare the environment
 
@@ -44,7 +44,7 @@ For release-hardening or persistence changes, also run the connected suite when 
 ./gradlew connectedDebugAndroidTest
 ```
 
-CI runs the Room migration, transaction, and backup/restore suites (the `data.library`, `data.importexport`, `data.calendar`, `data.imports`, `data.rating`, and `data.settings` packages) on an API 33 emulator. A separate API 33 job runs selected offline startup, UI, backup-dispatcher and notification-navigation smoke tests; the full connected suite still runs locally. [android-ci.yml](.github/workflows/android-ci.yml) defines the exact selection. The connected task uninstalls the tested app when it finishes, so do not point it at a device whose installed Bingee data you want to keep.
+CI runs the Room migration, transaction, and backup/restore suites (the `data.library`, `data.importexport`, `data.calendar`, `data.imports`, `data.rating`, and `data.settings` packages) on an API 33 emulator. A separate API 33 job runs selected offline startup, UI, backup-dispatcher and notification-navigation smoke tests; the full connected suite still runs locally. [android-ci.yml](.github/workflows/android-ci.yml) defines the exact selection. The connected task uninstalls the tested app when it finishes, so do not point it at a device whose installed bingee data you want to keep.
 
 Keep durable product and architecture documentation current when behavior changes. Generated audit reports, screenshots, traces and local experiments belong in ignored `.audit/`, not canonical `docs/`. Accepted ADRs retain their historical context; update the [ADR index](docs/adr/README.md) and current architecture instead of rewriting them.
 

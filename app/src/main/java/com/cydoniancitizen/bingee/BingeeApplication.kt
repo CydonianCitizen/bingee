@@ -9,6 +9,7 @@ import coil3.SingletonImageLoader
 import coil3.network.okhttp.OkHttpNetworkFetcherFactory
 import com.cydoniancitizen.bingee.app.StartupWorkCoordinator
 import com.cydoniancitizen.bingee.data.importexport.BackupShareFileStore
+import com.cydoniancitizen.bingee.data.imports.tvtime.AndroidTvTimeZipGateway
 import com.cydoniancitizen.bingee.feature.widget.BingeeWidgetUpdater
 import dagger.hilt.android.HiltAndroidApp
 import javax.inject.Inject
@@ -37,6 +38,9 @@ class BingeeApplication :
     internal lateinit var backupShareFileStore: BackupShareFileStore
 
     @Inject
+    internal lateinit var tvTimeZipGateway: AndroidTvTimeZipGateway
+
+    @Inject
     internal lateinit var widgetUpdater: BingeeWidgetUpdater
 
     private val applicationScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
@@ -47,10 +51,12 @@ class BingeeApplication :
     override fun onCreate() {
         super.onCreate()
         applicationScope.launch(Dispatchers.IO) {
-            try {
-                backupShareFileStore.cleanupStale()
-            } catch (_: Exception) {
-                // Temporary cleanup is best effort and must not block or crash startup.
+            listOf(backupShareFileStore::cleanupStale, tvTimeZipGateway::cleanupAbandonedCopies).forEach { cleanup ->
+                try {
+                    cleanup()
+                } catch (_: Exception) {
+                    // Temporary cleanup is best effort and must not block or crash startup.
+                }
             }
         }
         applicationScope.launch { startupWorkCoordinator.reconcile() }

@@ -12,7 +12,7 @@
 
 # Baseline
 
-Current baseline before this roadmap starts:
+Historical baseline before this roadmap started:
 
 - App version: **v1.2.2**
 - versionCode: **6**
@@ -26,9 +26,29 @@ Current baseline before this roadmap starts:
 
 > Baseline correction (2026-10-04): pre-flight found Room 9 / Backup 3 already present at HEAD `837647f44a83ad9f9eab229877e71c925fb86de8`. The owner authorized continuing after the discrepancy was reported. Modification #1 preserves these existing persistence versions; no schema, migration or backup-format change is made.
 
+## Current milestone status — 2026-10-18
+
+The agreed **v1.2.5 / versionCode 9 scope is complete**: final checks, the full Android suite and
+documentation alignment are closed. Room remains 9; export remains Backup v3 with v1/v2/v3 restore.
+No release publication, signing, tag or commit is implied by this status.
+
+The owner explicitly deferred the next global audit, potential over-engineering/dead-code fixes and
+future optimization study to **v1.2.6**. This replaces the original final-audit requirement for
+v1.2.5; it does not claim that audit was executed. Completed optimizations remain closed. The current
+Film/Series animation and residual frames above 16.7 ms are accepted for this scope. Unexecuted
+performance matrices are declared limits, not additional v1.2.5 gates. New optimization directions
+require an owner decision on benefits and costs under AGENTS.md section 22.
+
+The [v1.2.5 checklist](#v125-checklist) and [performance closure record](docs/checklist-1.2.5-performance.md#stato-di-chiusura--18-ottobre-2026)
+define the final scope. Earlier dated implementation records below retain their historical
+"in progress" and "gate open" statements; those are superseded by this closure record.
+
 ## Global development rule from this point forward
 
 **Every numbered modification in this roadmap must be followed by a GLOBAL read-only audit of the entire project before that modification can be marked complete.**
+
+The explicit v1.2.5 closure exception above takes precedence: do not run a new global audit or
+reopen completed optimization work for that milestone. The deferred audit belongs to v1.2.6.
 
 The audit exists to prevent progressive accumulation of:
 
@@ -71,13 +91,17 @@ Pre-existing low-priority debt must not automatically expand the current scope.
 | **v1.2.3** | **7** | Small correctness / clarity fixes | Close low-risk UI/UX and semantics defects already proven by audits |
 | **v1.2.4** | **8** | Technical / test / release polish | Remove small current technical risks without changing product architecture |
 | **v1.2.5** | **9** | Dead-code cleanup + targeted performance improvements + documentation sync | Lean, resource-efficient baseline before the large UI cycle |
-| **v1.3.0** | **10** | Major UI/UX #1 | Rebuild Details around a clear personal-tracker hierarchy |
-| **v1.3.1** | **11** | Major UI/UX #2 | Reorganize Home around current personal activity |
-| **v1.3.2** | **12** | Major UI/UX #3 | Make Collection a coherent personal-management surface |
-| **v1.3.3** | **13** | Major UI/UX #4 | Unify Bingee's cross-screen UI language and interaction hierarchy |
-| **v1.3.4** | **14** | Major UI/UX #5 | Comprehensive responsive + accessibility hardening |
+| **v1.2.6** | **10 (planned)** | Audit and targeted maintenance | Audit current code, address proven dead code/over-engineering and study future optimization tradeoffs |
+| **v1.3.0** | **11 (planned)** | Major UI/UX #1 | Rebuild Details around a clear personal-tracker hierarchy |
+| **v1.3.1** | **12 (planned)** | Major UI/UX #2 | Reorganize Home around current personal activity |
+| **v1.3.2** | **13 (planned)** | Major UI/UX #3 | Make Collection a coherent personal-management surface |
+| **v1.3.3** | **14 (planned)** | Major UI/UX #4 | Unify Bingee's cross-screen UI language and interaction hierarchy |
+| **v1.3.4** | **15 (planned)** | Major UI/UX #5 | Comprehensive responsive + accessibility hardening |
 
 > Version numbers may only move forward. Room and Backup versions must **not** be bumped merely because the app version changes. Schema/format bumps require an actual persistence contract change.
+
+The inserted v1.2.6 reserves the next code and shifts later planned codes only; the application
+configuration remains v1.2.5/code 9. No later milestone is started by this documentation change.
 
 ---
 
@@ -388,6 +412,9 @@ This audit complements the mandatory per-modification and final global audits; i
 
 Enter the major UI cycle with a deliberately lean, documented baseline.
 
+**Final status:** the agreed scope is closed. The original plan below explains the work selection;
+the owner-approved closure record and [checklist](#v125-checklist) govern remaining/deferred work.
+
 This version combines the dedicated cleanup with the targeted performance follow-up selected from
 the v1.2.4 hardware-efficiency audit. Preserve existing product behavior and use measurements to
 decide conditional or structural optimizations.
@@ -485,13 +512,35 @@ app-owned Baseline Profiles remain conditional on evidence, not automatic scope 
 
 ## 7. Establish v1.3.0 clean baseline
 
-Before closing v1.2.5:
+Original criteria, reconciled with the owner's closure decision:
 
-- no known P0/P1 blockers;
-- no newly introduced dead code from cleanup itself;
-- full verification green;
-- global audit completed;
-- documentation current.
+- no additional product blockers emerged from the agreed final checks;
+- C01–C07 cleanup and its previously recorded scoped reviews are retained;
+- final verification is green within the recorded device/scenario limits;
+- the new global audit is explicitly deferred to v1.2.6, not marked executed;
+- documentation is current; v1.2.6 maintenance precedes v1.3.0.
+
+---
+
+# v1.2.6 — Global audit and targeted maintenance
+
+## Goal
+
+Audit the current baseline after v1.2.5 without automatically reopening completed optimizations.
+This milestone is planned, not started; implementation requires its own scoped work.
+
+- Run the deferred read-only global audit with Ponytail, distinguishing defects, proven dead code,
+  over-engineering, justified complexity and verification limits.
+- Apply justified over-engineering/dead-code fixes with call-site evidence, small changes and
+  proportionate regression coverage; preserve data, compatibility and existing behavior.
+- Study optimization opportunities for v1.2.6 and later releases. For each direction, specify
+  measurable benefits, CPU/GPU/RAM and disk costs, latency/offline effects and a stop condition.
+  Prefer the agreed local-storage direction where worthwhile. Study does not authorize every fix
+  or optimization; the owner chooses new directions before implementation.
+- Keep accepted v1.2.5 limits visible. Reopen a closed optimization only for a demonstrated
+  regression or an explicit new request; do not turn every unexecuted matrix into a release blocker.
+- Update canonical docs and verify only the changes actually selected. No schema or backup bump
+  follows from the app-version change alone.
 
 ---
 
@@ -1403,19 +1452,49 @@ Acceptance review of #1–#5 confirms the required implementations, permanent re
 # v1.2.5 checklist
 
 - [x] Bump to v1.2.5 / code 9.
-- [ ] Complete the [performance checklist](docs/checklist-1.2.5-performance.md), recording evidence and decisions for conditional items.
+- [x] Close the agreed [performance scope](docs/checklist-1.2.5-performance.md#stato-di-chiusura--18-ottobre-2026), distinguishing verified work, accepted limits and deferred matrices.
 - [x] Run fresh repo-wide Ponytail dead-code audit.
 - [x] Re-evaluate every known historical dead-code candidate.
-- [ ] Remove only proven dead production code.
-- [ ] Remove obsolete resources/tests/fixtures only with evidence.
-- [ ] Do not perform architecture rewrites.
+- [x] Remove only proven dead production code (C01–C07).
+- [x] Remove or relocate obsolete resources/tests/fixtures only with evidence; preserve the regression suite.
+- [x] Preserve the existing architecture.
 - [x] Perform full canonical documentation sync.
 - [x] Scan all tracked Markdown links.
-- [ ] Confirm `.audit/` ignored and canonical `docs/` tracked.
-- [ ] Run mandatory GLOBAL audit after each cleanup batch.
-- [ ] Run final v1.2.5 global audit.
-- [ ] Establish clean v1.3.0 baseline.
-- [ ] Pass release gate.
+- [x] Confirm `.audit/` ignored and canonical `docs/` tracked.
+- [x] Retain previously recorded cleanup-batch reviews; record the owner's deferral of any new global audit to v1.2.6.
+- [x] Complete final release-runtime checks and the full Android suite within the documented coverage.
+- [x] Resolve the final backup wording finding in EN/IT: export v3, restore v1/v2/v3.
+- [x] Close the agreed v1.2.5 verification gate and preserve the baseline for v1.2.6 before v1.3.0.
+
+## Final closure record — 2026-10-18
+
+The owner's three-step closure sequence is complete: final verification, full Android suite and
+documentation alignment. No additional product issue emerged after correcting the backup wording.
+Only documentation changes in the final alignment; no completed optimization is reopened.
+
+Final verification used an isolated R8, non-debuggable release on HONOR CMA-LX1 / Android 13.
+Navigation and offline cached screens passed in EN/IT, Light/Dark, widths 320/360/411/600dp and
+font scales 1.0/1.3/1.5 across four configurations. These are device configuration checks, not a
+certification across all devices or TalkBack. A synthetic 47,518,199-byte backup (45.32 MiB;
+1,000 titles, 2,700 seasons, 27,000 episodes and progress rows) restored in 10.225 s and re-exported
+in 14.858 s with identical JSON content and bytes. Preview preserved the database; a forced restore
+failure rolled back all tables in 17.294 s. No OOM, crash or ANR was observed in those scenarios;
+this does not establish a continuous memory peak or complete SAF-picker UI coverage.
+
+After the EN/IT wording correction, the unfiltered Android suite passed **276/276** on the same
+HONOR, zero failures/errors/skips. A separate Italian backup-screen test passed. Spotless, lint,
+normal debug/AndroidTest and optimized release builds passed. Lint has zero errors and 38 warnings;
+496 passing JVM results were reused by Gradle as UP-TO-DATE because their inputs were unchanged.
+Both corrected translations were checked inside the normal debug and release APKs.
+
+All existing device packages, ten widget bindings and display/font settings were preserved; own
+diagnostic packages were removed. Raw evidence stays ignored under `.audit/final-verification/`
+and `.audit/closure-android/`. Publication/signing/tagging/commit/push remain separate explicit
+actions, not unfinished optimization tasks or implied parts of this closure.
+
+Earlier dated records below are historical snapshots; their open-gate statements do not supersede
+this final status. Residual warm-filter frames, broad heap/image/device matrices and further query
+selection are recorded limits or future study, not claims of completed measurements.
 
 ## C01–C03 cleanup batch — 2026-10-10
 
@@ -1441,9 +1520,295 @@ Current documentation now agrees with development v1.2.5/code 9, Room 9, Backup 
 
 The host gate `spotlessCheck testDebugUnitTest lintDebug assembleDebug --offline --console=plain` passes in 34s (one task executed, 62 up-to-date). Gradle reuses the unchanged-source results: 469 JVM tests in 81 suites, zero failures/errors/skips, and lint with zero errors and 51 existing warnings; this is not a fresh test execution. The local-link scan covers tracked Markdown plus the new implementation notes, including heading anchors. A fresh global source audit covers all eleven A5 categories and finds no introduced unresolved P0/P1, dead code or unjustified abstraction. Evidence stays ignored under `.audit/v1.2.5-docs/`. No application code, dependency, schema or Android runtime behavior changes; no device operation, staging, commit or push is performed. Performance work, final milestone audit and release gate remain open.
 
+## Verification restart and physical-device test hardening — 2026-10-17
+
+The local Android environment has been restored with JDK 21, SDK Platform 36.1, Build Tools 36.0.0 and ADB. A dedicated API 33 AVD completes boot with WHPX. Physical verification uses a separate application ID on HONOR CMA-LX1 / Android 13, preserving existing installed apps and their data. App v1.2.5/code 9, production code, dependencies, Room 9 and Backup 3 remain unchanged.
+
+The first full physical run exposed five test-harness failures. Three AndroidTest files now wait conditionally for the first shortcut destination while startup/language changes settle, check complete notification bodies in explicit English and Italian contexts, compare the width-limited radar with its measured width under fractional test density, and bring the chart container into the vertical viewport before horizontal interactions. Selection, navigation, minimum-target and disabled-state assertions remain in place; no tests are removed, skipped or disabled. The five focused cases pass, followed by all 264 Android tests in 48 suites and 15 representative Italian Statistics/notification tests, with zero failures, errors or skips. The host checks pass with 486 JVM tests, no lint errors and 51 warnings; debug, AndroidTest and optimized release APKs build. The optimized DEX retains the widget callback's public no-argument constructor.
+
+A separately packaged, locally test-signed R8 release is verified non-debuggable and passes a bounded HONOR smoke: credential-free onboarding, Home, Your Bingee, Settings, Light/Dark rendering and persistence of the Light preference after process restart. Its scoped process logs contain no fatal, class-loading, verification or JSON parsing error. The temporary app is then removed; existing packages remain installed. This empty-data smoke does not cover populated titles, live widget callbacks, provider parsing or performance.
+
+These results restore functional verification; they do not replace the remaining image/widget and backup-memory measurements, the Statistics PSS investigation, the final milestone audit or the full release gate. Evidence stays ignored under `.audit/environment/`. v1.2.5 remains in progress; v1.3.0 is not started.
+
+A subsequent isolated R8 Statistics investigation on the same HONOR repeats 20 background/foreground cycles with 100,000 synthetic watched activities and three cycles each with 1,000/25,000 activities. Unchanged-filter post-GC Java occupancy stays stable (17.31 to 17.35 MiB at 100,000 activities), but cached rating/UI snapshots retain duplicate episode histories: 200,000 activity objects normally and 400,000 in the filter/reopen scenario. Popping Statistics and its Collection owner releases all observed activity objects and the ProfileViewModel. This identifies avoidable UI retention without establishing an unbounded leak or reconstructing the lost historical +10 MiB PSS comparison. Production sources were unchanged in that investigation; 45 focused JVM tests and standard debug/release builds passed. The normal unsigned APK was byte-identical to the pre-investigation artifact; the diagnostic package was removed. Temporary evidence stays ignored under `.audit/statistics-memory/`.
+
+## Statistics history retention fix — 2026-10-17
+
+Rating shelf results now retain title metadata and totals without episode activity lists; the full calculation input, offline state, date/year totals, rating order and navigation remain intact. The five-line production change has a regression observed failing before the fix and passing afterward. All 487 JVM tests in 82 suites and 42 focused physical Android tests in five suites pass with zero failures, errors or skips. Spotless, lint (zero errors, 51 existing warnings), debug/AndroidTest and optimized release builds pass; independent scoped Ponytail review finds no issues. App 1.2.5/code 9, Room 9 and Backup 3 remain unchanged.
+
+The same isolated R8 HONOR scenarios are repeated: 20 reopen cycles with 100,000 activities, three cycles each with 1,000/25,000 activities, filter/reopen controls and owner teardown. Episode-activity objects fall from 2N–4N to N: UI snapshots hold none, the calculation cache remains complete, stopped Room projections release their rows and popping the owner releases all activities and the ViewModel. At 100,000 activities, post-GC Java usage falls from 17.35 to 13.16 MiB after 20 reopens and from 25.25 to 12.67 MiB in the filter control. The [performance checklist](docs/checklist-1.2.5-performance.md) closes this retention item; approximately 157 MiB of cumulative temporary allocation per large-history reload, aggregation timings and the other performance/release scenarios remain separate. No frame/battery or exact reconstruction of the lost PSS comparison is claimed. Diagnostic evidence remains ignored under `.audit/statistics-memory/fix/`; diagnostic components stay out of the normal APK. v1.2.5 remains in progress and v1.3.0 is not started.
+
+## Statistics calculation and temporary-memory baseline — 2026-10-17
+
+A subsequent bounded measurement uses the same isolated R8 HONOR and 100-series fixtures with
+1,000/25,000/100,000 watched activities. Twelve warm calculations measure median watched aggregation
+at 0.83/11.87/48.39 ms. Five first-result repository trials measure 27/480/2,081 ms; loading and
+materializing the activity rows dominate the large fixture. Separate memory passes measure cumulative
+repository allocations of 2.22/37.52/146.89 MiB per load and sampled Java maxima of 11.78/15.52/23.33 MiB
+over three consecutive loads. Sampled occupancy is a lower bound on the peak, not cumulative allocation
+or retained memory. GC counters and UI producer/request publication timings are recorded separately.
+
+Rating/genre recalculation costs approximately 0.3 ms at the fixed 100-title count, so the conditional
+cache optimization is deliberately omitted. No production code, schema, backup, dependency or version
+changes are introduced. This closes the scoped timing/temporary-memory baseline in the
+[performance checklist](docs/checklist-1.2.5-performance.md), without claiming a before/after speedup,
+frame or battery benefit, cold-disk performance or complete Statistics performance coverage.
+Raw results, reproducible scripts, diagnostic overlays and limitations remain ignored under
+`.audit/statistics-timing/`. Other performance scenarios, final milestone audit and release gate remain
+open; v1.3.0 is not started.
+
+## Statistics loading optimization — 2026-10-17
+
+The follow-up separates ordered raw cursor reads (about 901 ms), the same query without ordering
+(271 ms), parsing 100,000 resident timestamps (936 ms) and constructing rows from parsed Instants
+(6 ms). The first change targets parsing: Room's shared Instant converter reads the common UTC
+shapes written by `Instant.toString()` with `java.time` validation and nanosecond precision, retaining
+`Instant.parse` for other forms and special/invalid input. No query, ordering, stored format, schema,
+backup, cache or version changes are introduced.
+
+Paired isolated R8 trials on the same HONOR reduce median first repository results at
+1k/25k/100k activities from 23/500/2,093 ms to 8/125/1,071 ms. At 100k, cumulative allocations
+fall from 146.88 to 18.45 MiB per load; the predefined 30% loading-time reduction criterion passes
+with approximately 49%. Ordered raw reading still costs about 0.9 seconds. UI producer reloads
+at 100k fall from about 2.6 to 1.3 seconds through state publication; frame/first-pixel latency and
+the full UI peak remain unmeasured. Compatibility guards cover random round trips, nanoseconds,
+legacy forms and invalid input, with a Room-to-statistics month-boundary regression.
+The [performance checklist](docs/checklist-1.2.5-performance.md) records this bounded loading fix;
+raw evidence remains ignored under `.audit/statistics-load/`. Prior UI retention work is preserved.
+All 490 JVM tests and 265 physical Android tests pass with zero failures/errors/skips, alongside
+Spotless, lint (zero errors, 51 existing warnings), debug/AndroidTest and standard optimized-release
+builds. The normal APK excludes diagnostic code/assets; temporary packages are removed and the
+original installations are preserved. No commit, push, PR or release is performed.
+Other performance scenarios, final milestone audit and release gate remain open; v1.3.0 is not started.
+
+## Statistics visibility and frame measurement — 2026-10-17
+
+Thirty-three isolated R8 traces on the same HONOR/Android 13 at 60 Hz cover first entry,
+cached reopening, background return, media scope and year selection with the previous synthetic
+1k/25k/100k histories. At 100k, all three first results are directly correlated to display presentation:
+median 1,998 ms from the Statistics click, range 1,984–2,033 ms. A second producer start near the
+end of navigation appears in each trace and needs diagnosis. Cached first frames take about
+85–89 ms, with navigation settled around 771 ms; scope/year result medians are 109/120 ms.
+
+Jank remains: main-window FrameMetrics maxima are 115 ms on entry, 69 ms for scope and 77 ms
+for year changes. The year popup surfaces separately record 10 dropped frames among 294 frames
+over 18 openings. No measured main-window frame exceeds 700 ms. Vendor FrameTimeline end
+timestamps are invalid in 30 packets; 39 timeline durations are incomplete. Known jank metadata
+is retained and independent FrameMetrics has no callback loss, but trace completeness is partial.
+Conservative next-frame bounds are labelled where direct content-token correlation is unavailable.
+
+The [performance checklist](docs/checklist-1.2.5-performance.md) records the measurement and
+remaining latency/jank work. Raw evidence stays ignored under `.audit/statistics-frames/`.
+No product code changes or before/after frame improvement are claimed. Standard `spotlessCheck`
+and `assembleRelease` pass again; the normal APK is byte-identical to the previous verified build.
+Other performance scenarios, final milestone audit and release gate remain open; v1.3.0 is not started.
+
+## Statistics navigation and filter correction — 2026-10-17
+
+The transient navigation restart is reproduced with a failing ViewModel test: a consumer returning
+inside the five-second grace period re-emits `true` and restarts `collectLatest`. Deduplicating the
+effective subscription state after the timer preserves in-flight reads. The active statistics producer
+also reuses one completed viewing aggregate while source/date/year/time zone remain unchanged;
+All/Movies/Series only recomputes genre taste. No extra history list is retained. An exclusive lazy
+Material 3 year-chip row replaces the window-backed year menu, preserving the complete year range.
+
+The same 33 isolated R8/ART-speed scenarios on HONOR CMA-LX1 verify one producer start per cold
+entry, zero restarts during cached navigation and zero watched-history calculations across 18 scope
+changes. At 100k activities, first content presentation falls from median 1,998 to 1,013 ms
+(890–1,074 ms after, three direct display correlations); scope response falls from 109 to 46 ms,
+maximum 125 to 63 ms. Year response remains approximately 120 ms at 100k, but main-window year
+frame P95 falls from 35.72 to 18.99 ms, maximum 77.30 to 34.37 ms. The popup surfaces responsible
+for ten earlier dropped frames are absent. Remaining scope/render and foreground-first-frame jank
+is recorded explicitly: scope frame P95 only changes 24.53 to 23.75 ms, maximum stays about 69 ms,
+and scope deadline misses do not improve. Navigation animation duration is unchanged. This is a
+targeted correction, not a claim that every frame now meets its deadline.
+
+Fresh verification passes 493 JVM tests, 20 native Statistics/navigation tests, the new year selector
+again in Italian, Spotless, lint (zero errors, 51 existing warnings), debug/AndroidTest/release builds
+and the scoped Ponytail review. The normal optimized APK contains no diagnostic components; owned
+temporary packages are absent and protected-package inventory matches the initial read. FrameTimeline
+remains partial (29 invalid vendor timestamps, 47 incomplete durations); independent FrameMetrics
+loses no callbacks. The [performance checklist](docs/checklist-1.2.5-performance.md) records conditions,
+comparison windows, conservative bounds and residual limitations. Raw evidence stays ignored under
+`.audit/statistics-navigation-fix/`. Other performance work and the v1.2.5 release gate remain open;
+v1.3.0 is not started. No commit, push, PR or release is performed.
+
+## Statistics first-filter shader stall correction — 2026-10-17
+
+The remaining All/Movies/Series stalls are traced from Main waiting in `postAndWait` to RenderThread
+compiling platform-ripple `CircleOp` shaders for 41–49 ms. A same-APK ON/OFF/OFF/ON isolation with
+fresh private synthetic app data reproduces roughly 66 ms maximum frames with the ripple and
+24–26 ms without it. The correction keeps Material segmented-button layout, selection and input
+semantics, replacing only that selector's ripple with an animated solid press/focus/hover state layer
+using theme colors and Material 3 opacities. No global ripple override, warm-up, dependency change
+or device setting is introduced.
+
+Four paired first-use runs per version (1k/25k/100k activities plus a second 1k run, six selections
+each) verify the optimized release on the same HONOR. Private app data is reset before each run,
+so this baseline differs from the earlier cross-fixture warm-shader scenario. In identical 250 ms
+post-callback windows, frame P95 falls 53.32 → 18.88 ms, maximum 86.70 → 26.41 ms and frames over
+50 ms fall 22 → 0. FrameMetrics deadline misses fall 60/347 → 21/343; the first-three-selection P95
+falls 62.02 → 19.83 ms and the warm-selection P95 22.16 → 17.96 ms. Median callback-to-display
+latency falls 70.98 → 44.40 ms. No `CircleOp` shader compilation occurs during the corrected filter
+changes. Some frames still exceed a 60 Hz budget; the smaller initial texture shader cost and the
+known partial vendor FrameTimeline data remain explicit limitations, not a claim of perfect fluidity.
+
+Fresh verification passes 493 JVM tests, 22 native Statistics/navigation tests, three additional
+Italian cases, Spotless, lint (zero errors, 51 existing warnings), standard debug/AndroidTest/release
+builds and scoped Ponytail review. Press cancellation, visible press/focus feedback, keyboard selection
+and both themes are covered. Resting content pixels in the compared screenshot region are unchanged.
+The normal APK contains no probes or A/B control; owned packages are absent and protected inventory
+matches the first read. Canonical behavior is recorded in [architecture](docs/architecture.md), with
+conditions and residual jank in the [performance checklist](docs/checklist-1.2.5-performance.md).
+Raw evidence stays ignored under `.audit/statistics-scope-jank/` and `.audit/statistics-scope-final/`.
+v1.2.5 remains in progress, v1.3.0 is not started, and no commit, push, PR or release is performed.
+
+## Statistics residual frame-budget reduction — 2026-10-18
+
+The selected Material check now appears immediately, avoiding a first-use texture shader, and the
+radar Canvas isolates its recorded drawing commands from the button animation. Native segmented-button
+background, shape, border, selection and input stay intact; tint and label placement still animate.
+No additional history, bitmap cache, provider call, dependency or persistence change is introduced.
+
+A new same-APK paired baseline uses populated six/three-axis radars with 1k/25k/100k episode activities
+and 20 watched movies, fresh private synthetic data and 24 selections per version. On the HONOR at
+60 Hz, frames above the fixed 16.666667 ms budget fall 20/341 → 16/319, P95 17.49 → 16.56 ms and
+maximum 27.26 → 25.80 ms. FrameMetrics deadline misses fall 14 → 10; drawing the radar falls
+288 → 24 times, and first-use shader compilations fall four → zero. The gain is modest and variable:
+warm-selection over-budget frames are 8 → 9, so uniform smoothness is not claimed. The fixed budget
+is distinct from Android's sometimes longer deadline, and vendor FrameTimeline remains partial.
+
+Conditions, controls and limitations are in the [performance checklist](docs/checklist-1.2.5-performance.md);
+raw evidence stays ignored in `.audit/statistics-frame-budget/`. v1.2.5 remains in progress and
+v1.3.0 is not started. No commit, push, PR or release is performed.
+
+Fresh verification passes 493 JVM tests, 24 native Statistics/navigation tests and five additional
+Italian cases, Spotless, lint (zero errors, 51 existing warnings), standard debug/AndroidTest/release
+builds and scoped Ponytail review. Rapid changes preserve exclusive selection and actual radar pixels
+in both themes. Normal APKs contain no probes or fixtures; temporary packages are absent and the
+protected device inventory is unchanged. Other v1.2.5 measurements and the overall release gate remain open.
+
+## Statistics warm-filter investigation — 2026-10-18
+
+Same-APK release trials with eight warm-up selections before each measurement do not establish an
+additional frame-budget improvement. Button recomposition isolation removes unrelated work but changes
+over-budget frames 15/315 → 18/320; a raster layer reduces repeated path operations but changes
+20/317 → 21/322 and adds about 1.4 MiB of reported GPU memory. Neither is adopted. A single geometry-cache
+pair is insufficient evidence and still rebuilds on every data change. Component-duration probes with
+1k/100k activities exclude viewing-summary recomposition and history recalculation during warm toggles.
+The existing production code and animation remain intact, as requested by the owner. The warm-filter
+performance item stays open; this is an investigation result, not a completed optimization or a hardware
+limit claim. Conditions and limitations are in the [performance checklist](docs/checklist-1.2.5-performance.md);
+temporary evidence stays ignored in `.audit/statistics-warm-filters/`. v1.2.5 remains in progress.
+
+## Public branding and bounded core checks — 2026-10-18
+
+The public name is now `bingee` in both English and Italian: launcher, personal destination,
+onboarding, privacy, backup errors and About/update text. Current public documentation follows the
+same spelling; technical identifiers, repository URLs and historical records retain their spelling.
+The notification small icon now reuses the approved geometric launcher mark instead of the old bitmap.
+
+A targeted Room regression removes movies from the Continue Watching projection before mapping:
+100 movies plus one series produce one row instead of 101, with the next episode and all collection
+entries preserved, including a same-ID Movie/Series pair. Three continuation consumers share one query
+per day. A new Profile test verifies one producer with multiple UI consumers and cancellation five
+seconds after the last consumer leaves. Widget logic checks remain distinct from real-launcher
+placement/rendering and minified callback coverage. No timing, frame or battery improvement is claimed.
+The [performance checklist](docs/checklist-1.2.5-performance.md) retains the remaining physical matrices
+and large-library measurements. Evidence stays ignored in `.audit/branding-and-core-validation/`.
+The final host gate passes Spotless, all 494 JVM tests (including 13 widget tests), lint with zero
+errors and 37 warnings, plus standard debug/AndroidTest/release builds. Physical HONOR
+runs pass 40 selected English tests and 15 Italian tests. Standard APK identities and lowercase
+launcher labels are verified; temporary verification packages are absent and protected inventory is
+unchanged. No commit, push or publication is performed.
+
+v1.2.5 remains in progress; the warm-filter animation and its open performance item are unchanged.
+
+## Physical widgets and large-library query verification — 2026-10-18
+
+Actual HONOR launcher checks cover pin/remove/re-add without process restart, one updater owner,
+zero observations after last removal, hidden/visible metadata changes, both minified progress callbacks,
+cached Movie/Series detail intents, empty states, fixed Light/Dark, visible EN/IT text, local poster
+replacement/fallback and a real 4×2-to-4×3 resize. Injected day rollover affects only the upcoming type;
+the phone clock is unchanged. Two P3 findings remain: Italian next-episode numbers are ellipsized in the
+large widget at 360dp/font scale 1.0, and a probe-controlled hot EN→IT switch can retain an English
+episode-button content description.
+
+Nine 100/1,000/10,000-title fixtures plus repeated large cases measure current SQL against the same
+statement without the existing SERIES predicate, on an isolated R8/ART-speed release. All 288 accepted
+raw reads preserve series content; 60 separate Room samples validate generated-query materialization.
+Three consumers share one query initially and per metadata invalidation. At 10,000 titles, aggregated
+raw medians are 407.74 → 190.75 ms for 90% movies, 1,701.18 → 965.10 ms for mixed libraries and
+3,753.08 → 3,159.10 ms for 90% completed series. The latter still materializes 9,000 ineligible rows
+before returning zero domain items, so this optimization opportunity remains open. These are warm-cache
+query/cursor timings, not complete screen, frame or battery measurements; conditions and limits are in
+the [performance checklist](docs/checklist-1.2.5-performance.md).
+
+Stale generated release Room output was detected and rejected before accepting measurements. Fresh
+KSP generation aligns all three measured DAO statements with current source, and both real widget
+callbacks are repeated successfully on that artifact. The normal host gate and normal APK identities
+are verified; unchanged-source JVM/lint results remain valid. No production Kotlin/resource/schema or
+dependency change, commit or publication. The owned package and widgets are removed; all ten initial
+widget bindings and protected packages are preserved. Evidence stays ignored in
+`.audit/widget-launcher-db/`. The two widget P3 findings, remaining ineligible-series work and overall
+v1.2.5 release gate remain open.
+
+## Widget fixes and caught-up-series query reduction — 2026-10-18
+
+The subsequent correction closes both widget findings above: the next-episode text wraps, and both
+widget snapshots/updater observe portable app language. A localized resource context and language-keyed
+composition refresh visible text and accessible episode actions together. Actual HONOR launcher checks
+at 360dp/font 1.0 verify Light/Dark numbers, hot EN/IT descriptions on both types without process restart,
+preference-only language updates, both minified progress callbacks and empty states after completion.
+
+Continue Watching now requires an unwatched, available regular episode before its detailed SQL
+projection. Domain eligibility/sorting, full Library progress, incomplete-cache coverage and backup
+semantics remain unchanged. Same-APK counterbalanced comparisons across nine fixtures and three large
+repetitions preserve every retained row: 288 raw reads and 60 separate Room materializations. At 10,000
+titles/270,000 episodes, the 90%-completed-series case drops from 3,174.20 to 224.56 ms raw (92.9%),
+and returns zero unnecessary rows. Current Room takes 225.50 ms. Movie-heavy and mixed libraries incur
+approximately 3.4% extra raw-query cost; no universal or end-to-end UI speedup is claimed.
+
+The regressions fail before and pass after. All 495 JVM and 63 physical Android repository/Room/backup/
+migration tests pass, alongside Spotless, lint (zero errors/38 warnings) and normal debug/AndroidTest/
+release builds. Generated Room SQL matches current source; normal APKs contain no diagnostic overlay.
+Ponytail review finds no actionable issue. Only owned test packages/widgets are removed; the initial
+package inventory and ten protected widget bindings remain intact. No schema/dependency/version change,
+commit or publication. Remaining query-selection work and the overall v1.2.5 gate stay open; method,
+tradeoffs and limits are in the [performance checklist](docs/checklist-1.2.5-performance.md), with temporary
+evidence under ignored `.audit/widget-fixes/`.
+
+## Physical Profile observer lifecycle verification — 2026-10-18
+
+The actual HONOR navigation path now verifies Your bingee, Collection, Movie Details, background and
+return, plus quick returns, three longer background cycles and Statistics/dashboard owner reuse.
+Passive counters never collect UI state. Each Profile owner has at most one producer per source;
+separate navigation owners can overlap during the grace period, while the shared progress query
+stays unique. Profile producers stop after 5,047–5,073 ms without consumers; the shared progress
+query stops after its own additional grace period (10,091–10,107 ms total) when no other owner exists.
+Cached state survives; a synthetic background write is reflected in Collection, Statistics and the
+dashboard without process restart or clearing the ready/loading state.
+
+Home and Movie Details retain their existing ViewModel-scoped observations while in the back stack;
+Details releases them when popped. This is recorded as a pre-existing conditional P2 opportunity,
+without claiming measured CPU/battery harm or implicitly authorizing another lifecycle rewrite.
+The physical Profile lifecycle verification item is closed. No production file changed; normal APK
+hashes and the applicable 495-JVM/63-Android gate remain unchanged. The owned diagnostic package is
+removed and protected packages/ten widget bindings are preserved. Evidence stays ignored under
+`.audit/observer-lifecycle/`; the overall milestone/release gate remains open.
+
+# v1.2.6 checklist — Audit and maintenance (planned)
+
+- [ ] Start v1.2.6 / planned code 10 only when that milestone is requested.
+- [ ] Run the deferred global audit and classify evidence-backed findings.
+- [ ] Apply selected dead-code/over-engineering fixes with proportionate verification.
+- [ ] Present future optimization directions with benefits, costs and stop conditions for owner selection.
+- [ ] Keep completed v1.2.5 optimizations closed unless a regression or explicit request justifies reopening.
+- [ ] Align docs and verify the selected scope before closing v1.2.6.
+
 # v1.3.0 checklist — Details
 
-- [ ] Bump to v1.3.0 / code 10.
+- [ ] Bump to v1.3.0 / planned code 11.
 - [ ] Preserve hero/backdrop/poster/collapsing chrome direction.
 - [ ] Design and implement compact personal summary.
 - [ ] Movie summary communicates watched/date/rating/membership appropriately.
@@ -1470,7 +1835,7 @@ The host gate `spotlessCheck testDebugUnitTest lintDebug assembleDebug --offline
 
 # v1.3.1 checklist — Home
 
-- [ ] Bump to v1.3.1 / code 11.
+- [ ] Bump to v1.3.1 / planned code 12.
 - [ ] Make personal continuation the primary Home task.
 - [ ] Reorder or restructure Home sections accordingly.
 - [ ] Preserve actionable Continue Watching policy.
@@ -1488,7 +1853,7 @@ The host gate `spotlessCheck testDebugUnitTest lintDebug assembleDebug --offline
 
 # v1.3.2 checklist — Collection
 
-- [ ] Bump to v1.3.2 / code 12.
+- [ ] Bump to v1.3.2 / planned code 13.
 - [ ] Make active Collection scope explicit.
 - [ ] Remove impossible media-type/scope combinations.
 - [ ] Clarify Collection-local search scope.
@@ -1506,7 +1871,7 @@ The host gate `spotlessCheck testDebugUnitTest lintDebug assembleDebug --offline
 
 # v1.3.3 checklist — Cross-screen design language
 
-- [ ] Bump to v1.3.3 / code 13.
+- [ ] Bump to v1.3.3 / planned code 14.
 - [ ] Define explicit top-bar/chrome families.
 - [ ] Align screens to those families.
 - [ ] Preserve justified Details and dashboard exceptions.
@@ -1527,7 +1892,7 @@ The host gate `spotlessCheck testDebugUnitTest lintDebug assembleDebug --offline
 
 # v1.3.4 checklist — Responsive & accessibility hardening
 
-- [ ] Bump to v1.3.4 / code 14.
+- [ ] Bump to v1.3.4 / planned code 15.
 - [ ] Execute full width/font/locale/theme matrix.
 - [ ] Cover all major screens and key dialogs/states.
 - [ ] Fix any remaining fixed-width text starvation.

@@ -150,6 +150,7 @@ internal class ProfileViewModel @Inject constructor(
                     if (!subscribed) delay(5_000)
                     emit(subscribed)
                 }
+                .distinctUntilChanged()
                 .collectLatest { subscribed ->
                     if (subscribed) {
                         coroutineScope {
@@ -348,25 +349,37 @@ internal class ProfileViewModel @Inject constructor(
     }
 
     private suspend fun observePersonalViewing() {
+        var cachedStatistics: WatchedStatistics? = null
+        var cachedDate: LocalDate? = null
+        var cachedYear: Int? = null
+        var cachedZone: ZoneId? = null
         combine(
             statisticsRetries.flatMapLatest { libraryRepository.observePersonalViewing() },
             dateSource.observeDate(),
             statisticsRequests
         ) { result, currentDate, request -> Triple(result, currentDate, request) }
             .mapLatest { (result, currentDate, request) ->
-                if (result is AppResult.Success) personalViewingEntries = result.value
+                if (result is AppResult.Success) {
+                    if (personalViewingEntries !== result.value) cachedStatistics = null
+                    personalViewingEntries = result.value
+                }
                 val entries = personalViewingEntries
                 val update = withContext(statisticsDispatcher) {
                     val context = currentCoroutineContext()
+                    val year = request.year ?: currentDate.year
+                    val zone = ZoneId.systemDefault()
+                    // Media scope changes genres, not viewing totals or the monthly history.
+                    val statistics = cachedStatistics?.takeIf {
+                        cachedDate == currentDate && cachedYear == year && cachedZone == zone
+                    } ?: calculateWatchedStatistics(entries, zone, currentDate, year, context::ensureActive).also {
+                        cachedStatistics = it
+                        cachedDate = currentDate
+                        cachedYear = year
+                        cachedZone = zone
+                    }
                     StatisticsUpdate(
                         today = currentDate,
-                        statistics = calculateWatchedStatistics(
-                            entries,
-                            ZoneId.systemDefault(),
-                            currentDate,
-                            request.year ?: currentDate.year,
-                            context::ensureActive
-                        ),
+                        statistics = statistics,
                         tasteStatistics = calculateTasteStatistics(entries, request.scope, context::ensureActive),
                         error = (result as? AppResult.Failure)?.error
                     )

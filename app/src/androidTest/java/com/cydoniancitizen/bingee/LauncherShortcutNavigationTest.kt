@@ -5,6 +5,7 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.isDisplayed
 import androidx.compose.ui.test.isSelectable
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
@@ -144,6 +145,10 @@ class LauncherShortcutNavigationTest {
     private fun verifyCollectionStatistics(destination: String, selectedCollectionControl: Int, useUp: Boolean) {
         val scenario = ActivityScenario.launch<MainActivity>(shortcut(destination))
         try {
+            // First launch reads local state and can recreate the Activity to apply the saved language.
+            composeRule.waitUntil(10_000) {
+                composeRule.onNodeWithText(context.getString(R.string.profile_collection_title)).isDisplayed()
+            }
             composeRule.onNodeWithText(context.getString(R.string.profile_collection_title)).assertIsDisplayed()
             composeRule.onNode(hasText(context.getString(selectedCollectionControl)) and isSelectable())
                 .assertIsSelected()

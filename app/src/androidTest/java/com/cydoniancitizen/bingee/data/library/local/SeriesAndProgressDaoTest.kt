@@ -242,8 +242,8 @@ class SeriesAndProgressDaoTest {
         progressDao.markEpisodeWatched(MediaSource.TMDB, "102", today, now)
         seriesDao.upsertSeasonSummaries(MediaSource.TMDB, "100", listOf(season("12", 2)))
 
-        val row = libraryDao.observeContinueWatchingRows(MediaSource.TMDB, today).first()
-            .single { it.externalId == "100" }
+        assertTrue(libraryDao.observeContinueWatchingRows(MediaSource.TMDB, today).first().isEmpty())
+        val row = libraryDao.observeLibraryProgress(today).first().single { it.mediaType == MediaType.SERIES }
         assertFalse(row.hasSufficientCoverage)
         assertEquals(2, row.watchedEpisodes)
         assertEquals(2, row.trackableEpisodes)

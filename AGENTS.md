@@ -4,7 +4,8 @@
 
 Questo repository contiene un'app Android open source, local-first, per tenere traccia di film, serie TV e, in una fase successiva, anime.
 
-Stato corrente: sviluppo v1.2.5 / versionCode 9, Room 9 e backup JSON v3 con restore v1/v2/v3.
+Stato corrente: v1.2.5 / versionCode 9, scope concordato verificato e chiuso; pubblicazione non eseguita.
+Room 9 e backup JSON v3 con restore v1/v2/v3 restano invariati.
 TMDB è l'unico provider runtime; animazione e anime presenti su TMDB seguono i normali percorsi
 Movie/TV Series. Non esistono integrazione Jikan o modelli anime dedicati. La
 [roadmap canonica](BINGEE_DEVELOPMENT_ROADMAP_AND_CHECKLIST.md) distingue lavoro completato,
@@ -525,3 +526,56 @@ In caso di conflitto, `AGENTS.md` definisce i vincoli operativi; `docs/roadmap.m
 - Usarlo per individuare codice eccessivo, morto, ridondante o obsoleto.
 - Eseguire un passaggio Ponytail di manutenzione prima di dichiarare completa ogni milestone.
 - Verificare e classificare ogni rilievo rispetto a scope, piano e lavoro utente: non applicare raccomandazioni alla cieca.
+
+### Chiusura v1.2.5 e rinvio concordato a v1.2.6
+
+Per decisione dell'utente del 18 ottobre 2026, v1.2.5 si chiude con verifiche finali, suite Android
+completa e allineamento documentale. Questi tre passaggi sono completati. Il nuovo audit globale,
+con eventuali fix di over-engineering/dead code e studio delle ottimizzazioni future, appartiene a
+v1.2.6: non è un gate residuo di v1.2.5 e non è stato eseguito nella chiusura.
+
+Non riaprire le ottimizzazioni concluse senza una regressione dimostrata o una nuova richiesta.
+L'animazione attuale del filtro Film/Serie è mantenuta per scelta dell'utente; i frame residui oltre
+16,7 ms e le matrici prestazionali non eseguite sono limiti dichiarati, non blocchi di chiusura.
+Le nuove ottimizzazioni richiedono comunque la scelta benefici/costi della sezione 22. Chiusura dello
+scope non significa commit, firma, tag, push o pubblicazione, che richiedono una richiesta esplicita.
+
+---
+
+## 22. Direzione delle ottimizzazioni concordata con l'utente
+
+Preferenza generale espressa il 18 ottobre 2026: privilegiare la riduzione dello spazio occupato dai
+dati locali persistenti, accettando costi CPU/GPU/RAM aggiuntivi quando il risparmio è concreto e il
+comportamento resta adeguato. Per spazio locale si intende occupazione su disco, distinta dalla RAM.
+Restano prioritarie integrità, portabilità, correttezza e usabilità definite nelle sezioni precedenti;
+non assumere risorse hardware illimitate sui dispositivi supportati.
+
+- Misurare il risparmio in byte/MiB e percentuale su dati e condizioni comparabili. Distinguere
+  database e relativi file, cache immagini, file temporanei e backup; un miglioramento dei tempi SQL
+  o delle allocazioni RAM non dimostra una riduzione dello spazio su disco.
+- Proporre ogni nuova direzione prestazionale con beneficio misurato o atteso, costi su CPU/GPU/RAM,
+  latenza, comportamento offline e complessità, verifiche necessarie e criterio di arresto. Dichiarare
+  esplicitamente ciò che è ancora un'ipotesi. L'utente sceglie le direzioni prima dell'implementazione;
+  entro uno scope già approvato procedere autonomamente senza chiedere conferma per ogni modifica.
+- Questa preferenza non autorizza automaticamente compressione, eliminazione di cache, modifiche a
+  schema/backup o perdita di storico, progressi e metadati necessari all'uso offline. Ogni intervento
+  conserva le garanzie già definite per dati, migrazioni e restore.
+- Non inseguire simultaneamente minimi di spazio, CPU, GPU e RAM. Non sacrificare fluidità o stabilità
+  per un risparmio marginale; non annullare un risparmio approvato per una micro-ottimizzazione opposta.
+  Presentare all'utente i compromessi nuovi che superano quelli concordati.
+- Fermarsi al criterio concordato, oppure scartare la candidata se il confronto non dimostra un
+  beneficio utile. Le direzioni non scelte restano proposte o rinviate: non diventano automaticamente
+  nuovi requisiti di chiusura di v1.2.5. Riaprire attività verificate solo per una regressione dimostrata
+  o una nuova richiesta dell'utente; mantenere separati difetti, verifiche mancanti e miglioramenti facoltativi.
+
+### Interventi sullo spazio approvati il 18 ottobre 2026
+
+- Esportare JSON senza indentazione, conservando contenuto, schema backup v3, limite di 50 MiB e
+  restore v1/v2/v3. Il costo accettato è la minore leggibilità manuale del file, senza introdurre un
+  formato compresso.
+- Eliminare all'avvio le sole copie ZIP private abbandonate dell'import TV Time, proteggendo le copie
+  degli import attivi e conservando gli archivi originali. Pulizia fuori dal thread principale e
+  best effort, anche in caso di errori di cancellazione.
+- Chiudere questi interventi dopo test di regressione/restore, confronto dei byte sulla stessa
+  libreria sintetica e verifica di interruzione/riavvio. Limite cache poster, numero di condivisioni
+  recenti e compattazione dello schema database restano proposte non approvate.

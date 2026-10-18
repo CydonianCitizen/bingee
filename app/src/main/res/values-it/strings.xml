@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">Bingee</string>
+    <string name="app_name">bingee</string>
     <string name="label_value">%1$s: %2$s</string>
     <string name="nav_home">Home</string>
     <string name="nav_search">Cerca</string>
@@ -24,8 +24,8 @@
     <string name="action_dismiss">Chiudi</string>
     <string name="onboarding_title">Connettiti a TMDB</string>
     <string name="onboarding_description">Inserisci il tuo token di accesso in lettura API TMDB per abilitare i metadati remoti.</string>
-    <string name="onboarding_no_backend">Bingee non possiede un backend proprietario. Le tue credenziali restano su questo dispositivo.</string>
-    <string name="onboarding_continue_configured">Continua su Bingee</string>
+    <string name="onboarding_no_backend">bingee non possiede un backend proprietario. Le tue credenziali restano su questo dispositivo.</string>
+    <string name="onboarding_continue_configured">Continua su bingee</string>
     <string name="onboarding_continue_offline">Continua senza TMDB</string>
     <string name="settings_tmdb_title">Configurazione TMDB</string>
     <string name="settings_tmdb_description">Convalida un nuovo token di accesso in lettura API per aggiungere o sostituire le credenziali correnti.</string>
@@ -79,7 +79,7 @@
     <string name="collection_action_add">Aggiungi alla raccolta</string>
     <string name="collection_action_remove">Rimuovi dalla raccolta</string>
     <string name="collection_state_in">Nella raccolta</string>
-    <string name="profile_title_dashboard">Il tuo Bingee</string>
+    <string name="profile_title_dashboard">Il tuo bingee</string>
     <string name="profile_watching_title">In visione</string>
     <string name="profile_view_all">Vedi tutti</string>
     <string name="profile_collection_title">La tua raccolta</string>
@@ -263,7 +263,7 @@
     <string name="settings_spoilers_body">Nei dettagli delle serie, gli episodi che non hai ancora visto mostrano l\'immagine sfocata e nessun titolo.</string>
     <string name="settings_spoilers_hide">Nascondi gli spoiler degli episodi</string>
     <string name="settings_open_source_title">Open Source</string>
-    <string name="settings_open_source_description">Bingee è open source. Puoi contribuire a migliorare l’app segnalando problemi, proponendo nuove funzionalità o collaborando al codice su GitHub.</string>
+    <string name="settings_open_source_description">bingee è open source. Puoi contribuire a migliorare l’app segnalando problemi, proponendo nuove funzionalità o collaborando al codice su GitHub.</string>
     <string name="settings_open_source_github_action">Visualizza su GitHub</string>
     <string name="settings_nav_appearance">Aspetto e lingua</string>
     <string name="settings_nav_appearance_desc">Preferenze per tema e lingua</string>
@@ -273,15 +273,15 @@
     <string name="settings_nav_data_backup_desc">Salva, ripristina e importa i dati della libreria</string>
     <string name="settings_nav_privacy">Privacy</string>
     <string name="settings_nav_privacy_desc">Archiviazione locale, informativa privacy e credenziali TMDB</string>
-    <string name="settings_nav_about">Informazioni su Bingee</string>
+    <string name="settings_nav_about">Informazioni su bingee</string>
     <string name="settings_nav_about_desc">Dettagli versione, informazioni open source e aggiornamenti</string>
     <string name="privacy_title">Privacy</string>
-    <string name="privacy_body">Bingee non richiede un account. I dati personali di tracciamento sono salvati localmente sul tuo dispositivo. TMDB fornisce i metadati per film e serie TV.</string>
+    <string name="privacy_body">bingee non richiede un account. I dati personali di tracciamento sono salvati localmente sul tuo dispositivo. TMDB fornisce i metadati per film e serie TV.</string>
     <string name="about_app_description">Il tuo tracciatore personale di film e serie TV.</string>
     <string name="about_version_label">Versione %1$s</string>
     <string name="update_check_action">Controlla aggiornamenti</string>
     <string name="update_checking">Controllo aggiornamenti in corso…</string>
-    <string name="update_up_to_date">Bingee è aggiornato</string>
+    <string name="update_up_to_date">bingee è aggiornato</string>
     <string name="update_available">Aggiornamento disponibile</string>
     <string name="update_current_version">Versione installata: %1$s</string>
     <string name="update_latest_version">Ultima versione: %1$s</string>
@@ -403,8 +403,8 @@
     <string name="detail_episode_unwatched_state">Non visto</string>
     <string name="tmdb_logo_description">Logo di The Movie Database</string>
     <string name="tmdb_attribution">Questo prodotto usa l\'API TMDB, ma non è approvato né certificato da TMDB.</string>
-    <string name="privacy_summary">Bingee usa i metadati TMDB. La tua credenziale è cifrata localmente, non viene mai inviata a un backend Bingee ed è esclusa dai backup dati Bingee.</string>
-    <string name="privacy_documentation_reference">Dettagli privacy: docs/privacy.md nel progetto Bingee.</string>
+    <string name="privacy_summary">bingee usa i metadati TMDB. La tua credenziale è cifrata localmente, non viene mai inviata a un backend bingee ed è esclusa dai backup dati bingee.</string>
+    <string name="privacy_documentation_reference">Dettagli privacy: docs/privacy.md nel progetto bingee.</string>
     <string name="home_title">Calendario uscite</string>
     <string name="home_loading">Caricamento eventi di uscita salvati</string>
     <string name="home_empty_title">Nessuna uscita da mostrare</string>
@@ -463,7 +463,7 @@
     <string name="settings_notifications_seasons">Prime visioni delle stagioni</string>
     <string name="settings_notifications_episodes">Trasmissioni degli episodi</string>
     <string name="settings_backup_title">Dati e backup</string>
-    <string name="settings_backup_description">La tua libreria, cronologia di visione, voti e scelte di notifica selezionate ti appartengono. I backup funzionano offline e usano il formato JSON versione 1.</string>
+    <string name="settings_backup_description">La tua libreria, cronologia di visione, voti e scelte di notifica selezionate ti appartengono. I backup funzionano offline. Il formato JSON esportato è la versione 3; il ripristino supporta le versioni 1, 2 e 3.</string>
     <string name="backup_plaintext_warning">Questo backup è un JSON in chiaro leggibile. Può contenere cronologia, voti e categorie di notifica. Non è cifrato né protetto da password.</string>
     <string name="backup_save">Salva backup</string>
     <string name="backup_share">Condividi backup</string>
@@ -481,7 +481,7 @@
     <string name="backup_error_too_large">Il file di backup è troppo grande.</string>
     <string name="backup_error_export_too_large">Il backup supera i limiti supportati dal ripristino e non può essere creato.</string>
     <string name="backup_error_malformed">Il JSON del backup è malformato o contiene dati non validi.</string>
-    <string name="backup_error_wrong_format">Questo non è un backup Bingee.</string>
+    <string name="backup_error_wrong_format">Questo non è un backup bingee.</string>
     <string name="backup_error_unsupported_version">Questo backup usa una versione più recente non supportata.</string>
     <string name="backup_error_validation">La validazione del backup è fallita e il file non è stato importato.</string>
     <string name="backup_error_duplicate">Il backup contiene identità duplicate.</string>

@@ -1,6 +1,10 @@
-# Bingee backup format v3
+# bingee backup format v3
 
 V3 is the current JSON export contract, independent of the Room schema version. Import accepts v1, v2, and v3. It retains the portable records and compatibility rules from [v1](backup-format-v1.md) and the genre identity, type-aware TMDB identity, movie runtime, and empty-season evidence from [v2](backup-format-v2.md).
+
+Exports use compact UTF-8 JSON without indentation. This changes formatting only: field names,
+values, escaping and the v3 schema stay the same. Import accepts both compact and indented backups;
+the existing 50 MiB UTF-8 limit applies to the actual encoded bytes.
 
 ## Portable preferences
 

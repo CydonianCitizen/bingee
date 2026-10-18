@@ -5,7 +5,7 @@ Status: implemented experimental source-profile contract, used by the production
 Reviewed: 2026-08-04
 Evidence: TVTIME-SAMPLE-001 (private local evidence)
 
-The suffix v1 names Bingee's supported source-profile version. It is not an official TV Time export-version claim.
+The suffix v1 names bingee's supported source-profile version. It is not an official TV Time export-version claim.
 
 ## Supported input
 
@@ -42,6 +42,11 @@ Apply the existing local evidence limits before reading entries:
 - nested archives are unsupported.
 
 The implementation copies the selected ZIP into a bounded app-private cache file, inspects its central directory and streams selected entries without extracting an entry tree. It closes the archive and removes the temporary copy on completion, failure or cancellation. Do not follow links, overwrite files, or mutate Room before full parse and user confirmation.
+
+Copies abandoned by a terminated process are removed on the next application startup, as well as
+before a new import. Cleanup runs off the main thread and only targets private-cache-root
+`tv-time-import-*.zip` files that are not owned by an active import. It preserves the source archive,
+other cache files and directories; cleanup errors do not prevent startup.
 
 Additional parser limits are JSON depth 64, 32 MiB per JSON record, 8,192 characters per string,
 100,000 list items and 2,000 retained warnings. Aggregate title/season/episode limits are

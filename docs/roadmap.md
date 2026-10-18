@@ -1,20 +1,39 @@
-# Bingee Roadmap
+# bingee Roadmap
 
 This document retains earlier delivery summaries. The [canonical development roadmap and checklist](../BINGEE_DEVELOPMENT_ROADMAP_AND_CHECKLIST.md) defines the active implementation order and release gates.
 
-## In progress in `v1.2.5`
+## Completed agreed scope in `v1.2.5` — 2026-10-18
 
-- The first cleanup batch removes the unused Library entry-count and one-shot membership APIs, plus the obsolete season-summary interface and DI binding. Existing repository observation, DAO membership checks used by TV Time, and transactional season writes remain in place.
-- C04–C07 move fake-only search and observation fallbacks into the debug source set, require explicit repository implementations, and remove the unused completion getter and import timestamp flag. Production Room reads, timestamp precision and import warnings remain intact; targeted regressions cover the relocated fake behavior.
-- Instrumented membership regressions now use the existing observable entry API. All 70 selected instrumented tests passed on a physical HONOR CMA-LX1 running Android 13; a bounded optimized-release smoke also passed. The remaining performance scenarios and the rest of the v1.2.5 checklist remain pending.
-- A partial synthetic baseline on the same device covers 100/1,000/10,000 titles, 1,000/25,000/100,000 watched episodes, 30 process-cold launches and nine season expansion/collapse cycles in an isolated optimized release. Search and statistics checks pass; expansion cost grows markedly at 300 episodes, supporting the existing lazy-episode work item. Full performance coverage and implementation remain pending; temporary evidence stays in `.audit/`.
-- Canonical documentation now distinguishes development v1.2.5/code 9, current Room 9/Backup v3, the implemented TV Time profile, and historical ADRs. The old tracked audit report is archived under ignored `.audit/`; [v1.2.5 implementation notes](release-notes-1.2.5.md) cover completed cleanup and remaining work.
+Version 1.2.5/code 9 is closed within the owner's agreed scope: final checks, full Android suite
+and documentation alignment. Publication remains a separate explicit action. Room 9 and Backup v3
+with v1/v2/v3 restore are unchanged.
 
-The software optimization batch implements widget instance gating, Profile consumer ownership and
-off-Main calculations, shared Continue Watching reads, consolidated Personal Viewing runtime SQL,
-lazy episodes/releases, direct episode-map reconciliation, single-pass monthly statistics and bounded
-manual-refresh workers. Functional verification and physical-device measurement status remain
-separate in the [performance checklist](checklist-1.2.5-performance.md).
+- C01–C07 remove proven unused APIs/aliases and move fake-only helpers into debug, preserving
+  production Room behavior, progress, timestamp precision and import warnings.
+- Widget instance gating, Profile consumer ownership and off-Main work, shared Room projections,
+  lazy episodes/releases, direct episode-map reconciliation, single-pass monthly statistics and
+  bounded manual refresh are implemented. Later fixes address Statistics loading/navigation and
+  filter stalls, widget EN/IT text/accessibility and unnecessary complete-series materialization.
+- Compact JSON and startup cleanup of abandoned private import ZIPs reduce measured disk use,
+  preserving original archives, active imports and backup compatibility.
+- Final isolated R8 checks on HONOR / Android 13 cover offline navigation, EN/IT, Light/Dark,
+  narrow/large layouts and a 45.32 MiB restore/re-export/rollback scenario. The full Android suite
+  passes 276/276; a separate Italian backup-screen check passes. Build/lint are green, with 38
+  lint warnings and the valid 496 JVM results reused by Gradle as UP-TO-DATE.
+
+The [implementation notes](release-notes-1.2.5.md) and [performance closure record](checklist-1.2.5-performance.md#stato-di-chiusura--18-ottobre-2026)
+preserve measured benefits, costs and coverage limits. Residual warm Film/Series frames above
+16.7 ms remain accepted with the current animation. Unexecuted image/heap/device matrices and
+additional optimization proposals are not new closure requirements. Raw evidence remains ignored
+under `.audit/`; no global performance or battery-life guarantee is claimed.
+
+## Next: `v1.2.6` — planned, not started
+
+The owner deferred the next global audit, justified over-engineering/dead-code fixes and future
+optimization study to v1.2.6. Completed optimizations stay closed unless a demonstrated regression
+or explicit request warrants reopening. New directions require concrete benefits/costs and an
+owner decision under AGENTS.md section 22. This maintenance step precedes the v1.3 UI cycle; see
+the [canonical plan](../BINGEE_DEVELOPMENT_ROADMAP_AND_CHECKLIST.md#v126--global-audit-and-targeted-maintenance).
 
 ## Implemented in `v1.2.4`
 
@@ -23,7 +42,7 @@ separate in the [performance checklist](checklist-1.2.5-performance.md).
 - Home retains cached content and offers local Retry when calendar, membership or Continue Watching reads fail. Shared progress consumers stay subscribed through transient errors and receive recovery.
 - Statistics derives radar sizing from the actual container, preserving full-width phone rendering.
 
-See [v1.2.4 implementation notes](release-notes-1.2.4.md). Items #1–#6 are implemented; the hardware-efficiency audit (#7), final global audit and release gate remain open in the canonical checklist.
+See [v1.2.4 implementation notes](release-notes-1.2.4.md) for the historical delivery record. The selected hardware-efficiency follow-up is recorded in v1.2.5 above; the next global audit belongs to v1.2.6. Older open-gate statements do not reopen the agreed v1.2.5 scope.
 
 ## Implemented in `v1.2.3`
 
@@ -32,7 +51,7 @@ See [v1.2.4 implementation notes](release-notes-1.2.4.md). Items #1–#6 are imp
 - Search and Home describe saved membership as Collection, preserving genuine Watch Later and other tracking states.
 - Details artwork is decorative beside the visible title; notification thumbnails use the shared poster rounding.
 - Statistics opens from both direct Collection launcher shortcuts, with the existing Back/Up path preserved.
-- Populated Your Bingee Watching/Favorites shelves use saveable, typed provider keys, fixing a crash found by the final full Android suite.
+- Populated Your bingee Watching/Favorites shelves use saveable, typed provider keys, fixing a crash found by the final full Android suite.
 
 See [v1.2.3 release notes](release-notes-1.2.3.md) for the changed behavior. The canonical checklist records verification and release readiness separately.
 
@@ -47,10 +66,10 @@ See [v1.2.3 release notes](release-notes-1.2.3.md) for the changed behavior. The
 ## Delivered in `v1.1.0`
 
 - English and Italian localization with active `MissingTranslation` lint coverage.
-- Home, Search, Your Bingee, Continue Watching, Notification Center, and settings subpages.
-- The Your Bingee redesign of the personal top-level destination: actionable Watching, collection shortcuts with counts, Favorites, and a personal statistics preview. The destination keeps its internal `profile` route.
+- Home, Search, Your bingee, Continue Watching, Notification Center, and settings subpages.
+- The Your bingee redesign of the personal top-level destination: actionable Watching, collection shortcuts with counts, Favorites, and a personal statistics preview. The destination keeps its internal `profile` route.
 - Statistics 2.0: exact viewing analytics, a monthly histogram for a selected year, and a personal ratings histogram with selected-result shelves. The taste radar, genre ranking, and profile genre podium use restored provider-qualified genre identity; Backup v2 preserves genres offline. Legacy names without IDs remain uncounted until a Details refresh.
-- Branding and system-UI work: the current Bingee light/dark theme, edge-to-edge shell, and system-bar icon appearance following the active theme.
+- Branding and system-UI work: the current bingee light/dark theme, edge-to-edge shell, and system-bar icon appearance following the active theme.
 - Release-build optimization is configured in `app/build.gradle.kts` (`release { optimization { enable = true } }`), so R8 is no longer a separate pending batch.
 - Room v5 local database, local release calendar, local notifications, Backup v2 (v1 import supported), TV Time additive import, and manual GitHub update checks.
 - Canonical serial state and a low-risk Details Abandoned control.

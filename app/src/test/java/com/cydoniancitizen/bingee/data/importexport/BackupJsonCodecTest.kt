@@ -6,6 +6,7 @@ import com.cydoniancitizen.bingee.data.settings.AppLanguage
 import com.cydoniancitizen.bingee.data.settings.AppTheme
 import com.cydoniancitizen.bingee.data.settings.ProfileDisplayModes
 import com.cydoniancitizen.bingee.data.settings.ProfileViewMode
+import com.google.gson.GsonBuilder
 import com.google.gson.JsonElement
 import com.google.gson.JsonObject
 import com.google.gson.JsonParser
@@ -19,6 +20,28 @@ import org.junit.Test
 
 class BackupJsonCodecTest {
     private val validationDate = LocalDate.of(2026, 8, 18)
+
+    @Test
+    fun compactExportPreservesWhitespaceInsideUserTextAndRoundTrips() {
+        val document = fullDocument().let { original ->
+            original.copy(
+                data = original.data.copy(
+                    media = original.data.media.map {
+                        it.copy(title = "Luce 東京", overview = "First line\n  Two spaces\t\"quoted\" 🎬")
+                    }
+                )
+            )
+        }
+        val bytes = BackupJsonCodec.encode(document)
+        val json = bytes.toString(Charsets.UTF_8)
+
+        assertFalse("Export must not contain formatting newlines", json.contains('\n'))
+        val prettyBytes = GsonBuilder().setPrettyPrinting().create()
+            .toJson(JsonParser.parseString(json)).toByteArray(Charsets.UTF_8)
+        assertTrue(bytes.size < prettyBytes.size)
+        assertEquals(document, (BackupJsonCodec.parse(bytes) as BackupParseResult.Success).document)
+        assertEquals(document, (BackupJsonCodec.parse(prettyBytes) as BackupParseResult.Success).document)
+    }
 
     @Test
     fun emptySeasonEvidenceRoundTripsAndOlderBackupsDefaultToUnknown() {
@@ -128,11 +151,15 @@ class BackupJsonCodecTest {
         assertTrue(legacy.document.data.media.single().genres.isEmpty())
         assertTrue(validate(legacy.document) is BackupValidationResult.Success)
 
-        val json = BackupJsonCodec.encode(withGenres(listOf(BackupGenre("Drama", MediaSource.TMDB, 18))))
-            .toString(Charsets.UTF_8)
+        val payloadWithGenre = JsonParser.parseString(
+            BackupJsonCodec.encode(withGenres(listOf(BackupGenre("Drama", MediaSource.TMDB, 18))))
+                .toString(Charsets.UTF_8)
+        ).asJsonObject
         listOf("1.5", "9223372036854775808", "\"18\"").forEach { id ->
+            payloadWithGenre.getAsJsonObject("data").getAsJsonArray("media")[0].asJsonObject
+                .getAsJsonArray("genres")[0].asJsonObject.add("genreId", JsonParser.parseString(id))
             assertTrue(
-                BackupJsonCodec.parse(json.replace("\"genreId\": 18", "\"genreId\": $id").toByteArray())
+                BackupJsonCodec.parse(payloadWithGenre.toString().toByteArray(Charsets.UTF_8))
                     is BackupParseResult.Failure
             )
         }
@@ -145,12 +172,14 @@ class BackupJsonCodecTest {
     @Test
     fun encodesStableContractAndPortableOnlyFields() {
         val json = BackupJsonCodec.encode(fullDocument()).toString(Charsets.UTF_8)
+        val payload = JsonParser.parseString(json).asJsonObject
+        val media = payload.getAsJsonObject("data").getAsJsonArray("media")[0].asJsonObject
 
-        assertTrue(json.contains("\"formatId\": \"bingee-backup\""))
-        assertTrue(json.contains("\"schemaVersion\": 3"))
-        assertTrue(json.contains("\"exportedAt\": \"2026-08-04T10:00:00Z\""))
-        assertTrue(json.contains("\"mediaType\": \"MOVIE\""))
-        assertTrue(json.contains("\"releaseDate\": \"2026-01-02\""))
+        assertEquals("bingee-backup", payload["formatId"].asString)
+        assertEquals(3, payload["schemaVersion"].asInt)
+        assertEquals("2026-08-04T10:00:00Z", payload["exportedAt"].asString)
+        assertEquals("MOVIE", media["mediaType"].asString)
+        assertEquals("2026-01-02", media["releaseDate"].asString)
         assertFalse(json.contains("localMediaId"))
         assertFalse(json.contains("local_media_id"))
         assertFalse(json.contains("token"))
@@ -487,7 +516,11 @@ class BackupJsonCodecTest {
         }
 
         val encoded = BackupJsonCodec.encode(document).toString(Charsets.UTF_8)
-        assertTrue(encoded.contains("\"favoriteAddedAt\": \"2026-02-03T04:05:06Z\""))
+        assertEquals(
+            "2026-02-03T04:05:06Z",
+            JsonParser.parseString(encoded).asJsonObject.getAsJsonObject("data")
+                .getAsJsonArray("media")[0].asJsonObject["favoriteAddedAt"].asString
+        )
         val parsed = BackupJsonCodec.parse(encoded.toByteArray(Charsets.UTF_8)) as BackupParseResult.Success
         assertEquals(favoriteAddedAt, parsed.document.data.media.single().favoriteAddedAt)
         assertTrue(validate(parsed.document) is BackupValidationResult.Success)
@@ -570,14 +603,16 @@ class BackupJsonCodecTest {
                 ) as BackupParseResult.Failure
                 ).failure.kind
         )
-        val missingVersionResult = BackupJsonCodec.parse(valid.replace("\"schemaVersion\": 3,\n", "").toByteArray())
+        val missingVersion = JsonParser.parseString(valid).asJsonObject.apply { remove("schemaVersion") }
+        val missingVersionResult = BackupJsonCodec.parse(missingVersion.toString().toByteArray(Charsets.UTF_8))
         assertTrue(missingVersionResult is BackupParseResult.Failure)
 
         assertEquals(
             BackupFailureKind.UNSUPPORTED_VERSION,
             (
                 BackupJsonCodec.parse(
-                    valid.replace("\"schemaVersion\": 3", "\"schemaVersion\": 5").toByteArray()
+                    JsonParser.parseString(valid).asJsonObject.apply { addProperty("schemaVersion", 5) }
+                        .toString().toByteArray(Charsets.UTF_8)
                 ) as BackupParseResult.Failure
                 ).failure.kind
         )
@@ -647,7 +682,7 @@ class BackupJsonCodecTest {
 
     private fun replaceInteger(key: String, value: String): ByteArray = BackupJsonCodec.encode(fullDocument())
         .toString(Charsets.UTF_8)
-        .replace(Regex("\"$key\": [0-9]+"), "\"$key\": $value")
+        .replace(Regex("\"$key\":\\s*[0-9]+"), "\"$key\":$value")
         .toByteArray(Charsets.UTF_8)
 
     private fun fullDocument() = BackupDocument(

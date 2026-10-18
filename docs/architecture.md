@@ -1,12 +1,17 @@
 # Architecture conventions
 
-Bingee is a package-structured modular monolith in one Android application module. Packages provide lightweight boundaries; a future Gradle-module split requires measured value and a superseding ADR.
+bingee is a package-structured modular monolith in one Android application module. Packages provide lightweight boundaries; a future Gradle-module split requires measured value and a superseding ADR.
+
+The agreed v1.2.5/code 9 scope is verified and complete, with Room 9 and Backup v3 unchanged.
+The [canonical roadmap](../BINGEE_DEVELOPMENT_ROADMAP_AND_CHECKLIST.md#v125-checklist) records
+closure and accepted verification limits. The next global audit and optimization study are deferred
+to v1.2.6; this status does not imply that a release has been published.
 
 ## Current application surface
 
 - TMDB is the only runtime media provider. No Jikan or cross-provider deduplication runs in the app.
-- Top-level navigation is Home, Search, and Your Bingee. The personal destination keeps the internal `profile` route and `PROFILE` identifier; only its label and icon present it as Your Bingee / Il tuo Bingee, a personal collection rather than an account.
-- Your Bingee is the personal dashboard: actionable Watching, collection shortcuts with counts, Favorites, and a personal statistics preview. It opens Settings, which indexes the Appearance & Language, Notifications, Data & backup, Privacy, and About subpages, and exposes its own visible Up action alongside system Back.
+- Top-level navigation is Home, Search, and Your bingee. The personal destination keeps the internal `profile` route and `PROFILE` identifier; only its label and icon present it as Your bingee / Il tuo bingee, a personal collection rather than an account.
+- Your bingee is the personal dashboard: actionable Watching, collection shortcuts with counts, Favorites, and a personal statistics preview. It opens Settings, which indexes the Appearance & Language, Notifications, Data & backup, Privacy, and About subpages, and exposes its own visible Up action alongside system Back.
 - Home is Room-first. Continue Watching follows the featured rows; each card shows the last watched and next episode and marks the next one watched through `WatchProgressRepository`, with undo. Notification Center reads cached release events and supports local refresh feedback.
 - Two Glance home screen widgets in `feature/widget` render the same Room projections as Home: a 2×2 poster of the most recent series in progress with a next-episode button, and a 4×2 view that adds the next two releases. They reach repositories through a Hilt entry point, never call TMDB, follow the in-app theme choice, and redraw through one application-scoped updater while widget instances exist (ADR 0027). The updater compares displayed content; active Glance sessions retain their own subscriptions. The small widget does not read the calendar.
 - Room v9 owns media metadata, seasons, episodes, library membership, watch progress, ratings, release events, notification state, portable preferences, the explicit serial-state override, canonical genre identity, favorite chronology, background refresh attempts, and the language of cached TMDB text.
@@ -61,7 +66,7 @@ SearchScreen/ProfileScreen -> feature ViewModel -> LibraryRepository
                            LibraryDao -> Room bingee.db (v9)
 ~~~
 
-Your Bingee keeps current collection rendering and personal statistics on separate Room paths:
+Your bingee keeps current collection rendering and personal statistics on separate Room paths:
 
 ~~~text
 ProfileViewModel -> LibraryRepository
@@ -74,13 +79,51 @@ Both paths answer different questions but need the same daily progress rows, so
 Details path) instead of letting Room run that projection once per collector. Statistics aggregation
 runs on the injected default dispatcher, so a history-sized recomputation never lands on the main
 thread. Profile read producers stop five seconds after their last UI consumer disappears,
-retain cached state, and resume from Room when a consumer returns. Explicit user writes keep their
+retain cached state, and resume from Room when a consumer returns. A consumer returning within
+that grace period keeps the active producers: effective subscription state is deduplicated after
+the delay so navigation cannot cancel and restart an in-flight load. Explicit user writes keep their
 ViewModel ownership. Collection filtering and dashboard previews also run on the default dispatcher;
 coherent requests and cancellation prevent an older calculation from replacing a newer selection.
 Monthly statistics accumulate activities in one pass without copying the full dated history.
+The active statistics producer reuses its last completed viewing aggregate while the source list,
+date, selected year and system time zone remain unchanged. All/Movies/Series changes only recompute
+genre taste; the cache retains no additional history list and ends with the producer. Year selection
+uses an exclusive, horizontally scrollable Material 3 chip row in the screen, avoiding a separate
+popup window while keeping the full year range accessible.
+The All/Movies/Series segmented buttons keep Material selection, touch targets and keyboard semantics.
+Their local press/focus/hover feedback uses an animated solid state-layer tint with Material 3
+opacities, replacing only that selector's platform ripple: first-use ripple shader compilation was
+observed blocking RenderThread and then Main on the HONOR. Theme colors and Compose's existing color
+animation provide the feedback; no application-wide ripple override, shader warm-up or device setting
+is introduced.
+The selected check appears immediately to avoid the default icon transition's first-use shader;
+container tint and label placement still animate. The radar Canvas has its own default graphics
+layer so sibling button animations reuse its recorded drawing commands. Data, theme, density and
+font-scale changes still update the chart; no offscreen bitmap cache or additional history is added.
+Rating shelf results retain title metadata and totals but omit episode activity lists, so cached UI
+snapshots do not retain additional copies of the calculation history.
+Room's shared Instant converter has a fast path for the common UTC shapes written by
+`Instant.toString()`, using `java.time` date/time validation and retaining nanoseconds. Other ISO
+forms, extended years and special/invalid values retain the existing `Instant.parse` path. Stored
+text, schema, query ordering and the backup contract are unchanged; no timestamp cache is added.
+On HONOR CMA-LX1 / Android 13, paired optimized-release trials with 100 synthetic series and
+1k/25k/100k watched activities reduce median first repository results from approximately
+23/500/2,093 ms to 8/125/1,071 ms. The large fixture still spends roughly 0.9 seconds in the
+ordered raw cursor path. These warm-cache observations are not a latency guarantee or frame
+benchmark. Rating/genre recomputation takes approximately 0.3 ms at this fixed title count, so no
+additional cache is introduced. Allocation and GC results remain separate from peak occupancy in
+the [performance checklist](checklist-1.2.5-performance.md).
 Continue Watching shares one daily query across Home, the updater and active widget sessions;
-read errors remain values and retry while consumers exist. Personal Viewing obtains regular episode
+read errors remain values and retry while consumers exist. Its DAO first requires an unwatched regular
+episode with an unknown or non-future air date, so caught-up series avoid the detailed projection.
+The domain still owns Watching/Abandoned eligibility and ordering; full Library progress, incomplete-cache
+coverage and historical completion are unchanged. Personal Viewing obtains regular episode
 counts, runtime and missing-runtime counts from the same SQL aggregation.
+
+Widget snapshots include the portable app language as well as the theme. Both the updater and active
+Glance sessions observe language changes; a language-specific resource context and composition identity
+refresh visible strings and accessible episode actions together. The large widget permits the next-episode
+label to wrap so its season/episode numbers remain visible in Italian at the verified native phone width.
 
 Cache-first title details use Room as the observable source of truth:
 
@@ -157,7 +200,7 @@ Provider IDs use ExternalMediaRef(source, externalId). A raw ID is never a globa
 
 ## Collection wording and UI semantics
 
-Your Bingee's Watching and Favorites shelves use lazy lists with Bundle-saveable string keys qualified by provider, media type and external ID, matching Collection's existing identity. This keeps Movie and Series entries distinct even when a provider reuses an ID and permits saved UI state without making domain identity objects Android-specific.
+Your bingee's Watching and Favorites shelves use lazy lists with Bundle-saveable string keys qualified by provider, media type and external ID, matching Collection's existing identity. This keeps Movie and Series entries distinct even when a provider reuses an ID and permits saved UI state without making domain identity objects Android-specific.
 
 Collection membership remains the existing Library repository/database relationship, independent of Favorite and watch progress. Search labels membership actions Add to collection / Remove from collection; Home Featured uses Add to collection / In collection. Their Italian labels are Aggiungi alla raccolta / Rimuovi dalla raccolta / Nella raccolta. Genuine Watch Later filters, shortcuts and derived tracking states keep their own names; changing membership copy does not change persistence or state derivation.
 
@@ -195,6 +238,8 @@ Production Search state distinguishes credential availability, idle/loading/empt
 
 ## Versioned backup and restore
 
+- Export writes compact UTF-8 JSON without indentation; user text, schema v3 and restore v1/v2/v3 remain unchanged. Both compact and indented input are accepted, with the same 50 MiB byte limit.
+
 - Restore validates personal movie/series watched dates independently of provider release dates, which can change after history is recorded. It preserves dates preceding updated metadata; future dates and invalid references remain rejected. Manual date entry retains its release-date checks. This correction applies to v1/v2/v3 without changing either JSON or Room schemas.
 
 - Export emits `bingee-backup` v3 and import accepts v1/v2/v3. V2 adds ordered genre names and nullable canonical identity to portable media; v3 adds theme, language, spoiler visibility, and six collection display modes. V1/v2 preference defaults remain supported, and their historical 500,000 episode-reader ceiling is retained for compatibility. All versions include portable TMDB identity, favorites, watched dates, progress, membership, ratings, and notification categories; restore regenerates local IDs transactionally. Appearance and display preferences live in Room so all portable state commits in the same transaction. V3 output is rejected before backup bytes are written if its UTF-8 encoding would exceed the 50 MiB restore limit; current media, season, and episode caps are 50,000, 100,000, and 100,000. Freshness, provider responses, credentials, network state, WorkManager records, notification permissions/enablement, and delivery history remain excluded.
@@ -206,9 +251,15 @@ Production Search state distinguishes credential availability, idle/loading/empt
 
 `data/imports/tvtime` is a focused source boundary, not a generic third-party importer. `TvTimeZipGateway` owns SAF reads, private temporary-copy cleanup, archive limits, and path/encryption/nested-archive checks. `TvTimeSourceParser` owns the exact `TVTIME-SAMPLE-001` role grammar and maps dedicated source DTOs into provider-neutral `Imported*` hints. It does not call TMDB or Room and retains no raw JSON. A source summary is available before matching; safe record errors and unknown-field warnings remain structural diagnostics.
 
+The singleton ZIP gateway registers each private copy before copying starts and releases it on
+completion, failure or cancellation. Best-effort cleanup runs on IO at application startup and before
+new imports, removing only abandoned `tv-time-import-*.zip` files in the private cache root. Active
+copies, directories, unrelated cache files and the selected source archive are preserved; a process
+restart makes copies left by the old process eligible for cleanup.
+
 `TvTimeMatcher` reuses the existing authenticated TMDB search, Find-by-external-ID, details, and season data sources. It accepts only unique compatible exact identities, a documented movie title/year proposal, and ordinary episode numbering under an accepted parent series. Series title-only results and specials remain reviewable. Requests are sequential/bounded and deduplicated for one import session; TMDB errors never mutate Room.
 
-`TvTimeImportPlanBuilder` resolves all accepted candidates and canonical metadata before confirmation. `TvTimeImportStore` executes one additive `RoomDatabase.withTransaction` and uses `import_provenance_refs`, part of the current baseline schema rather than a later migration, for distinct TVDB, IMDb, and TV Time UUID namespaces. Existing membership, progress, ratings, credentials, portable preferences, notification delivery state, and calendar refresh state are preserved. Bingee backup restore remains the separate replace-only path.
+`TvTimeImportPlanBuilder` resolves all accepted candidates and canonical metadata before confirmation. `TvTimeImportStore` executes one additive `RoomDatabase.withTransaction` and uses `import_provenance_refs`, part of the current baseline schema rather than a later migration, for distinct TVDB, IMDb, and TV Time UUID namespaces. Existing membership, progress, ratings, credentials, portable preferences, notification delivery state, and calendar refresh state are preserved. bingee backup restore remains the separate replace-only path.
 
 TV Time review counts, filtering, grouping, sorting and review edits run on the injected computation dispatcher. `mapLatest` publishes each immutable report with its matching filter/projection; state sharing retains the ViewModel lifecycle job. A mutex orders edits and makes preview/rematching wait for prior decisions. Archive replacement invalidates queued edits, and an in-flight edit cannot restore a discarded report.
 
@@ -247,9 +298,9 @@ In-memory title search and fake repository observation fallbacks also live in `d
 
 ## Navigation
 
-TopLevelDestination is the only source of Home, Search, and Your Bingee routes, order, labels, and icons; the personal destination's route stays `profile` so saved navigation state, notification targets, and the `profile/collection/{collection}` subroutes keep resolving. Settings is opened from Your Bingee and pops back through the existing back stack. BingeeNavHost owns the route-to-screen graph; reusable composables never receive a NavController. `DetailRoute` is non-top-level and carries only `MediaSource`, `MediaType`, and external provider ID. Provider/type pairs are validated before navigation; malformed routes render an input error rather than substituting another provider. `MediaType` is required to select an endpoint when a Search result has no local row. No token, local Room ID, query, URL, or metadata payload enters navigation.
+TopLevelDestination is the only source of Home, Search, and Your bingee routes, order, labels, and icons; the personal destination's route stays `profile` so saved navigation state, notification targets, and the `profile/collection/{collection}` subroutes keep resolving. Settings is opened from Your bingee and pops back through the existing back stack. BingeeNavHost owns the route-to-screen graph; reusable composables never receive a NavController. `DetailRoute` is non-top-level and carries only `MediaSource`, `MediaType`, and external provider ID. Provider/type pairs are validated before navigation; malformed routes render an input error rather than substituting another provider. `MediaType` is required to select an endpoint when a Search result has no local row. No token, local Room ID, query, URL, or metadata payload enters navigation.
 
-Statistics shares the Your Bingee `ProfileViewModel` when that destination exists in the back stack, preserving its transient statistics selections across dashboard and Collection entry paths. The Watching and Watch Later launcher shortcuts open Collection directly above Home, without inserting Your Bingee. In that case Statistics shares the calling Collection's ViewModel (or its own entry if no caller remains). System Back and visible Up pop the existing stack: Statistics → Collection → Home for a shortcut, or Statistics → Collection → Your Bingee for a dashboard entry. Activity recreation retains the navigation and ViewModel ownership.
+Statistics shares the Your bingee `ProfileViewModel` when that destination exists in the back stack, preserving its transient statistics selections across dashboard and Collection entry paths. The Watching and Watch Later launcher shortcuts open Collection directly above Home, without inserting Your bingee. In that case Statistics shares the calling Collection's ViewModel (or its own entry if no caller remains). System Back and visible Up pop the existing stack: Statistics → Collection → Home for a shortcut, or Statistics → Collection → Your bingee for a dashboard entry. Activity recreation retains the navigation and ViewModel ownership.
 
 AppRoute.ONBOARDING and DetailRoute are non-top-level routes. Startup reads local credential status and the non-sensitive first-run preference before constructing the graph. It starts at onboarding only for a first run without a usable stored credential; offline continuation and successful configuration both replace onboarding with Home. Removing a credential later does not force navigation away from the shell or delete cached details.
 
@@ -286,7 +337,7 @@ Season expansion remains state within the existing detail route. There is no sea
 - Completed titles are watched Movies plus Series whose current canonical regular-episode progress is complete. An open Series counts while caught up; a newly available unwatched regular episode removes it until watched. Specials/Season 0 never participate.
 - Episode activity sums watched regular episodes regardless of current membership or Abandoned state. Viewing time uses only persisted movie and episode runtimes, never estimates; if a required runtime is missing, the affected total is marked unavailable rather than fabricated.
 - Monthly viewing uses genuine `movie_watch_progress.watched_at` and per-episode `episode_watch_progress.watched_at` in the device-local time zone. Undated legacy activity remains valid for all-time totals but is never assigned to a month or year; missing runtime marks the affected monthly value incomplete.
-- Ratings and media-type distribution use the viewed/taste title cohort. Title identity in every aggregate is `(ExternalMediaRef, MediaType)`, so a movie and a series sharing a TMDB ID both count. Genre taste uses canonical `(source, genre_id)` identity and counts each eligible title once per genre. The Your Bingee preview keeps a deterministic top three per media type, presented as a podium whose rank is exposed as spoken text so it never depends on height or the gold/silver/bronze surfaces. Statistics 2.0 derives the complete ranking and a relative Top 6 radar from the same projection, with a transient All/Movies/Series scope.
+- Ratings and media-type distribution use the viewed/taste title cohort. Title identity in every aggregate is `(ExternalMediaRef, MediaType)`, so a movie and a series sharing a TMDB ID both count. Genre taste uses canonical `(source, genre_id)` identity and counts each eligible title once per genre. The Your bingee preview keeps a deterministic top three per media type, presented as a podium whose rank is exposed as spoken text so it never depends on height or the gold/silver/bronze surfaces. Statistics 2.0 derives the complete ranking and a relative Top 6 radar from the same projection, with a transient All/Movies/Series scope.
 - `watched_date` remains an optional user-selected calendar date. Completion timestamps remain precise and separate; when no user date exists, history derives the local calendar date from the genuine timestamp. `added_at` never supplies history ordering or grouping.
 - Collection filtering still uses `LibraryEntry` and membership-dependent `SeriesTrackingState`; removed history does not reappear in current collection UI.
 - Statistics 2.0 renders that projection as a taste radar, a full genre ranking under an All/Movies/Series scope, exact viewing analytics, a monthly histogram for a selected year, and a personal ratings histogram whose selected bucket expands a shelf of the titles behind it. All of it is derived; no chart value is persisted.
@@ -305,8 +356,8 @@ Season expansion remains state within the existing detail route. There is no sea
 - Store mutations (save, rollback, delete) and local status reads share one commit lock, never held across the remote validation call. A removal bumps the validation generation before taking the lock, so an earlier in-flight save rolls back first and the delete runs last: a removed credential cannot be written back.
 - The general OkHttp client has no logging interceptor.
 - TMDB search/details attach authorization only inside their data clients. Coil reuses the application OkHttpClient for public image URLs and receives no credential header.
-- The credential is outside ordinary DataStore settings and outside all current or future Bingee export models.
+- The credential is outside ordinary DataStore settings and outside all current or future bingee export models.
 
 ## Decision status
 
-Decision history is recorded in [ADRs 0001–0032](adr/README.md). ADRs 0020–0022 are explicitly superseded and do not describe current provider, anime or cross-provider-link behavior. ADR numbering is historical: the Room versions named in ADRs 0011–0016 belong to an earlier numbering and are not the current `bingee.db` version, which is 9. ADR 0026 restores ADR 0024 canonical genre statistics and adds portable genre metadata; ADR 0025 favorite chronology remains in place. ADR 0027 adds home screen widgets without changing the Room schema or the backup format. ADR 0028 makes TMDB identity type-aware in Room v5. ADR 0029 separates progress coverage from freshness and adds refresh attempts and cache language in Room v6, without changing the backup format. ADR 0030 adds portable empty-season evidence in Room v7 and the optional Backup v2 `isKnownEmpty` field. ADR 0031 makes theme, language, spoiler visibility, and six collection display modes portable in Backup v3, with v1/v2 preference defaults; it moves those values into Room v8 for transactional restore, while notification enablement and Android permissions stay device-specific. ADR 0032 adds recoverable technical notification claims in Room v9 with the documented at-least-once failure window. Exports that exceed the restore byte or record limits are rejected. TMDB is the single media provider for Bingee. Movies and TV Series may include anime or animated content from TMDB. No Jikan runtime integration exists, and no Anime-specific Room or Backup structures exist. Backup v3 serves as the export contract, with v1/v2 imports retained. Accounts, recommendations, cloud sync, and other import formats remain deferred.
+Decision history is recorded in [ADRs 0001–0032](adr/README.md). ADRs 0020–0022 are explicitly superseded and do not describe current provider, anime or cross-provider-link behavior. ADR numbering is historical: the Room versions named in ADRs 0011–0016 belong to an earlier numbering and are not the current `bingee.db` version, which is 9. ADR 0026 restores ADR 0024 canonical genre statistics and adds portable genre metadata; ADR 0025 favorite chronology remains in place. ADR 0027 adds home screen widgets without changing the Room schema or the backup format. ADR 0028 makes TMDB identity type-aware in Room v5. ADR 0029 separates progress coverage from freshness and adds refresh attempts and cache language in Room v6, without changing the backup format. ADR 0030 adds portable empty-season evidence in Room v7 and the optional Backup v2 `isKnownEmpty` field. ADR 0031 makes theme, language, spoiler visibility, and six collection display modes portable in Backup v3, with v1/v2 preference defaults; it moves those values into Room v8 for transactional restore, while notification enablement and Android permissions stay device-specific. ADR 0032 adds recoverable technical notification claims in Room v9 with the documented at-least-once failure window. Exports that exceed the restore byte or record limits are rejected. TMDB is the single media provider for bingee. Movies and TV Series may include anime or animated content from TMDB. No Jikan runtime integration exists, and no Anime-specific Room or Backup structures exist. Backup v3 serves as the export contract, with v1/v2 imports retained. Accounts, recommendations, cloud sync, and other import formats remain deferred.

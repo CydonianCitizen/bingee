@@ -29,9 +29,12 @@ import com.cydoniancitizen.bingee.testutil.TestCalendarDateSource
 import java.io.IOException
 import java.time.Instant
 import java.time.LocalDate
+import java.time.ZoneId
+import java.util.TimeZone
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.emitAll
@@ -214,14 +217,17 @@ class ProfileViewModelTest {
 
         assertEquals(StatisticsMediaScope.ALL, viewModel.uiState.value.statisticsMediaScope)
         assertEquals(listOf(18L, 35L), viewModel.uiState.value.tasteStatistics.rankedGenres.map { it.genreId })
+        val viewingStatistics = viewModel.uiState.value.statistics
 
         viewModel.setStatisticsMediaScope(StatisticsMediaScope.MOVIES)
         testDispatcher.scheduler.advanceUntilIdle()
         assertEquals(listOf(18L), viewModel.uiState.value.tasteStatistics.rankedGenres.map { it.genreId })
+        assertSame(viewingStatistics, viewModel.uiState.value.statistics)
 
         viewModel.setStatisticsMediaScope(StatisticsMediaScope.SERIES)
         testDispatcher.scheduler.advanceUntilIdle()
         assertEquals(listOf(35L), viewModel.uiState.value.tasteStatistics.rankedGenres.map { it.genreId })
+        assertSame(viewingStatistics, viewModel.uiState.value.statistics)
     }
 
     @Test
@@ -314,6 +320,49 @@ class ProfileViewModelTest {
 
         assertEquals(2027, viewModel.uiState.value.statistics.monthlyViewing.currentYear)
         assertEquals(2027, viewModel.uiState.value.statistics.monthlyViewing.selectedYear)
+    }
+
+    @Test
+    fun viewingCacheRefreshesWhenTheCurrentDayChanges() = runTest {
+        val dates = TestCalendarDateSource(LocalDate.of(2026, 8, 18))
+        val movie = viewing("movie", MediaType.MOVIE, "Drama", 18).copy(
+            movieWatchedAt = LocalDate.of(2026, 8, 19).atStartOfDay(ZoneId.systemDefault()).toInstant(),
+            movieRuntimeMinutes = 120
+        )
+        val viewModel = createViewModel(FakeLibraryRepo(emptyList(), listOf(movie)), FakeDisplayModePrefs(), dates)
+        runCurrent()
+        assertEquals(0L, viewModel.uiState.value.statistics.monthlyViewing.months[7].movieMinutes)
+
+        dates.advanceTo(LocalDate.of(2026, 8, 19))
+        runCurrent()
+        assertEquals(120L, viewModel.uiState.value.statistics.monthlyViewing.months[7].movieMinutes)
+    }
+
+    @Test
+    fun viewingCacheRefreshesWhenTheTimeZoneChanges() = runTest {
+        val originalZone = TimeZone.getDefault()
+        try {
+            TimeZone.setDefault(TimeZone.getTimeZone("UTC"))
+            val movie = viewing("movie", MediaType.MOVIE, "Drama", 18).copy(
+                movieWatchedAt = Instant.parse("2026-03-01T00:30:00Z"),
+                movieRuntimeMinutes = 120
+            )
+            val viewModel = createViewModel(
+                FakeLibraryRepo(emptyList(), listOf(movie)),
+                FakeDisplayModePrefs(),
+                TestCalendarDateSource(LocalDate.of(2026, 3, 1))
+            )
+            runCurrent()
+            assertEquals(120L, viewModel.uiState.value.statistics.monthlyViewing.months[2].movieMinutes)
+
+            TimeZone.setDefault(TimeZone.getTimeZone("America/Los_Angeles"))
+            viewModel.setStatisticsMediaScope(StatisticsMediaScope.SERIES)
+            runCurrent()
+            assertEquals(120L, viewModel.uiState.value.statistics.monthlyViewing.months[1].movieMinutes)
+            assertEquals(0L, viewModel.uiState.value.statistics.monthlyViewing.months[2].movieMinutes)
+        } finally {
+            TimeZone.setDefault(originalZone)
+        }
     }
 
     @Test
@@ -469,6 +518,43 @@ class ProfileViewModelTest {
     }
 
     @Test
+    fun navigationGapKeepsTheInFlightStatisticsLoad() = runTest {
+        val movie = entry("1", MediaType.MOVIE, LibraryProgress.Movie(MovieWatchState.Watched(Instant.EPOCH)))
+        val repo = FakeLibraryRepo(listOf(movie)).apply { viewingDelayMillis = 1_000 }
+        val viewModel = ProfileViewModel(
+            repo,
+            FakeDisplayModePrefs(),
+            TestCalendarDateSource(LocalDate.of(2026, 8, 18)),
+            testDispatcher
+        )
+        val collection = backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
+            viewModel.uiState.collect {}
+        }
+        runCurrent()
+        assertTrue(viewModel.uiState.value.isStatisticsLoading)
+
+        collection.cancel()
+        runCurrent()
+        advanceTimeBy(700)
+        val statistics = backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
+            viewModel.uiState.collect {}
+        }
+        runCurrent()
+        advanceTimeBy(300)
+        runCurrent()
+
+        assertFalse(viewModel.uiState.value.isStatisticsLoading)
+        assertEquals(1, viewModel.uiState.value.statistics.moviesWatchedCount)
+        assertEquals(1, repo.observeEntriesCalls)
+        assertEquals(1, repo.observePersonalViewingCalls)
+        statistics.cancel()
+        advanceTimeBy(5_000)
+        runCurrent()
+        assertEquals(0, repo.activeEntries)
+        assertEquals(0, repo.activeViewing)
+    }
+
+    @Test
     fun observersStopWithoutConsumersAndResumeWithFreshData() = runTest {
         val repo = FakeLibraryRepo(emptyList())
         val viewModel =
@@ -502,6 +588,39 @@ class ProfileViewModelTest {
         assertEquals(1, repo.activeViewing)
         assertEquals(listOf("fresh"), viewModel.uiState.value.entries.map { it.mediaRef.externalId })
         assertEquals(1, viewModel.uiState.value.statistics.moviesWatchedCount)
+    }
+
+    @Test
+    fun multipleUiConsumersKeepOneProducerUntilTheLastConsumerLeaves() = runTest {
+        val repo = FakeLibraryRepo(emptyList())
+        val viewModel = ProfileViewModel(
+            repo,
+            FakeDisplayModePrefs(),
+            TestCalendarDateSource(LocalDate.of(2026, 8, 18)),
+            testDispatcher
+        )
+        val first = backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { viewModel.uiState.collect {} }
+        val second = backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { viewModel.uiState.collect {} }
+        runCurrent()
+        assertEquals(1, repo.observeEntriesCalls)
+        assertEquals(1, repo.observePersonalViewingCalls)
+
+        first.cancel()
+        advanceTimeBy(6_000)
+        runCurrent()
+        assertEquals(1, repo.activeEntries)
+        assertEquals(1, repo.activeViewing)
+        assertEquals(1, repo.observeEntriesCalls)
+        assertEquals(1, repo.observePersonalViewingCalls)
+
+        second.cancel()
+        advanceTimeBy(4_999)
+        runCurrent()
+        assertEquals(1, repo.activeEntries)
+        advanceTimeBy(1)
+        runCurrent()
+        assertEquals(0, repo.activeEntries)
+        assertEquals(0, repo.activeViewing)
     }
 
     @Test
@@ -618,6 +737,7 @@ class ProfileViewModelTest {
         var activeViewing = 0
         var observeEntriesCalls = 0
         var observePersonalViewingCalls = 0
+        var viewingDelayMillis = 0L
 
         fun emit(items: List<LibraryEntry>) {
             emitEntries(items)
@@ -653,6 +773,7 @@ class ProfileViewModelTest {
             observePersonalViewingCalls++
             activeViewing++
             try {
+                delay(viewingDelayMillis)
                 emitAll(observedViewing)
             } finally {
                 activeViewing--

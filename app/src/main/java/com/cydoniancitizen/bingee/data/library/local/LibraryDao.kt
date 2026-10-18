@@ -423,8 +423,20 @@ internal abstract class LibraryDao {
         INNER JOIN library_entries USING(local_media_id)
         INNER JOIN external_refs USING(local_media_id)
         WHERE external_refs.source = :source
+          AND media_entries.media_type = 'SERIES'
+          AND EXISTS (
+              SELECT 1
+              FROM seasons
+              INNER JOIN episodes USING(local_season_id)
+              LEFT JOIN episode_watch_progress USING(local_episode_id)
+              WHERE seasons.local_media_id = media_entries.local_media_id
+                AND seasons.season_number > 0
+                AND (episodes.air_date IS NULL OR episodes.air_date <= :today)
+                AND episode_watch_progress.local_episode_id IS NULL
+          )
         """
     )
+    // Skip caught-up series before calculating the detailed projection.
     // The last episode is the most recently watched regular one. A season marked at once shares one
     // watched_at, so position breaks the tie and reports the furthest episode.
     abstract fun observeContinueWatchingRows(source: MediaSource, today: LocalDate): Flow<List<ContinueWatchingRow>>

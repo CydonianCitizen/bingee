@@ -1,10 +1,10 @@
-# Bingee backup format v1
+# bingee backup format v1
 
-This is the legacy portable data contract, still accepted for import. Current exports use [v3](backup-format-v3.md), which includes portable user preferences and preserves the genre metadata introduced in v2. The Android app exposes backup under Your Bingee → Settings → Data & backup; save, share, and restore work without a Bingee account or backend.
+This is the legacy portable data contract, still accepted for import. Current exports use [v3](backup-format-v3.md), which includes portable user preferences and preserves the genre metadata introduced in v2. The Android app exposes backup under Your bingee → Settings → Data & backup; save, share, and restore work without a bingee account or backend.
 
 ## Contract
 
-Bingee backup files are UTF-8, human-readable JSON with:
+bingee backup files are UTF-8, human-readable JSON with:
 
 - `formatId`: stable value `bingee-backup`;
 - `schemaVersion`: integer `1`, independent from Room version;

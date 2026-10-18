@@ -817,6 +817,43 @@ class DefaultLibraryRepositoryTest {
     }
 
     @Test
+    fun episodeHistoryKeepsNanosecondsAndMonthlyBoundariesThroughRoom() = runBlocking {
+        repository.add(
+            mediaResult().copy(
+                externalRef = ExternalMediaRef(MediaSource.TMDB, "100"),
+                mediaType = MediaType.SERIES,
+                title = "Precise History Series"
+            )
+        )
+        storeSeries(
+            seriesId = "100",
+            episodeCount = 2,
+            runtimes = listOf(42, 48),
+            airDates = List(2) { LocalDate.of(2026, 3, 1) }
+        )
+        val timestamps = listOf(
+            Instant.parse("2026-03-31T23:59:59.123456789Z"),
+            Instant.parse("2026-04-01T00:00:00.987654321Z")
+        )
+        timestamps.forEachIndexed { index, timestamp ->
+            database.watchProgressDao().markEpisodeWatched(
+                MediaSource.TMDB,
+                "100-episode-${index + 1}",
+                today(),
+                timestamp
+            )
+        }
+
+        val history = (repository.observePersonalViewing().first() as AppResult.Success).value.single()
+        assertEquals(timestamps, history.watchedRegularEpisodeActivities.map { it.watchedAt })
+        val statistics = calculateWatchedStatistics(listOf(history), ZoneOffset.UTC, today(), 2026)
+        assertEquals(2, statistics.episodesWatchedCount)
+        assertEquals(90L, statistics.seriesWatchTimeMinutes)
+        assertEquals(42L, statistics.monthlyViewing.months[2].seriesMinutes)
+        assertEquals(48L, statistics.monthlyViewing.months[3].seriesMinutes)
+    }
+
+    @Test
     fun historicalEpisodeActivitySurvivesFutureAirDateCorrectionAndKeepsAvailabilitySeparate() = runBlocking {
         val series = mediaResult().copy(
             externalRef = ExternalMediaRef(MediaSource.TMDB, "100"),
@@ -948,6 +985,76 @@ class DefaultLibraryRepositoryTest {
                 result.value.singleOrNull()?.nextEpisode == EpisodePosition(1, 3)
         }
         third.cancel()
+    }
+
+    @Test
+    fun continuationProjectionSkipsMoviesBeforeMapping() = runBlocking {
+        repeat(100) { index ->
+            val added = repository.add(
+                mediaResult().copy(externalRef = ExternalMediaRef(MediaSource.TMDB, "${100 + index}"))
+            )
+            assertTrue(added is AppResult.Success)
+        }
+        val series = mediaResult().copy(
+            externalRef = ExternalMediaRef(MediaSource.TMDB, "100"),
+            mediaType = MediaType.SERIES
+        )
+        assertTrue(repository.add(series) is AppResult.Success)
+        storeSeries("100", 3)
+        database.watchProgressDao().markEpisodeWatched(MediaSource.TMDB, "100-episode-1", today(), now)
+
+        val rows = database.libraryDao().observeContinueWatchingRows(MediaSource.TMDB, today()).first()
+        assertEquals(1, rows.size)
+        assertEquals(MediaType.SERIES, rows.single().mediaType)
+        assertEquals("100", rows.single().externalId)
+        val watching = repository.observeContinueWatching().first() as AppResult.Success
+        assertEquals(listOf("100"), watching.value.map { it.mediaRef.externalId })
+        assertEquals(EpisodePosition(1, 2), watching.value.single().nextEpisode)
+        val movies = repository.observeEntries(LibraryQuery(mediaFilter = LibraryMediaFilter.MOVIES)).first()
+            as AppResult.Success
+        assertEquals(100, movies.value.size)
+    }
+
+    @Test
+    fun continuationProjectionDropsCaughtUpSeriesAndReturnsAfterUnmarkOrAirDate() = runBlocking {
+        val series = mediaResult().copy(
+            externalRef = ExternalMediaRef(MediaSource.TMDB, "500"),
+            mediaType = MediaType.SERIES
+        )
+        repository.add(series)
+        storeSeries("500", 3, airDates = listOf(null, today(), today().plusDays(1)))
+        val progress = database.watchProgressDao()
+        progress.markEpisodeWatched(MediaSource.TMDB, "500-episode-1", today(), now)
+        progress.markEpisodeWatched(MediaSource.TMDB, "500-episode-2", today(), now)
+        val dao = database.libraryDao()
+
+        assertTrue(dao.observeContinueWatchingRows(MediaSource.TMDB, today()).first().isEmpty())
+        val tomorrow = dao.observeContinueWatchingRows(MediaSource.TMDB, today().plusDays(1)).first().single()
+        assertEquals(3, tomorrow.nextEpisodeNumber)
+        assertEquals(2, tomorrow.watchedEpisodes)
+        assertEquals(3, tomorrow.trackableEpisodes)
+
+        progress.markEpisodeWatched(MediaSource.TMDB, "500-episode-3", today().plusDays(1), now)
+        assertTrue(dao.observeContinueWatchingRows(MediaSource.TMDB, today().plusDays(1)).first().isEmpty())
+        progress.markEpisodeUnwatched(MediaSource.TMDB, "500-episode-2")
+        val resumed = dao.observeContinueWatchingRows(MediaSource.TMDB, today()).first().single()
+        assertEquals(2, resumed.nextEpisodeNumber)
+        assertEquals(1, resumed.watchedEpisodes)
+    }
+
+    @Test
+    fun continuationConsumersShareOneNewQueryWhenTheDayChanges() = runBlocking {
+        val consumers = List(3) { repository.observeContinueWatching().produceIn(this) }
+        try {
+            consumers.forEach { it.nextMatching { result -> result is AppResult.Success } }
+            assertEquals(1, continuationQueries.get())
+
+            dateSource.advanceTo(today().plusDays(1))
+            consumers.forEach { it.nextMatching { result -> result is AppResult.Success } }
+            assertEquals(2, continuationQueries.get())
+        } finally {
+            consumers.forEach { it.cancel() }
+        }
     }
 
     @Test

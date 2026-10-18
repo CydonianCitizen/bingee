@@ -12,6 +12,7 @@ import com.cydoniancitizen.bingee.core.model.ReleaseDateCategory
 import com.cydoniancitizen.bingee.core.model.ReleaseEvent
 import com.cydoniancitizen.bingee.core.model.groupReleaseEvents
 import com.cydoniancitizen.bingee.core.result.AppResult
+import com.cydoniancitizen.bingee.data.settings.AppLanguage
 import com.cydoniancitizen.bingee.data.settings.AppTheme
 import com.cydoniancitizen.bingee.data.settings.AppearancePreferences
 import com.cydoniancitizen.bingee.domain.calendar.CalendarDateSource
@@ -42,7 +43,8 @@ internal data class WidgetSnapshot(
     val upcoming: List<ReleaseEvent>,
     val today: LocalDate,
     /** The in-app theme choice, which widgets follow because the launcher never sees the app's night mode. */
-    val theme: AppTheme
+    val theme: AppTheme,
+    val language: AppLanguage
 )
 
 /** Presence by type, not instance count: Glance renders newly placed/resized instances itself. */
@@ -63,7 +65,7 @@ internal fun observeWidgetUpdates(
             var previous: WidgetSnapshot? = null
             snapshots(targets).collect { current ->
                 val old = previous
-                val watchingChanged = old == null || old.theme != current.theme ||
+                val watchingChanged = old == null || old.theme != current.theme || old.language != current.language ||
                     !old.watching.sameWidgetContent(current.watching)
                 val upcomingChanged = old == null || (old.today != current.today && current.upcoming.isNotEmpty()) ||
                     old.upcoming.size != current.upcoming.size ||
@@ -133,6 +135,7 @@ internal fun observeWidgetSnapshot(context: Context, includeUpcoming: Boolean = 
         events = entryPoint.releaseCalendarRepository()::observeEvents,
         dates = entryPoint.calendarDateSource().observeDate(),
         themes = entryPoint.appearancePreferences().observeTheme(),
+        languages = entryPoint.appearancePreferences().observeLanguage(),
         includeUpcoming = includeUpcoming
     )
 }
@@ -143,19 +146,23 @@ internal fun observeWidgetSnapshot(
     events: (LocalDate) -> Flow<AppResult<List<ReleaseEvent>>>,
     dates: Flow<LocalDate>,
     themes: Flow<AppTheme>,
+    languages: Flow<AppLanguage>,
     includeUpcoming: Boolean = true
 ): Flow<WidgetSnapshot> = dates.flatMapLatest { today ->
     val releases = if (includeUpcoming) events(today) else flowOf(AppResult.Success(emptyList()))
-    combine(watching, releases, themes) { progress, releases, theme ->
+    combine(watching, releases, themes, languages) { progress, releases, theme, language ->
         WidgetSnapshot(
             watching = (progress as? AppResult.Success)?.value?.firstOrNull(),
             upcoming = selectUpcoming((releases as? AppResult.Success)?.value.orEmpty(), today),
             today = today,
-            theme = theme
+            theme = theme,
+            language = language
         )
     }
 }.distinctUntilChanged { old, current ->
-    old.theme == current.theme && old.watching.sameWidgetContent(current.watching) &&
+    old.theme == current.theme && old.language == current.language && old.watching.sameWidgetContent(
+        current.watching
+    ) &&
         (old.today == current.today || current.upcoming.isEmpty()) &&
         old.upcoming.size == current.upcoming.size &&
         old.upcoming.indices.all { old.upcoming[it].sameWidgetContent(current.upcoming[it]) }

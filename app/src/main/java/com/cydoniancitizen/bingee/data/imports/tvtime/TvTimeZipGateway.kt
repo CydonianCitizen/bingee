@@ -76,6 +76,8 @@ internal fun validateTvTimeArchiveEntryName(name: String): TvTimeArchiveFailureK
 @Singleton
 internal class AndroidTvTimeZipGateway @Inject constructor(@param:ApplicationContext private val context: Context) :
     TvTimeZipGateway {
+    private val activeCopies = mutableSetOf<File>()
+
     override suspend fun <T> withArchive(uri: Uri, block: suspend (TvTimeArchive) -> T): TvTimeArchiveResult<T> =
         withContext(Dispatchers.IO) {
             val temporary = try {
@@ -110,14 +112,12 @@ internal class AndroidTvTimeZipGateway @Inject constructor(@param:ApplicationCon
                     TvTimeArchiveFailure(TvTimeArchiveFailureKind.UNREADABLE_ZIP)
                 )
             } finally {
-                temporary.delete()
+                releaseTemporaryCopy(temporary)
             }
         }
 
     private suspend fun copyToPrivateCache(uri: Uri): File {
-        val directory = context.cacheDir
-        cleanupStaleCopies()
-        val temporary = File.createTempFile("tv-time-import-", ".zip", directory)
+        val temporary = createTemporaryCopy()
         try {
             val input = context.contentResolver.openInputStream(uri)
                 ?: throw TvTimeArchiveFailure(TvTimeArchiveFailureKind.UNREADABLE_ZIP)
@@ -128,13 +128,13 @@ internal class AndroidTvTimeZipGateway @Inject constructor(@param:ApplicationCon
             }
             return temporary
         } catch (failure: TvTimeArchiveFailure) {
-            temporary.delete()
+            releaseTemporaryCopy(temporary)
             throw failure
         } catch (cancelled: CancellationException) {
-            temporary.delete()
+            releaseTemporaryCopy(temporary)
             throw cancelled
         } catch (_: Exception) {
-            temporary.delete()
+            releaseTemporaryCopy(temporary)
             throw TvTimeArchiveFailure(TvTimeArchiveFailureKind.UNREADABLE_ZIP)
         }
     }
@@ -246,10 +246,26 @@ internal class AndroidTvTimeZipGateway @Inject constructor(@param:ApplicationCon
         return listOf(".zip", ".jar", ".7z", ".rar", ".tar", ".gz", ".tgz").any(lower::endsWith)
     }
 
-    private fun cleanupStaleCopies() {
+    @Synchronized
+    fun cleanupAbandonedCopies() {
         context.cacheDir.listFiles()
-            ?.filter { it.name.startsWith("tv-time-import-") }
+            ?.filter {
+                it.isFile && it.name.startsWith("tv-time-import-") && it.name.endsWith(".zip") && it !in activeCopies
+            }
             ?.forEach(File::delete)
+    }
+
+    @Synchronized
+    private fun createTemporaryCopy(): File {
+        // Register before copying so startup cleanup cannot remove an import already in progress.
+        cleanupAbandonedCopies()
+        return File.createTempFile("tv-time-import-", ".zip", context.cacheDir).also(activeCopies::add)
+    }
+
+    @Synchronized
+    private fun releaseTemporaryCopy(file: File) {
+        file.delete()
+        activeCopies.remove(file)
     }
 
     private fun openZip(file: File): ZipFile = try {

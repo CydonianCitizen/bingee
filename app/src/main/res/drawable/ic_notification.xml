@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="384"
+    android:viewportHeight="384">
+    <!-- The approved launcher mark, fitted to a notification's monochrome small-icon area. -->
+    <group android:translateX="-64" android:translateY="-64">
+        <path android:fillColor="#FFFFFFFF" android:fillType="evenOdd"
+            android:pathData="M128,136 A40,40 0,0 1,208,136 L208,169.340824 A128,128 0,1 1,256,416 L168,416 A40,40 0,0 1,128,376 Z M192,254 Q192,248 197,251 L244,282 Q252,288 244,294 L197,325 Q192,328 192,322 Z M264,254 Q264,248 269,251 L316,282 Q324,288 316,294 L269,325 Q264,328 264,322 Z" />
+    </group>
+</vector>

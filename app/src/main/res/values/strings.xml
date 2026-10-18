@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">Bingee</string>
+    <string name="app_name">bingee</string>
     <string name="label_value">%1$s: %2$s</string>
     <string name="nav_home">Home</string>
     <string name="nav_search">Search</string>
@@ -24,8 +24,8 @@
     <string name="action_dismiss">Dismiss</string>
     <string name="onboarding_title">Connect to TMDB</string>
     <string name="onboarding_description">Enter your TMDB API Read Access Token to enable remote metadata. You can create one from the API section of your TMDB account settings.</string>
-    <string name="onboarding_no_backend">Bingee has no account or proprietary backend. Your credential stays on this device.</string>
-    <string name="onboarding_continue_configured">Continue to Bingee</string>
+    <string name="onboarding_no_backend">bingee has no account or proprietary backend. Your credential stays on this device.</string>
+    <string name="onboarding_continue_configured">Continue to bingee</string>
     <string name="onboarding_continue_offline">Continue without TMDB</string>
     <string name="settings_tmdb_title">TMDB configuration</string>
     <string name="settings_tmdb_description">Validate a new API Read Access Token to add or replace your current credential.</string>
@@ -79,7 +79,7 @@
     <string name="collection_action_add">Add to collection</string>
     <string name="collection_action_remove">Remove from collection</string>
     <string name="collection_state_in">In collection</string>
-    <string name="profile_title_dashboard">Your Bingee</string>
+    <string name="profile_title_dashboard">Your bingee</string>
     <string name="profile_watching_title">Watching</string>
     <string name="profile_view_all">See all</string>
     <string name="profile_collection_title">Your collection</string>
@@ -279,8 +279,8 @@
     <string name="detail_episode_unwatched_state">Not watched</string>
     <string name="tmdb_logo_description">The Movie Database logo</string>
     <string name="tmdb_attribution">This product uses the TMDB API but is not endorsed or certified by TMDB.</string>
-    <string name="privacy_summary">Bingee uses TMDB metadata. Your credential is encrypted locally, is never sent to a Bingee backend, and is excluded from Bingee data exports.</string>
-    <string name="privacy_documentation_reference">Privacy details: docs/privacy.md in the Bingee project.</string>
+    <string name="privacy_summary">bingee uses TMDB metadata. Your credential is encrypted locally, is never sent to a bingee backend, and is excluded from bingee data exports.</string>
+    <string name="privacy_documentation_reference">Privacy details: docs/privacy.md in the bingee project.</string>
     <string name="home_title">Release calendar</string>
     <string name="home_loading">Loading saved release events</string>
     <string name="home_empty_title">No releases to show</string>
@@ -339,7 +339,7 @@
     <string name="settings_notifications_seasons">Season premieres</string>
     <string name="settings_notifications_episodes">Episode airings</string>
     <string name="settings_backup_title">Data &amp; backup</string>
-    <string name="settings_backup_description">Your library, viewing history, ratings, and selected notification choices belong to you. Backups work offline and use JSON format version 1.</string>
+    <string name="settings_backup_description">Your library, viewing history, ratings, and selected notification choices belong to you. Backups work offline. Export uses JSON format version 3; restore supports versions 1, 2, and 3.</string>
     <string name="backup_plaintext_warning">This backup is readable plaintext JSON. It may contain viewing history, ratings, and notification categories. It is not encrypted or password protected.</string>
     <string name="backup_save">Save backup</string>
     <string name="backup_share">Share backup</string>
@@ -357,7 +357,7 @@
     <string name="backup_error_too_large">Backup file is too large.</string>
     <string name="backup_error_export_too_large">This backup exceeds the limits supported by restore and cannot be created.</string>
     <string name="backup_error_malformed">Backup JSON is malformed or has invalid data.</string>
-    <string name="backup_error_wrong_format">This is not a Bingee backup.</string>
+    <string name="backup_error_wrong_format">This is not a bingee backup.</string>
     <string name="backup_error_unsupported_version">This backup uses a newer unsupported version.</string>
     <string name="backup_error_validation">Backup failed validation and was not imported.</string>
     <string name="backup_error_duplicate">Backup contains duplicate identities.</string>
@@ -488,7 +488,7 @@
     <string name="settings_spoilers_body">In series details, episodes you have not watched yet show a blurred image and no title.</string>
     <string name="settings_spoilers_hide">Hide episode spoilers</string>
     <string name="settings_open_source_title">Open Source</string>
-    <string name="settings_open_source_description">Bingee is open source. You can help improve the app by reporting issues, suggesting features, or contributing code on GitHub.</string>
+    <string name="settings_open_source_description">bingee is open source. You can help improve the app by reporting issues, suggesting features, or contributing code on GitHub.</string>
     <string name="settings_open_source_github_action">View on GitHub</string>
     <string name="settings_nav_appearance">Appearance &amp; Language</string>
     <string name="settings_nav_appearance_desc">Theme and language preferences</string>
@@ -498,15 +498,15 @@
     <string name="settings_nav_data_backup_desc">Backup, restore, and import your library data</string>
     <string name="settings_nav_privacy">Privacy</string>
     <string name="settings_nav_privacy_desc">Local storage, privacy overview, and TMDB credentials</string>
-    <string name="settings_nav_about">About Bingee</string>
+    <string name="settings_nav_about">About bingee</string>
     <string name="settings_nav_about_desc">Version details, open source information, and updates</string>
     <string name="privacy_title">Privacy</string>
-    <string name="privacy_body">Bingee does not require an account. Personal tracking data is stored locally on your device. TMDB provides movie and TV metadata.</string>
+    <string name="privacy_body">bingee does not require an account. Personal tracking data is stored locally on your device. TMDB provides movie and TV metadata.</string>
     <string name="about_app_description">Track your favorite movies and TV series offline and on your own terms.</string>
     <string name="about_version_label">Version %1$s</string>
     <string name="update_check_action">Check for updates</string>
     <string name="update_checking">Checking for updates…</string>
-    <string name="update_up_to_date">Bingee is up to date</string>
+    <string name="update_up_to_date">bingee is up to date</string>
     <string name="update_available">Update available</string>
     <string name="update_current_version">Installed version: %1$s</string>
     <string name="update_latest_version">Latest version: %1$s</string>

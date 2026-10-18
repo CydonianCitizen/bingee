@@ -182,6 +182,11 @@ fun calculatePersonalRatingStatistics(
                 .thenBy { it.mediaRef.externalId }
                 .thenBy { it.mediaType }
         )
+        .map {
+            checkCancelled()
+            // Rating shelves need title metadata and totals, not a retained copy of episode history.
+            it.copy(watchedRegularEpisodeActivities = emptyList())
+        }
         .toList()
     val counts = ratedTitles.groupingBy { it.personalRating!!.value }.eachCount()
     val histogram = PERSONAL_RATING_VALUES.map { rating ->

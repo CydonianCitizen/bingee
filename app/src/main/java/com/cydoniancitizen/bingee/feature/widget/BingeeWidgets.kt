@@ -3,12 +3,16 @@ package com.cydoniancitizen.bingee.feature.widget
 import android.appwidget.AppWidgetManager
 import android.content.Context
 import android.content.Intent
+import android.content.res.Configuration
 import android.graphics.Bitmap
 import androidx.annotation.Keep
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.produceState
+import androidx.compose.runtime.remember
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -75,6 +79,7 @@ import com.cydoniancitizen.bingee.domain.calendar.CalendarDateSource
 import com.cydoniancitizen.bingee.domain.repository.LibraryRepository
 import com.cydoniancitizen.bingee.domain.repository.ReleaseCalendarRepository
 import dagger.hilt.android.qualifiers.ApplicationContext
+import java.util.Locale
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -87,6 +92,23 @@ private fun widgetColors(theme: AppTheme) = when (theme) {
     AppTheme.SYSTEM_DEFAULT -> ColorProviders(light = LightColorScheme, dark = DarkColorScheme)
     AppTheme.LIGHT -> ColorProviders(scheme = LightColorScheme)
     AppTheme.DARK -> ColorProviders(scheme = DarkColorScheme)
+}
+
+/** Idle and active widgets resolve every string from the observed app language, including skipped children. */
+@Composable
+private fun WidgetTheme(snapshot: WidgetSnapshot, content: @Composable () -> Unit) {
+    val context = LocalContext.current
+    val localized = remember(context, snapshot.language) {
+        val configuration = Configuration(context.resources.configuration).apply {
+            setLocale(Locale.forLanguageTag(snapshot.language.languageTag))
+        }
+        context.createConfigurationContext(configuration)
+    }
+    key(snapshot.language) {
+        CompositionLocalProvider(LocalContext provides localized) {
+            GlanceTheme(colors = widgetColors(snapshot.theme), content = content)
+        }
+    }
 }
 
 /** Same fixed disc as the Home poster control: the artwork under it can be any colour. */
@@ -105,7 +127,7 @@ internal class ContinueWatchingWidget : GlanceAppWidget() {
             val poster by produceState(initialPoster, snapshot.watching?.posterUrl) {
                 value = snapshot.watching?.posterUrl?.let { loadWidgetPoster(context, it) }
             }
-            GlanceTheme(colors = widgetColors(snapshot.theme)) { PosterContent(snapshot.watching, poster) }
+            WidgetTheme(snapshot) { PosterContent(snapshot.watching, poster) }
         }
     }
 }
@@ -130,7 +152,7 @@ internal class UpNextWidget : GlanceAppWidget() {
             val releasePosters by produceState(initialReleasePosters, snapshot.upcoming.map { it.posterUrl }) {
                 value = snapshot.upcoming.map { event -> event.posterUrl?.let { loadWidgetPoster(context, it) } }
             }
-            GlanceTheme(colors = widgetColors(snapshot.theme)) { UpNextContent(snapshot, seriesPoster, releasePosters) }
+            WidgetTheme(snapshot) { UpNextContent(snapshot, seriesPoster, releasePosters) }
         }
     }
 }
@@ -201,6 +223,7 @@ internal class BingeeWidgetUpdater @Inject constructor(
                 events = calendarRepository::observeEvents,
                 dates = dateSource.observeDate(),
                 themes = appearancePreferences.observeTheme(),
+                languages = appearancePreferences.observeLanguage(),
                 includeUpcoming = targets.upNext
             )
         }.collect { updateBingeeWidgets(context, it) }
@@ -331,7 +354,7 @@ private fun UpNextContent(snapshot: WidgetSnapshot, seriesPoster: Bitmap?, relea
                         item.nextEpisode?.let {
                             SecondaryText(
                                 context.getString(R.string.widget_next_episode, it.seasonNumber, it.episodeNumber),
-                                maxLines = 1
+                                maxLines = 3
                             )
                         }
                     }

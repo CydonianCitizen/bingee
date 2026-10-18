@@ -8,6 +8,7 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import java.io.File
 import java.util.zip.ZipEntry
 import java.util.zip.ZipOutputStream
+import kotlinx.coroutines.CancellationException
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -26,6 +27,69 @@ class TvTimeZipGatewayTest {
         context.cacheDir.listFiles()
             ?.filter { it.name.startsWith("tv-time-import-") }
             ?.forEach(File::delete)
+    }
+
+    @Test
+    fun cleanupRemovesOnlyAbandonedZipsAndKeepsActiveCopiesAndOtherFiles() = kotlinx.coroutines.runBlocking {
+        val source = zip("movies.json" to "[]")
+        val gateway = gateway()
+        val unrelated = File(context.cacheDir, "tv-time-import-not-a-zip.txt").apply { writeText("keep") }
+        val directory = File(context.cacheDir, "tv-time-import-directory.zip").apply { mkdirs() }
+        val child = File(directory, "keep.txt").apply { writeText("keep") }
+        try {
+            val result = gateway.withArchive(uri(source)) { archive ->
+                val active = context.cacheDir.listFiles().orEmpty().single {
+                    it.isFile && it.name.endsWith(".zip") && it.name.startsWith("tv-time-import-")
+                }
+                val abandoned = File(context.cacheDir, "tv-time-import-abandoned.zip").apply { writeText("old copy") }
+
+                gateway.cleanupAbandonedCopies()
+
+                assertFalse(abandoned.exists())
+                assertTrue(active.exists())
+                assertEquals("keep", unrelated.readText())
+                assertEquals("keep", child.readText())
+                archive.open(archive.entries.single()).bufferedReader().use { assertEquals("[]", it.readText()) }
+            }
+            assertTrue(result is TvTimeArchiveResult.Success)
+            assertTrue(source.exists())
+        } finally {
+            unrelated.delete()
+            child.delete()
+            directory.delete()
+        }
+    }
+
+    @Test
+    fun cancellationReleasesThePrivateCopyAndPreservesTheSource() = kotlinx.coroutines.runBlocking {
+        val source = zip("movies.json" to "[]")
+        try {
+            gateway().withArchive(uri(source)) { throw CancellationException("cancel import") }
+            throw AssertionError("Expected cancellation")
+        } catch (_: CancellationException) {
+            assertTrue(source.exists())
+            assertFalse(context.cacheDir.listFiles().orEmpty().any { it.name.startsWith("tv-time-import-") })
+        }
+    }
+
+    @Test
+    fun overlappingImportsKeepEachOthersPrivateCopiesUntilClosed() = kotlinx.coroutines.runBlocking {
+        val source = zip("movies.json" to "[]")
+        val gateway = gateway()
+        val result = gateway.withArchive(uri(source)) { outer ->
+            val outerCopy = context.cacheDir.listFiles().orEmpty().single { it.name.startsWith("tv-time-import-") }
+            val innerResult = gateway.withArchive(uri(source)) {
+                assertTrue("A second import must not remove the first import's copy", outerCopy.exists())
+                assertEquals(2, context.cacheDir.listFiles().orEmpty().count { it.name.startsWith("tv-time-import-") })
+            }
+            assertTrue(innerResult is TvTimeArchiveResult.Success)
+            assertTrue(outerCopy.exists())
+            outer.open(outer.entries.single()).bufferedReader().use { assertEquals("[]", it.readText()) }
+        }
+
+        assertTrue(result is TvTimeArchiveResult.Success)
+        assertTrue(source.exists())
+        assertFalse(context.cacheDir.listFiles().orEmpty().any { it.name.startsWith("tv-time-import-") })
     }
 
     @Test
@@ -122,6 +186,8 @@ class TvTimeZipGatewayTest {
         val result = gateway().withArchive(uri(file)) { Unit }
         assertTrue(result is TvTimeArchiveResult.Failure)
         assertEquals(file.name, expected, (result as TvTimeArchiveResult.Failure).failure.kind)
+        assertTrue(file.exists())
+        assertFalse(context.cacheDir.listFiles().orEmpty().any { it.name.startsWith("tv-time-import-") })
     }
 
     private fun gateway() = AndroidTvTimeZipGateway(context)

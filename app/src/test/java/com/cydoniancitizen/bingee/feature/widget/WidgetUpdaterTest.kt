@@ -11,6 +11,7 @@ import com.cydoniancitizen.bingee.core.model.ReleaseSubjectIdentity
 import com.cydoniancitizen.bingee.core.model.ReleaseSubjectType
 import com.cydoniancitizen.bingee.core.model.SeriesProgress
 import com.cydoniancitizen.bingee.core.result.AppResult
+import com.cydoniancitizen.bingee.data.settings.AppLanguage
 import com.cydoniancitizen.bingee.data.settings.AppTheme
 import java.time.Instant
 import java.time.LocalDate
@@ -138,6 +139,27 @@ class WidgetUpdaterTest {
     }
 
     @Test
+    fun languageChangesWakeBothTypesWithoutAnyLibraryOrThemeChange() = runTest {
+        for (targets in listOf(both, posterOnly, upNextOnly)) {
+            val data = Inputs()
+            val updates = mutableListOf<WidgetTargets>()
+            val job = backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
+                observeWidgetUpdates(MutableStateFlow(targets), data::snapshots).collect { updates += it }
+            }
+            runCurrent()
+            data.languages.value = AppLanguage.ITALIAN
+            runCurrent()
+            data.languages.value = AppLanguage.ENGLISH
+            runCurrent()
+            assertEquals(listOf(targets, targets, targets), updates)
+            job.cancel()
+            runCurrent()
+            data.assertSubscribers(0)
+            assertEquals(0, data.languages.subscriptionCount.value)
+        }
+    }
+
+    @Test
     fun posterOnlyDoesNotWakeForCalendarOrDayChanges() = runTest {
         val data = Inputs()
         val updates = mutableListOf<WidgetTargets>()
@@ -252,6 +274,7 @@ class WidgetUpdaterTest {
         val releases = MutableStateFlow<AppResult<List<ReleaseEvent>>>(
             AppResult.Success(listOf(movie("first", today), movie("second", today.plusDays(1))))
         )
+        val languages = MutableStateFlow(AppLanguage.ENGLISH)
         val themes = MutableStateFlow(AppTheme.LIGHT)
         val dates = MutableStateFlow(today)
         val cancelledDays = mutableListOf<LocalDate>()
@@ -270,12 +293,14 @@ class WidgetUpdaterTest {
             },
             dates,
             themes,
+            languages,
             includeUpcoming = targets.upNext
         ).also { starts++ }
 
         fun assertSubscribers(expected: Int, calendar: Int = expected) {
             assertEquals(expected, watching.subscriptionCount.value)
             assertEquals(calendar, releases.subscriptionCount.value)
+            assertEquals(expected, languages.subscriptionCount.value)
             assertEquals(expected, themes.subscriptionCount.value)
             assertEquals(expected, dates.subscriptionCount.value)
         }

@@ -44,6 +44,7 @@ class BingeeBottomBarTest {
 
     @Test
     fun personalDestinationIsLabelledYourBingeeAndKeepsTheProfileRoute() {
+        assertEquals("bingee", context.getString(R.string.app_name))
         val selected = AtomicReference<TopLevelDestination>()
         composeRule.setContent {
             BingeeTheme {
@@ -58,9 +59,9 @@ class BingeeBottomBarTest {
             if (context.resources.configuration.locales[0].language ==
                 "it"
             ) {
-                "Il tuo Bingee"
+                "Il tuo bingee"
             } else {
-                "Your Bingee"
+                "Your bingee"
             }
         ).assertIsDisplayed()
         composeRule.onNodeWithText("Profile").assertDoesNotExist()

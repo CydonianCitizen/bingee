@@ -11,27 +11,44 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.toPixelMap
+import androidx.compose.ui.input.InputMode
+import androidx.compose.ui.input.InputModeManager
+import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalInputModeManager
 import androidx.compose.ui.platform.LocalWindowInfo
+import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.test.DeviceConfigurationOverride
 import androidx.compose.ui.test.FontScale
 import androidx.compose.ui.test.ForcedSize
+import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertHeightIsAtLeast
 import androidx.compose.ui.test.assertHeightIsEqualTo
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsFocused
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.assertWidthIsAtLeast
 import androidx.compose.ui.test.assertWidthIsEqualTo
+import androidx.compose.ui.test.captureToImage
+import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.isHeading
+import androidx.compose.ui.test.isPopup
 import androidx.compose.ui.test.isSelectable
+import androidx.compose.ui.test.isSelected
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performKeyInput
 import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.test.performScrollToNode
+import androidx.compose.ui.test.performSemanticsAction
+import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
@@ -62,6 +79,7 @@ import com.cydoniancitizen.bingee.testutil.scrollRowTo
 import java.time.Instant
 import java.time.LocalDate
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 
@@ -73,6 +91,187 @@ class StatisticsScreenTest {
 
     @get:Rule(order = 1)
     val composeRule = createComposeRule()
+
+    @Test
+    fun scopeRetainsPressCancellationAndKeyboardFeedbackInLightTheme() = assertScopeFeedback(darkTheme = false)
+
+    @Test
+    fun scopeRetainsPressCancellationAndKeyboardFeedbackInDarkTheme() = assertScopeFeedback(darkTheme = true)
+
+    @Test
+    fun rapidScopeChangesKeepOneSelectionInLightTheme() = assertRapidScopeChanges(darkTheme = false)
+
+    @Test
+    fun rapidScopeChangesKeepOneSelectionInDarkTheme() = assertRapidScopeChanges(darkTheme = true)
+
+    private fun assertRapidScopeChanges(darkTheme: Boolean) {
+        val changes = mutableListOf<StatisticsMediaScope>()
+        val entries = listOf(
+            viewing(
+                "movie",
+                MediaType.MOVIE,
+                listOf(genre("Drama", 18), genre("Comedy", 35), genre("Thriller", 53))
+            ),
+            viewing(
+                "series",
+                MediaType.SERIES,
+                listOf(genre("Horror", 27), genre("Crime", 80), genre("Romance", 10749))
+            )
+        )
+        composeRule.setContent {
+            var scope by remember { mutableStateOf(StatisticsMediaScope.ALL) }
+            BingeeTheme(darkTheme = darkTheme) {
+                Surface {
+                    StatisticsContent(
+                        tasteStatistics = calculateTasteStatistics(entries, scope),
+                        onScopeChanged = {
+                            changes += it
+                            scope = it
+                        }
+                    )
+                }
+            }
+        }
+        val labels = mapOf(
+            StatisticsMediaScope.ALL to context.getString(R.string.statistics_filter_all),
+            StatisticsMediaScope.MOVIES to context.getString(R.string.statistics_filter_movies),
+            StatisticsMediaScope.SERIES to context.getString(R.string.statistics_filter_series)
+        )
+        val scopeNodes = labels.values.map(::scopeSelector).reduce { first, next -> first or next }
+        val radarGenres = mapOf(
+            StatisticsMediaScope.ALL to "Drama, Horror, Comedy, Thriller, Crime, Romance",
+            StatisticsMediaScope.MOVIES to "Drama, Comedy, Thriller",
+            StatisticsMediaScope.SERIES to "Horror, Crime, Romance"
+        )
+        fun radar(scope: StatisticsMediaScope) = composeRule.onNodeWithContentDescription(
+            context.getString(R.string.statistics_radar_description, radarGenres.getValue(scope))
+        )
+        val initialRadar = radar(StatisticsMediaScope.ALL).captureToImage().toPixelMap()
+        fun changedRadarPixels(scope: StatisticsMediaScope): Int {
+            val current = radar(scope).captureToImage().toPixelMap()
+            assertEquals(initialRadar.width, current.width)
+            assertEquals(initialRadar.height, current.height)
+            return (0 until initialRadar.height).sumOf { y ->
+                (0 until initialRadar.width).count { x -> initialRadar[x, y] != current[x, y] }
+            }
+        }
+        val requests = listOf(
+            StatisticsMediaScope.MOVIES,
+            StatisticsMediaScope.SERIES,
+            StatisticsMediaScope.MOVIES,
+            StatisticsMediaScope.ALL,
+            StatisticsMediaScope.SERIES,
+            StatisticsMediaScope.ALL
+        )
+        composeRule.mainClock.autoAdvance = false
+        requests.forEach { scope ->
+            composeRule.onNode(scopeSelector(labels.getValue(scope))).performClick()
+            composeRule.mainClock.advanceTimeByFrame()
+            composeRule.onNode(scopeSelector(labels.getValue(scope))).assertIsSelected()
+            composeRule.onAllNodes(scopeNodes and isSelected()).assertCountEquals(1)
+            radar(scope).assertIsDisplayed()
+            if (scope == StatisticsMediaScope.MOVIES) {
+                assertTrue("The rendered radar must follow the new filter", changedRadarPixels(scope) > 0)
+            }
+        }
+        composeRule.mainClock.advanceTimeBy(1_000)
+        composeRule.onAllNodes(scopeNodes and isSelected()).assertCountEquals(1)
+        assertEquals(0, changedRadarPixels(StatisticsMediaScope.ALL))
+        composeRule.runOnIdle { assertEquals(requests, changes) }
+    }
+
+    private fun assertScopeFeedback(darkTheme: Boolean) {
+        val changes = mutableListOf<StatisticsMediaScope>()
+        lateinit var inputModeManager: InputModeManager
+        composeRule.setContent {
+            inputModeManager = LocalInputModeManager.current
+            var scope by remember { mutableStateOf(StatisticsMediaScope.ALL) }
+            BingeeTheme(darkTheme = darkTheme) {
+                Surface {
+                    StatisticsContent(
+                        tasteStatistics = TasteStatistics(scope = scope),
+                        onScopeChanged = {
+                            changes += it
+                            scope = it
+                        }
+                    )
+                }
+            }
+        }
+        val movies = composeRule.onNode(scopeSelector(context.getString(R.string.statistics_filter_movies)))
+        val resting = movies.captureToImage()
+        movies.performTouchInput { down(center) }
+        composeRule.mainClock.advanceTimeBy(500)
+        assertFeedbackVisible(resting, movies.captureToImage())
+        movies.performTouchInput { cancel() }
+        composeRule.waitForIdle()
+        composeRule.runOnIdle { assertTrue(changes.isEmpty()) }
+        composeRule.runOnIdle { assertTrue(inputModeManager.requestInputMode(InputMode.Keyboard)) }
+        movies.performSemanticsAction(SemanticsActions.RequestFocus) { it() }.assertIsFocused()
+        composeRule.mainClock.advanceTimeBy(500)
+        assertFeedbackVisible(resting, movies.captureToImage())
+        movies.performKeyInput {
+            keyDown(Key.Enter)
+            keyUp(Key.Enter)
+        }.assertIsSelected()
+        composeRule.runOnIdle { assertEquals(listOf(StatisticsMediaScope.MOVIES), changes) }
+    }
+
+    private fun assertFeedbackVisible(resting: ImageBitmap, interacting: ImageBitmap) {
+        val before = resting.toPixelMap()
+        val after = interacting.toPixelMap()
+        assertEquals(before.width, after.width)
+        assertEquals(before.height, after.height)
+        val changed = (0 until before.height).sumOf { y ->
+            (0 until before.width).count { x -> before[x, y] != after[x, y] }
+        }
+        assertTrue(
+            "The filter must keep visible feedback while pressed or focused",
+            changed > before.width * before.height / 3
+        )
+    }
+
+    @Test
+    fun yearsCanBeSelectedInPlaceIncludingYearsOutsideTheVisibleRange() {
+        var selectedYear = 2026
+        composeRule.setContent {
+            DeviceConfigurationOverride(DeviceConfigurationOverride.ForcedSize(DpSize(320.dp, 900.dp))) {
+                DeviceConfigurationOverride(DeviceConfigurationOverride.FontScale(1.5f)) {
+                    var year by remember { mutableStateOf(2026) }
+                    BingeeTheme(darkTheme = false) {
+                        Surface {
+                            StatisticsContent(
+                                statistics = WatchedStatistics(
+                                    monthlyViewing = MonthlyViewingStatistics(
+                                        currentYear = 2026,
+                                        currentMonth = 8,
+                                        selectedYear = year,
+                                        availableYears = (1980..2026).toList().asReversed(),
+                                        months = (1..12).map { MonthlyViewingData(year = year, month = it) }
+                                    )
+                                ),
+                                tasteStatistics = TasteStatistics(),
+                                onScopeChanged = {},
+                                onYearChanged = {
+                                    year = it
+                                    selectedYear = it
+                                }
+                            )
+                        }
+                    }
+                }
+            }
+        }
+
+        val chooseYear = context.getString(R.string.statistics_viewing_choose_year)
+        composeRule.scrollListTo(hasContentDescription(chooseYear))
+        composeRule.onNodeWithText("2025").performClick().assertIsSelected()
+        composeRule.runOnIdle { assertEquals(2025, selectedYear) }
+        composeRule.onNodeWithContentDescription(chooseYear).performScrollToNode(hasText("1980"))
+        composeRule.onNodeWithText("1980").performClick().assertIsSelected()
+        composeRule.runOnIdle { assertEquals(1980, selectedYear) }
+        composeRule.onAllNodes(isPopup()).assertCountEquals(0)
+    }
 
     @Test
     fun radarMatchesExistingHeightPolicyInTheNativePhoneWindow() {
@@ -167,19 +366,21 @@ class StatisticsScreenTest {
             }
         }
 
-        composeRule.onNodeWithContentDescription(radarDescription()).assertHeightIsEqualTo(260.dp)
+        val radar = composeRule.onNodeWithContentDescription(radarDescription())
+        radar.assertHeightIsEqualTo(260.dp)
         composeRule.runOnIdle { fontScale.value = 1.5f }
-        composeRule.onNodeWithContentDescription(radarDescription()).assertHeightIsEqualTo(363.dp)
+        // ForcedSize can use fractional density: the cap follows the measured width, not nominal dp.
+        radar.assertHeightIsEqualTo(radar.getUnclippedBoundsInRoot().run { right - left })
         composeRule.runOnIdle {
             windowWidth.value = 360.dp
             fontScale.value = 1.3f
         }
-        composeRule.onNodeWithContentDescription(radarDescription()).assertHeightIsEqualTo(312.dp)
+        radar.assertHeightIsEqualTo(radar.getUnclippedBoundsInRoot().run { right - left })
         composeRule.runOnIdle {
             windowWidth.value = 320.dp
             fontScale.value = 1.5f
         }
-        composeRule.onNodeWithContentDescription(radarDescription()).assertHeightIsEqualTo(272.dp)
+        radar.assertHeightIsEqualTo(radar.getUnclippedBoundsInRoot().run { right - left })
             .assertIsDisplayed()
     }
 
@@ -340,6 +541,10 @@ class StatisticsScreenTest {
 
         composeRule.onNodeWithText(context.getString(R.string.statistics_viewing)).assertIsDisplayed()
         composeRule.scrollListTo(hasText(context.getString(R.string.statistics_viewing_time))).assertIsDisplayed()
+        // Bring the chart vertically into view before its row handles horizontal scrolling.
+        composeRule.scrollListTo(
+            hasContentDescription(context.getString(R.string.statistics_viewing_chart_description, 2026))
+        )
         composeRule.onNodeWithContentDescription(
             context.getString(
                 R.string.statistics_viewing_month_accessibility,
@@ -426,6 +631,9 @@ class StatisticsScreenTest {
         }
 
         composeRule.scrollListTo(hasText(context.getString(R.string.statistics_viewing_time)))
+        composeRule.scrollListTo(
+            hasContentDescription(context.getString(R.string.statistics_viewing_chart_description, 2026))
+        )
         composeRule.onNodeWithContentDescription(
             context.getString(
                 R.string.statistics_viewing_month_accessibility,

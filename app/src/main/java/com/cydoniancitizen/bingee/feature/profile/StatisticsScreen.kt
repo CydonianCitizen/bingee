@@ -1,9 +1,14 @@
 package com.cydoniancitizen.bingee.feature.profile
 
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsFocusedAsState
+import androidx.compose.foundation.interaction.collectIsHoveredAsState
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -24,25 +29,27 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.ArrowDropDown
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LocalRippleConfiguration
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -53,8 +60,10 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
@@ -559,23 +568,12 @@ private fun ViewingSection(
             durationLabels = durationLabels
         )
         if (year > 0) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = stringResource(R.string.statistics_viewing_time),
-                    style = MaterialTheme.typography.titleMedium,
-                    modifier = Modifier
-                        .weight(1f)
-                        .semantics { heading() }
-                )
-                ViewingYearSelector(
-                    year = year,
-                    years = years,
-                    onYearChanged = onYearChanged
-                )
-            }
+            Text(
+                text = stringResource(R.string.statistics_viewing_time),
+                style = MaterialTheme.typography.titleMedium,
+                modifier = Modifier.semantics { heading() }
+            )
+            ViewingYearSelector(year = year, years = years, onYearChanged = onYearChanged)
             ViewingLegend()
             ViewingMonthChart(
                 months = months,
@@ -692,25 +690,29 @@ private fun ViewingMetric(value: String, label: String, modifier: Modifier = Mod
 
 @Composable
 private fun ViewingYearSelector(year: Int, years: List<Int>, onYearChanged: (Int) -> Unit) {
-    var expanded by remember { mutableStateOf(false) }
-    Box {
-        TextButton(onClick = { expanded = true }) {
-            Text(year.toString())
-            Icon(
-                imageVector = Icons.Default.ArrowDropDown,
-                contentDescription = stringResource(R.string.statistics_viewing_choose_year)
-            )
+    val listState = rememberLazyListState(initialFirstVisibleItemIndex = years.indexOf(year).coerceAtLeast(0))
+    LaunchedEffect(year, years) {
+        val index = years.indexOf(year)
+        if (index >= 0 && listState.layoutInfo.visibleItemsInfo.none { it.key == year }) {
+            listState.scrollToItem(index)
         }
-        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
-            years.forEach { option ->
-                DropdownMenuItem(
-                    text = { Text(option.toString()) },
-                    onClick = {
-                        expanded = false
-                        onYearChanged(option)
-                    }
-                )
-            }
+    }
+    val description = stringResource(R.string.statistics_viewing_choose_year)
+    LazyRow(
+        state = listState,
+        modifier = Modifier
+            .fillMaxWidth()
+            .selectableGroup()
+            .semantics { contentDescription = description },
+        horizontalArrangement = Arrangement.spacedBy(BingeeDimensions.elementSpacing)
+    ) {
+        items(years, key = { it }) { option ->
+            FilterChip(
+                selected = option == year,
+                onClick = { onYearChanged(option) },
+                label = { Text(option.toString()) },
+                modifier = Modifier.semantics { role = Role.RadioButton }
+            )
         }
     }
 }
@@ -993,6 +995,7 @@ private fun viewingMovieColor(): Color = if (MaterialTheme.colorScheme.backgroun
     BingeeChartColors.viewingMovieLight
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun StatisticsScopeSelector(
     selectedScope: StatisticsMediaScope,
@@ -1000,24 +1003,52 @@ private fun StatisticsScopeSelector(
     modifier: Modifier = Modifier
 ) {
     val scopes = StatisticsMediaScope.entries
-    SingleChoiceSegmentedButtonRow(modifier = modifier.fillMaxWidth()) {
-        scopes.forEachIndexed { index, scope ->
-            SegmentedButton(
-                selected = selectedScope == scope,
-                onClick = { onScopeChanged(scope) },
-                shape = SegmentedButtonDefaults.itemShape(index, scopes.size),
-                label = {
-                    Text(
-                        text = stringResource(
-                            when (scope) {
-                                StatisticsMediaScope.ALL -> R.string.statistics_filter_all
-                                StatisticsMediaScope.MOVIES -> R.string.statistics_filter_movies
-                                StatisticsMediaScope.SERIES -> R.string.statistics_filter_series
-                            }
-                        )
-                    )
+    // Solid Material state layers avoid first-touch platform ripple shader stalls on some renderers.
+    CompositionLocalProvider(LocalRippleConfiguration provides null) {
+        SingleChoiceSegmentedButtonRow(modifier = modifier.fillMaxWidth()) {
+            scopes.forEachIndexed { index, scope ->
+                val interactionSource = remember(scope) { MutableInteractionSource() }
+                val pressed by interactionSource.collectIsPressedAsState()
+                val focused by interactionSource.collectIsFocusedAsState()
+                val hovered by interactionSource.collectIsHoveredAsState()
+                val selected = selectedScope == scope
+                val colors = SegmentedButtonDefaults.colors()
+                val baseColor = if (selected) colors.activeContainerColor else colors.inactiveContainerColor
+                val contentColor = if (selected) colors.activeContentColor else colors.inactiveContentColor
+                // Material 3 press/focus and hover state-layer opacities.
+                val stateAlpha = when {
+                    pressed || focused -> 0.1f
+                    hovered -> 0.08f
+                    else -> 0f
                 }
-            )
+                val containerColor by animateColorAsState(
+                    targetValue = contentColor.copy(alpha = stateAlpha).compositeOver(baseColor),
+                    label = "Statistics filter state"
+                )
+                SegmentedButton(
+                    selected = selected,
+                    onClick = { onScopeChanged(scope) },
+                    shape = SegmentedButtonDefaults.itemShape(index, scopes.size),
+                    interactionSource = interactionSource,
+                    // Avoid the default icon transition's first-use shader compilation.
+                    icon = { if (selected) SegmentedButtonDefaults.ActiveIcon() },
+                    colors = colors.copy(
+                        activeContainerColor = containerColor,
+                        inactiveContainerColor = containerColor
+                    ),
+                    label = {
+                        Text(
+                            text = stringResource(
+                                when (scope) {
+                                    StatisticsMediaScope.ALL -> R.string.statistics_filter_all
+                                    StatisticsMediaScope.MOVIES -> R.string.statistics_filter_movies
+                                    StatisticsMediaScope.SERIES -> R.string.statistics_filter_series
+                                }
+                            )
+                        )
+                    }
+                )
+            }
         }
     }
 }
@@ -1074,6 +1105,8 @@ private fun TasteRadarChart(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(chartHeight)
+                // Button animations must not record the unchanged radar again on every frame.
+                .graphicsLayer()
                 .semantics { contentDescription = chartDescription }
         ) {
             drawRadar(

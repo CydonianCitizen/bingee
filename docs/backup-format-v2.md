@@ -1,4 +1,4 @@
-# Bingee backup format v2
+# bingee backup format v2
 
 V2 is a historical import contract, independent of the Room schema version. Current exports use [v3](backup-format-v3.md); import continues to accept v1, v2, and v3. All portable records, limits, privacy constraints, and replace-only transactional restore rules from [v1](backup-format-v1.md) remain applicable, with these additions:
 

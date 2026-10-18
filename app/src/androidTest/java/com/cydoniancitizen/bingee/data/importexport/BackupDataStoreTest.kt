@@ -7,6 +7,7 @@ import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import com.cydoniancitizen.bingee.core.model.LibraryProgress
 import com.cydoniancitizen.bingee.core.model.MediaSource
 import com.cydoniancitizen.bingee.core.model.MediaType
 import com.cydoniancitizen.bingee.core.model.SeriesTrackingState
@@ -541,8 +542,8 @@ class BackupDataStoreTest {
             TestCalendarDateSource(validationDate),
             kotlinx.coroutines.Dispatchers.Default
         )
-        val library = (repository.observeEntries().first() as AppResult.Success).value
-            .associate { it.mediaRef.externalId to (it.serialState == SeriesTrackingState.WATCHED) }
+        val entries = (repository.observeEntries().first() as AppResult.Success).value
+        val library = entries.associate { it.mediaRef.externalId to (it.serialState == SeriesTrackingState.WATCHED) }
         val viewing = (repository.observePersonalViewing().first() as AppResult.Success).value
         assertEquals(library, viewing.associate { it.mediaRef.externalId to it.isCompletedTitle })
         val continueWatching = database.libraryDao().observeContinueWatchingRows(MediaSource.TMDB, validationDate)
@@ -553,7 +554,11 @@ class BackupDataStoreTest {
                     it.hasSufficientCoverage
                 )
             }
-        assertEquals(library, continueWatching)
+        val withNextEpisode = entries.filter {
+            val progress = (it.progress as? LibraryProgress.Series)?.progress
+            progress != null && progress.watchedEpisodes < progress.trackableEpisodes
+        }.map { it.mediaRef.externalId }.toSet()
+        assertEquals(library.filterKeys { it in withNextEpisode }, continueWatching)
         assertEquals(library.count { it.value }, calculateWatchedStatistics(viewing).tvSeriesCompletedCount)
         return library
     }
@@ -640,7 +645,7 @@ class BackupDataStoreTest {
                     movie,
                     listOf(movie, movieAlias),
                     MediaType.MOVIE,
-                    "映画 — 日本語",
+                    "æ˜ ç”» â€” æ—¥æœ¬èªž",
                     null,
                     null,
                     null,
