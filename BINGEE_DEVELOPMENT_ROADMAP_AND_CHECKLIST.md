@@ -26,7 +26,7 @@ Historical baseline before this roadmap started:
 
 > Baseline correction (2026-10-04): pre-flight found Room 9 / Backup 3 already present at HEAD `837647f44a83ad9f9eab229877e71c925fb86de8`. The owner authorized continuing after the discrepancy was reported. Modification #1 preserves these existing persistence versions; no schema, migration or backup-format change is made.
 
-## Current milestone status — 2026-10-18
+## Current milestone status — 2026-10-19
 
 The agreed **v1.2.5 / versionCode 9 scope is complete**: final checks, the full Android suite and
 documentation alignment are closed. Room remains 9; export remains Backup v3 with v1/v2/v3 restore.
@@ -45,8 +45,10 @@ define the final scope. Earlier dated implementation records below retain their 
 
 The subsequent v1.2.6 read-only audit and isolated image-cache study have been performed. The owner
 accepted keeping the existing cache configuration and closed that investigation on 2026-10-18.
-Its bounded result and deferrals are recorded in the [v1.2.6 scope](#v126--global-audit-and-targeted-maintenance);
-the whole v1.2.6 milestone has not been declared complete.
+Its bounded result and deferrals are recorded in the [v1.2.6 scope](#v126--global-audit-and-targeted-maintenance).
+Final verification is complete and the agreed v1.2.6 maintenance scope is closed on 2026-10-19;
+the [closure record](#v126-closure-record--2026-10-19) distinguishes deferred work and verification
+limits. The application remains 1.2.5/code 9; no publication or later milestone is started.
 
 ## Global development rule from this point forward
 
@@ -105,8 +107,9 @@ Pre-existing low-priority debt must not automatically expand the current scope.
 
 > Version numbers may only move forward. Room and Backup versions must **not** be bumped merely because the app version changes. Schema/format bumps require an actual persistence contract change.
 
-The inserted v1.2.6 reserves the next code and shifts later planned codes only; the application
-configuration remains v1.2.5/code 9. No later milestone is started by this documentation change.
+The inserted v1.2.6 reserved the next code and shifted later planned codes only. Its agreed
+maintenance scope closed without an application-version change; code 10 remains unapplied and the
+application configuration remains v1.2.5/code 9. No later milestone is started by this documentation change.
 
 ---
 
@@ -535,7 +538,8 @@ Audit the current baseline after v1.2.5 without automatically reopening complete
 The owner started the v1.2.6 investigation on 2026-10-18. The approved scope is image-cache
 measurement and isolated experiments, plus database-index planning. The owner has now accepted
 retaining the current image-cache configuration and closed that investigation. The application
-version remains 1.2.5/code 9; the whole milestone still requires its final closure verification.
+version remains 1.2.5/code 9; final verification is complete and the agreed maintenance scope is
+closed on 2026-10-19, as recorded below.
 
 - Run the deferred read-only global audit with Ponytail, distinguishing defects, proven dead code,
   over-engineering, justified complexity and verification limits.
@@ -1829,18 +1833,40 @@ hashes and the applicable 495-JVM/63-Android gate remain unchanged. The owned di
 removed and protected packages/ten widget bindings are preserved. Evidence stays ignored under
 `.audit/observer-lifecycle/`; the overall milestone/release gate remains open.
 
-# v1.2.6 checklist — Audit and maintenance (milestone open)
+# v1.2.6 checklist — Audit and maintenance (agreed scope closed)
 
 - [x] Owner requested the v1.2.6 investigation; application code 10 remains planned, not applied.
 - [x] Run the deferred read-only audit and distinguish application dead code, index candidates and optional improvements; no automatic cleanup is authorized.
 - [x] Present optimization directions with benefits, costs and stop conditions; the owner selected retaining the current image-cache configuration, with no additional implementation selected.
 - [x] Preserve completed v1.2.5 optimizations throughout the approved investigation and documentation changes.
 - [x] Complete the isolated image-cache investigation and record the owner's acceptance; reports and tools remain under ignored `.audit/image-cache-126/`. Further measurements await a concrete problem, and proposed thresholds remain unapproved hypotheses.
-- [ ] Verify the remaining v1.2.6 milestone closure criteria and selected-scope checks before declaring the whole milestone complete.
+- [x] Verify the remaining v1.2.6 milestone closure criteria and selected-scope checks; the agreed maintenance scope is closed on 2026-10-19.
 
 No dead-code/over-engineering fix is currently selected; optional findings do not create an
 implementation gate. The three index candidates are deferred to a migration required for other
 reasons, under the Android verification conditions above, and do not block this milestone.
+
+## v1.2.6 closure record — 2026-10-19
+
+The owner's final verification request is satisfied for the selected audit, image-cache study and
+index-planning scope. The read-only audit's findings have been classified; no application cleanup
+or new optimization was selected. The final Ponytail maintenance pass found no new blocking issue
+in the documentation changes. Production, dependencies, Room 9, Backup v3 and app 1.2.5/code 9
+remain unchanged from the closed v1.2.5 baseline.
+
+Final checks cover document consistency, local links/anchors, Git diff hygiene, 212 unchanged
+production-source hashes and the four stored Android measurement phases. Spotless, JVM, lint and
+debug-build gates succeeded; JVM results were reused as UP-TO-DATE. No new Android suite,
+migration test or cache benchmark was required for the documentation-only changes. The disposable
+diagnostic APK is no longer present, so its asset/hash comparison was not repeated; stored image
+hashes, inventories, events and the summary were checked independently. Reports and logs remain
+under ignored `.audit/`, outside canonical product documentation.
+
+The cache configuration stays unchanged; the result remains limited to the tested emulator and
+16 titles. Further measurements await a concrete problem, numerical thresholds remain unapproved
+hypotheses, and the three index candidates await a migration required for other reasons. These
+deferrals do not leave an approved v1.2.6 task open. No commit, push, signing, tag, publication or
+start of v1.3 is part of this closure.
 
 # v1.3.0 checklist — Details
 

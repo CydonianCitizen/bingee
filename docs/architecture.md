@@ -6,8 +6,9 @@ The agreed v1.2.5/code 9 scope is verified and complete, with Room 9 and Backup 
 The [canonical roadmap](../BINGEE_DEVELOPMENT_ROADMAP_AND_CHECKLIST.md#v125-checklist) records
 closure and accepted verification limits. The subsequent v1.2.6 read-only audit and isolated
 image-cache study have been performed; the owner accepted keeping the current cache configuration.
-That investigation is closed, while final v1.2.6 milestone closure remains unverified. No release
-publication is implied.
+The agreed v1.2.6 maintenance scope is verified and closed on 2026-10-19, without production,
+Room, backup or application-version changes. The [closure record](../BINGEE_DEVELOPMENT_ROADMAP_AND_CHECKLIST.md#v126-closure-record--2026-10-19)
+preserves verification limits and deferred work. No release publication is implied.
 
 ## Current application surface
 

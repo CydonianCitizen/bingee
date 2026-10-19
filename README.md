@@ -161,7 +161,9 @@ Feature UI depends on immutable domain models and repository contracts, never pr
 
 ## Versioning
 
-The project follows Semantic Versioning. The current repository version is `1.2.5` with `versionCode` 9, as defined in [app/build.gradle.kts](app/build.gradle.kts). Room schema 9 and Backup format 3 have independent versions. Completion of the agreed milestone scope does not announce a published release; historical milestone documents retain their original version numbers. The next planned maintenance milestone is v1.2.6, before the larger v1.3 UI cycle.
+The project follows Semantic Versioning. The current repository version is `1.2.5` with `versionCode` 9, as defined in [app/build.gradle.kts](app/build.gradle.kts). Room schema 9 and Backup format 3 have independent versions. Completion of the agreed milestone scope does not announce a published release; historical milestone documents retain their original version numbers.
+
+Maintenance milestone v1.2.6 is complete within the agreed scope as of 2026-10-19, before the larger v1.3 UI cycle. Its image-cache investigation is complete: the user accepted keeping the current configuration because the tested Android device and 16-title dataset did not demonstrate a useful benefit from reducing the limit. This result does not extend to large libraries or prolonged use. Further measurements are deferred until a concrete problem emerges; proposed thresholds remain hypotheses, not approved requirements. The three database indices remain candidates for validation at the next migration required for other reasons. No additional implementation is selected; the application remains 1.2.5/code 9, with no publication implied. See the [current roadmap](docs/roadmap.md).
 
 ## Contributing
 

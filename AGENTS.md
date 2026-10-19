@@ -5,6 +5,8 @@
 Questo repository contiene un'app Android open source, local-first, per tenere traccia di film, serie TV e, in una fase successiva, anime.
 
 Stato corrente: v1.2.5 / versionCode 9, scope concordato verificato e chiuso; pubblicazione non eseguita.
+La manutenzione v1.2.6 è verificata e chiusa nello scope concordato il 19 ottobre 2026, senza
+modifiche di produzione o incremento della versione applicativa. Restano i rinvii documentati in roadmap.
 Room 9 e backup JSON v3 con restore v1/v2/v3 restano invariati.
 TMDB è l'unico provider runtime; animazione e anime presenti su TMDB seguono i normali percorsi
 Movie/TV Series. Non esistono integrazione Jikan o modelli anime dedicati. La

@@ -27,7 +27,7 @@ preserve measured benefits, costs and coverage limits. Residual warm Film/Series
 additional optimization proposals are not new closure requirements. Raw evidence remains ignored
 under `.audit/`; no global performance or battery-life guarantee is claimed.
 
-## In progress: `v1.2.6` — investigation and planning
+## Completed agreed scope in `v1.2.6` — 2026-10-19
 
 The owner started the v1.2.6 study on 2026-10-18, following the read-only audit, and subsequently
 accepted its recommendation to retain the current Coil image-cache configuration. The image-cache
@@ -46,8 +46,13 @@ shrinkage. Backup-share retention, URL compaction, `temp_ui.xml` removal and gen
 outside this study. The app remains 1.2.5/code 9; completed v1.2.5 optimizations stay closed. This
 maintenance step precedes the v1.3 UI cycle; see the
 [canonical plan](../BINGEE_DEVELOPMENT_ROADMAP_AND_CHECKLIST.md#v126--global-audit-and-targeted-maintenance).
-No additional implementation is currently selected. Final verification of the v1.2.6 closure
-criteria remains open; completion of this investigation does not close the whole milestone.
+No additional implementation is selected. Final scope review, a Ponytail maintenance pass over
+the documentation changes, stored-evidence validation and the selected-scope checks are complete.
+The agreed v1.2.6 maintenance scope is closed on 2026-10-19 without an app-version change or
+publication. Spotless, JVM, lint and debug-build gates succeeded, with JVM results reused by Gradle
+as UP-TO-DATE; no new Android suite or cache experiment was required for this documentation-only
+change. The [closure record](../BINGEE_DEVELOPMENT_ROADMAP_AND_CHECKLIST.md#v126-closure-record--2026-10-19)
+retains verification limits and deferred work. No later milestone is started by this closure.
 
 ## Implemented in `v1.2.4`
 
