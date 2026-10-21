@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
@@ -16,7 +17,7 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -48,12 +49,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -100,7 +103,7 @@ internal fun HistoryContent(
 ) {
     val configuration = LocalConfiguration.current
     val locale = configuration.locales[0]
-    val pointWidth = (configuration.screenWidthDp - 64).coerceIn(224, 320).dp
+    val pointWidth = (configuration.screenWidthDp * 0.65f).coerceIn(216f, 280f).dp
     var information by rememberSaveable { mutableStateOf(false) }
     val listState = rememberLazyListState()
     val currentState by rememberUpdatedState(state)
@@ -163,11 +166,13 @@ internal fun HistoryContent(
                 Modifier.padding(horizontal = BingeeDimensions.screenPadding),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                HistoryFilter.entries.forEach { filter ->
-                    val label = when (filter) {
-                        HistoryFilter.ALL -> R.string.history_all
-                        HistoryFilter.MOVIES -> R.string.history_movies
-                        HistoryFilter.EPISODES -> R.string.history_episodes
+                listOf(HistoryFilter.MOVIES, HistoryFilter.EPISODES).forEach { filter ->
+                    val label = if (filter ==
+                        HistoryFilter.MOVIES
+                    ) {
+                        R.string.history_movies
+                    } else {
+                        R.string.history_episodes
                     }
                     FilterChip(selected = state.filter == filter, onClick = { onFilter(filter) }, label = {
                         Text(stringResource(label))
@@ -191,39 +196,59 @@ internal fun HistoryContent(
                 state.page.items.isEmpty() && state.error == null -> Box(
                     Modifier.fillMaxWidth().weight(1f).padding(BingeeDimensions.screenPadding),
                     contentAlignment = Alignment.Center
-                ) { Text(stringResource(R.string.history_empty), style = MaterialTheme.typography.bodyLarge) }
+                ) {
+                    Text(
+                        stringResource(
+                            if (state.filter ==
+                                HistoryFilter.MOVIES
+                            ) {
+                                R.string.history_empty_movies
+                            } else {
+                                R.string.history_empty_episodes
+                            }
+                        ),
+                        style = MaterialTheme.typography.bodyLarge
+                    )
+                }
                 else -> LazyRow(
                     Modifier.weight(1f).testTag("history-list"),
                     state = listState,
                     contentPadding = PaddingValues(horizontal = BingeeDimensions.screenPadding, vertical = 16.dp)
                 ) {
-                    items(state.page.items, key = { it.key }) { row ->
-                        Column(Modifier.width(pointWidth).fillMaxHeight()) {
-                            Text(
-                                row.day.formatLocalized(locale),
-                                style = MaterialTheme.typography.titleMedium,
-                                modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp).padding(horizontal = 12.dp)
-                                    .semantics { heading() }
-                            )
+                    itemsIndexed(state.page.items, key = { _, row -> row.key }) { index, row ->
+                        val above = index % 2 == 0
+                        Box(Modifier.width(pointWidth).fillMaxHeight()) {
                             HistoryRail(
                                 start = state.page.hasPrevious || row.key != state.page.items.first().key,
-                                end = state.page.hasNext || row.key != state.page.items.last().key
+                                end = state.page.hasNext || row.key != state.page.items.last().key,
+                                above = above,
+                                modifier = Modifier.align(Alignment.Center).testTag("history-rail-${row.key}")
                             )
-                            Surface(
-                                Modifier.padding(horizontal = 8.dp).fillMaxWidth(),
-                                shape = MaterialTheme.shapes.medium,
-                                color = MaterialTheme.colorScheme.surfaceContainer
+                            Column(
+                                Modifier.fillMaxWidth().fillMaxHeight(0.5f)
+                                    .align(if (above) Alignment.TopCenter else Alignment.BottomCenter)
+                                    .padding(top = if (above) 0.dp else 16.dp, bottom = if (above) 16.dp else 0.dp),
+                                verticalArrangement = if (above) Arrangement.Bottom else Arrangement.Top
                             ) {
-                                Column(Modifier.verticalScroll(rememberScrollState()).padding(16.dp)) {
-                                    HistoryRowContent(
-                                        row,
-                                        state.groups[row.key],
-                                        onOpenDetails,
-                                        onToggleGroup,
-                                        onGroupPage,
-                                        onGroupRetry
-                                    )
+                                if (!above) HistoryDate(row.day.formatLocalized(locale))
+                                Surface(
+                                    Modifier.weight(1f, fill = false).padding(horizontal = 8.dp).fillMaxWidth()
+                                        .testTag("history-card-${row.key}"),
+                                    shape = MaterialTheme.shapes.medium,
+                                    color = MaterialTheme.colorScheme.surfaceContainer
+                                ) {
+                                    Column(Modifier.verticalScroll(rememberScrollState()).padding(12.dp)) {
+                                        HistoryRowContent(
+                                            row,
+                                            state.groups[row.key],
+                                            onOpenDetails,
+                                            onToggleGroup,
+                                            onGroupPage,
+                                            onGroupRetry
+                                        )
+                                    }
                                 }
+                                if (above) HistoryDate(row.day.formatLocalized(locale))
                             }
                         }
                     }
@@ -249,18 +274,29 @@ internal fun HistoryContent(
 }
 
 @Composable
-private fun HistoryRail(start: Boolean, end: Boolean) {
+private fun HistoryDate(date: String) {
+    Text(
+        date,
+        style = MaterialTheme.typography.labelLarge,
+        textAlign = TextAlign.Center,
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 4.dp)
+            .semantics { heading() }
+    )
+}
+
+@Composable
+private fun HistoryRail(start: Boolean, end: Boolean, above: Boolean, modifier: Modifier = Modifier) {
     val line = MaterialTheme.colorScheme.outlineVariant
     val point = MaterialTheme.colorScheme.primary
-    Canvas(Modifier.fillMaxWidth().height(32.dp)) {
-        val y = 10.dp.toPx()
+    Canvas(modifier.fillMaxWidth().height(32.dp)) {
+        val y = size.height / 2
         drawLine(
             line,
             Offset(if (start) 0f else size.width / 2, y),
             Offset(if (end) size.width else size.width / 2, y),
             2.dp.toPx()
         )
-        drawLine(line, Offset(size.width / 2, y), Offset(size.width / 2, size.height), 2.dp.toPx())
+        drawLine(line, Offset(size.width / 2, y), Offset(size.width / 2, if (above) 0f else size.height), 2.dp.toPx())
         drawCircle(point, 6.dp.toPx(), Offset(size.width / 2, y))
     }
 }
@@ -275,27 +311,17 @@ private fun HistoryRowContent(
     onGroupRetry: (HistoryItem) -> Unit
 ) {
     Column(Modifier.fillMaxWidth()) {
-        Column(
-            Modifier.fillMaxWidth().clickable(enabled = row.detailsRef != null) {
+        Row(
+            Modifier.fillMaxWidth().heightIn(min = 48.dp).clickable(enabled = row.detailsRef != null) {
                 row.detailsRef?.let { onOpenDetails(it, row.mediaType) }
-            }.padding(bottom = 12.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
+            },
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            MediaPoster(row.title, row.posterUrl, width = 72.dp, height = 108.dp, contentDescription = null)
-            Text(row.title, style = MaterialTheme.typography.titleLarge)
-            Text(
-                stringResource(
-                    if (row.mediaType ==
-                        MediaType.MOVIE
-                    ) {
-                        R.string.history_movie
-                    } else {
-                        R.string.history_series
-                    }
-                ),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
+            if (LocalDensity.current.fontScale <= 1.3f) {
+                MediaPoster(row.title, row.posterUrl, width = 48.dp, height = 72.dp, contentDescription = null)
+            }
+            Text(row.title, modifier = Modifier.weight(1f), style = MaterialTheme.typography.titleMedium)
         }
         if (row.mediaType == MediaType.SERIES) {
             val description = stringResource(
@@ -314,7 +340,17 @@ private fun HistoryRowContent(
                 modifier = Modifier.testTag("history-group-${row.key}").semantics {
                     stateDescription = description
                 }
-            ) { Text(pluralStringResource(R.plurals.history_episode_count, row.episodeCount, row.episodeCount)) }
+            ) {
+                Text(
+                    if (group ==
+                        null
+                    ) {
+                        pluralStringResource(R.plurals.history_episode_count, row.episodeCount, row.episodeCount)
+                    } else {
+                        stringResource(R.string.history_hide_episodes)
+                    }
+                )
+            }
             if (group != null) {
                 when {
                     group.loading -> LinearProgressIndicator(Modifier.fillMaxWidth())

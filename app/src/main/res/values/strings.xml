@@ -593,12 +593,11 @@
     <string name="history_title">Your history</string>
     <string name="history_information">About your history</string>
     <string name="history_information_body">This timeline shows all retained watched progress, from oldest to newest, including titles outside your collection and specials. Points are evenly spaced; within a day their order is stable, not the actual viewing order. Dates use a movie date you entered, otherwise the recorded timestamp in the current device time zone. Bulk updates do not reconstruct actual viewing days. Future dates are hidden. Marking an item unwatched removes its entry. Repeat viewings are not retained. Specials appear here but are excluded from monthly statistics.</string>
-    <string name="history_all">All</string>
     <string name="history_movies">Movies</string>
-    <string name="history_episodes">Episodes</string>
-    <string name="history_movie">Movie</string>
-    <string name="history_series">TV series</string>
-    <string name="history_empty">No saved viewing activity.</string>
+    <string name="history_episodes">Series</string>
+    <string name="history_empty_movies">No saved movie viewings.</string>
+    <string name="history_empty_episodes">No saved episode viewings.</string>
+    <string name="history_hide_episodes">Hide episodes</string>
     <string name="history_expanded">Episodes expanded</string>
     <string name="history_collapsed">Episodes collapsed</string>
     <string name="history_special">Special %1$d</string>

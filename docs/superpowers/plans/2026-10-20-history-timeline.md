@@ -7,7 +7,18 @@ orizzontale continua parte dalla prima attività datata conservata, Film o Episo
 destra fino alla più recente. Ogni punto datato è collegato a poster e titolo; gli episodi restano
 raggruppati per serie/giorno ed espandibili. La spaziatura è regolare e non rappresenta una scala
 temporale; nello stesso giorno l'ordine è stabile, senza inventare l'ordine reale delle visioni.
-Restano i filtri Tutti/Film/Episodi. Scompaiono selettori mese/anno e pagine principali esplicite:
+Restano i filtri Film/Serie (chiave interna `EPISODES`); la successiva richiesta del 21 ottobre
+nasconde Tutti e apre su Film. Un ulteriore incremento approvato compatta poster/titolo, avvicina
+le date ai punti e corregge testi di chiusura e vuoti per filtro. I gruppi restano espandibili
+nella scheda, senza un pannello dedicato. Con font oltre 1.3 si omette il poster decorativo.
+I blocchi si alternano sopra/sotto un asse orizzontale centrale, con contenuto scorrevole nel proprio
+lato. Una vecchia selezione Tutti riparte da Film senza cursore, gruppi o ancora della vista mista;
+le selezioni singole conservano il ripristino esistente. Query, date e paginazione restano invariate.
+La verifica di questo incremento è riportata nelle
+[note v1.3.0](../../release-notes-1.3.0.md#two-filter-alternating-layout--2026-10-21):
+533 JVM, 14 Room e 28 esecuzioni UI/adattive passano, insieme a Spotless, lint e build debug/test.
+Accettazione del proprietario e TalkBack manuale restano aperti.
+Scompaiono selettori mese/anno e pagine principali esplicite:
 il caricamento ai bordi è automatico e limitato, con posizione conservata al ritorno dai Dettagli.
 
 Questa approvazione sostituisce i default precedenti di apertura sul mese corrente, ordine

@@ -58,6 +58,72 @@ class HistoryViewModelTest {
 
     @After fun teardown() = Dispatchers.resetMain()
 
+    @Test fun firstEntryUsesMoviesAndRejectsTheCombinedFilter() = runTest(dispatcher) {
+        val repo = HistoryFake()
+        val vm = HistoryViewModel(
+            repo,
+            TestCalendarDateSource(LocalDate.of(2026, 10, 20)),
+            RestoreGeneration(),
+            SavedStateHandle()
+        )
+        assertEquals(HistoryFilter.MOVIES, vm.uiState.value.filter)
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { vm.uiState.collect() }
+        runCurrent()
+        assertEquals(HistoryFilter.MOVIES, repo.lastQuery!!.filter)
+        vm.selectFilter(HistoryFilter.ALL)
+        runCurrent()
+        assertEquals(HistoryFilter.MOVIES, vm.uiState.value.filter)
+        assertEquals(HistoryFilter.MOVIES, repo.lastQuery!!.filter)
+    }
+
+    @Test fun legacyCombinedSelectionDiscardsItsCursorGroupsAndAnchor() = runTest(dispatcher) {
+        val saved = SavedStateHandle(
+            mapOf(
+                "history_horizontal" to true,
+                "history_filter" to "ALL",
+                "history_cursor" to "2026-10-02|1|1",
+                "history_backwards" to true,
+                "history_anchor" to "2026-10-02:SERIES:1",
+                "history_offset" to 17,
+                "history_groups" to arrayListOf("2026-10-02:SERIES:1|false")
+            )
+        )
+        val repo = HistoryFake()
+        val vm = HistoryViewModel(repo, TestCalendarDateSource(LocalDate.of(2026, 10, 20)), RestoreGeneration(), saved)
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { vm.uiState.collect() }
+        runCurrent()
+        assertEquals(HistoryFilter.MOVIES, repo.lastQuery!!.filter)
+        assertNull(repo.lastQuery!!.cursor)
+        assertTrue(!repo.lastQuery!!.backwards)
+        assertTrue(vm.uiState.value.groups.isEmpty())
+        assertNull(vm.anchorKey)
+        assertEquals(0, vm.anchorOffset)
+        assertEquals("MOVIES", saved.get<String>("history_filter"))
+    }
+
+    @Test fun savedSeriesSelectionKeepsItsWindowAndAnchor() = runTest(dispatcher) {
+        val saved = SavedStateHandle(
+            mapOf(
+                "history_horizontal" to true,
+                "history_filter" to "EPISODES",
+                "history_cursor" to "2026-10-01|1|1",
+                "history_anchor" to "2026-10-02:SERIES:1",
+                "history_offset" to 17,
+                "history_groups" to arrayListOf("2026-10-02:SERIES:1|false")
+            )
+        )
+        val repo = HistoryFake()
+        val vm = HistoryViewModel(repo, TestCalendarDateSource(LocalDate.of(2026, 10, 20)), RestoreGeneration(), saved)
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { vm.uiState.collect() }
+        runCurrent()
+        assertEquals(HistoryFilter.EPISODES, vm.uiState.value.filter)
+        assertEquals(HistoryFilter.EPISODES, repo.lastQuery!!.filter)
+        assertTrue(repo.lastQuery!!.cursor != null)
+        assertEquals("2026-10-02:SERIES:1", vm.anchorKey)
+        assertEquals(17, vm.anchorOffset)
+        assertEquals(1, vm.uiState.value.groups.size)
+    }
+
     @Test fun firstEntryQueriesAllRetainedHistoryInsteadOfTheCurrentMonth() = runTest(dispatcher) {
         val repo = HistoryFake()
         val vm = HistoryViewModel(
@@ -205,10 +271,10 @@ class HistoryViewModelTest {
             )
         val consumer = backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { vm.uiState.collect() }
         runCurrent()
-        vm.selectFilter(HistoryFilter.MOVIES)
+        vm.selectFilter(HistoryFilter.EPISODES)
         runCurrent()
         assertNull(repo.lastQuery!!.month)
-        assertEquals(HistoryFilter.MOVIES, repo.lastQuery!!.filter)
+        assertEquals(HistoryFilter.EPISODES, repo.lastQuery!!.filter)
         assertEquals(1, repo.activePages)
         consumer.cancel()
         advanceTimeBy(5_001)

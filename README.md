@@ -7,8 +7,10 @@ bingee is an early-stage, open-source Android app for tracking films and TV seri
 The code now targets bingee `1.3.0`/code 11; Details verification remains in progress; the approved horizontal History timeline is implemented with scoped automated and visual verification, while owner acceptance and a new manual TalkBack check remain pending, and the milestone remains open. The agreed v1.2.5 and v1.2.6 scopes remain closed; publication is a separate explicit action. See the [v1.3.0 implementation notes](docs/release-notes-1.3.0.md) for the changed Details/History behavior and remaining checks. It contains a local-first Compose app with Home, Search, the Your bingee personal dashboard, Continue Watching with one-tap episode tracking, two home screen widgets, Notification Center, settings subpages, secure TMDB credential management, Room v9 details and progress, a Room-first release calendar, approximate local notifications, versioned JSON backup/restore (v3 export, v1/v2/v3 import), an additive importer for documented TV Time JSON ZIP profiles, English/Italian localization, and a manual GitHub update checker. V3 carries theme, language, spoiler visibility, and six collection display modes; it rejects exports above the 50 MiB restore ceiling and aligns current episode/season limits with TV Time. TMDB is the only runtime media provider; animated and anime content is handled as ordinary TMDB Movies or TV Series. Published releases are listed in [GitHub releases](https://github.com/CydonianCitizen/Bingee/releases).
 
 Your bingee → Your history shows a continuous horizontal timeline of retained
-watched Movies and Episodes, oldest first, with dated points, type filters and expandable Series/day
-groups. Automatic bounded loading crosses months and years; regular spacing is not a time scale.
+watched Movies or Episodes, oldest first, with dated points alternating above/below the rail and
+expandable Series/day groups. Compact cards centre dates near their points; filters are Movies
+and Series, initially Movies. The combined view is hidden and episodes expand within their card.
+Automatic bounded loading crosses months and years; regular spacing is not a time scale.
 A Movie's manual watched date also
 determines its month in Statistics. Specials appear in History but remain excluded from the current
 statistics. Unwatch removes an item; repeat viewings and the original viewing time zone are not

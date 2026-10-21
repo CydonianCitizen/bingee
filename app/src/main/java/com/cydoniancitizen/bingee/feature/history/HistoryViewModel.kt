@@ -57,13 +57,14 @@ internal class HistoryViewModel @Inject constructor(
     private val savedZone = saved.get<String>("history_zone")
     private val savedToday = saved.get<String>("history_today")
     private val savedContextValid = saved.get<Boolean>("history_horizontal") == true &&
+        saved.get<String>("history_filter") in listOf(HistoryFilter.MOVIES.name, HistoryFilter.EPISODES.name) &&
         (savedZone == null || savedZone == initialContext.zoneId.id) &&
         (savedToday == null || savedToday == initialContext.today.toString())
     private val requests = MutableStateFlow(
         HistoryRequest(
             filter = runCatching {
                 HistoryFilter.valueOf(saved.get<String>("history_filter").orEmpty())
-            }.getOrDefault(HistoryFilter.ALL),
+            }.getOrNull()?.takeIf { it != HistoryFilter.ALL } ?: HistoryFilter.MOVIES,
             context = initialContext,
             restore = saved.get<Long>("history_restore") ?: restoreGeneration.changes.value.generation,
             restoring = restoreGeneration.changes.value.activeRestores > 0,
@@ -212,7 +213,7 @@ internal class HistoryViewModel @Inject constructor(
     }
 
     fun selectFilter(filter: HistoryFilter) {
-        if (filter == requests.value.filter) return
+        if (filter == HistoryFilter.ALL || filter == requests.value.filter) return
         clearAnchor()
         change(requests.value.copy(filter = filter, cursor = null, backwards = false, groups = emptyMap()))
     }

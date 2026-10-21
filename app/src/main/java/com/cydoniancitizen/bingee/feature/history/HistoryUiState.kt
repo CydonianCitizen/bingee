@@ -13,7 +13,7 @@ internal data class HistoryGroupState(
 )
 
 internal data class HistoryUiState(
-    val filter: HistoryFilter = HistoryFilter.ALL,
+    val filter: HistoryFilter = HistoryFilter.MOVIES,
     val loading: Boolean = true,
     val loadingMore: Boolean = false,
     val page: HistoryPage = HistoryPage(),

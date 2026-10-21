@@ -601,12 +601,11 @@
     <string name="history_title">La tua storia</string>
     <string name="history_information">Informazioni sulla cronologia</string>
     <string name="history_information_body">La timeline mostra tutti i progressi visti conservati, dai meno recenti ai più recenti, inclusi titoli fuori raccolta e speciali. I punti hanno spaziatura uniforme; nello stesso giorno seguono un ordine stabile, non quello reale di visione. Usa la data manuale del film, se presente, altrimenti il timestamp registrato nel fuso attuale del dispositivo. Le spunte massive non ricostruiscono i giorni reali di visione. Le date future sono nascoste. Togliere lo stato visto rimuove la voce. Le visioni ripetute non sono conservate. Gli speciali compaiono qui ma sono esclusi dalle statistiche mensili.</string>
-    <string name="history_all">Tutti</string>
     <string name="history_movies">Film</string>
-    <string name="history_episodes">Episodi</string>
-    <string name="history_movie">Film</string>
-    <string name="history_series">Serie TV</string>
-    <string name="history_empty">Nessuna attività di visione salvata.</string>
+    <string name="history_episodes">Serie</string>
+    <string name="history_empty_movies">Nessuna visione di film salvata.</string>
+    <string name="history_empty_episodes">Nessuna visione di episodi salvata.</string>
+    <string name="history_hide_episodes">Nascondi episodi</string>
     <string name="history_expanded">Episodi espansi</string>
     <string name="history_collapsed">Episodi compressi</string>
     <string name="history_special">Speciale %1$d</string>

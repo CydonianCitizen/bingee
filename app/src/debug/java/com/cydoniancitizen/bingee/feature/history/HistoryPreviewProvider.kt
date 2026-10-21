@@ -7,6 +7,7 @@ import androidx.compose.ui.tooling.preview.PreviewParameterProvider
 import com.cydoniancitizen.bingee.core.designsystem.theme.BingeeTheme
 import com.cydoniancitizen.bingee.core.model.HistoryEpisode
 import com.cydoniancitizen.bingee.core.model.HistoryEpisodePage
+import com.cydoniancitizen.bingee.core.model.HistoryFilter
 import com.cydoniancitizen.bingee.core.model.HistoryItem
 import com.cydoniancitizen.bingee.core.model.HistoryPage
 import com.cydoniancitizen.bingee.core.model.MediaType
@@ -37,11 +38,12 @@ internal class HistoryPreviewProvider : PreviewParameterProvider<HistoryUiState>
         HistoryUiState(),
         HistoryUiState(loading = false),
         HistoryUiState(loading = false, error = AppError.LocalStorageFailure),
-        HistoryUiState(loading = false, page = HistoryPage(listOf(movie))),
-        HistoryUiState(loading = false, page = HistoryPage(listOf(series))),
+        HistoryUiState(loading = false, page = HistoryPage(listOf(movie, movie.copy(mediaId = 3)))),
+        HistoryUiState(filter = HistoryFilter.EPISODES, loading = false, page = HistoryPage(listOf(series))),
         HistoryUiState(
+            filter = HistoryFilter.EPISODES,
             loading = false,
-            page = HistoryPage(listOf(movie, series)),
+            page = HistoryPage(listOf(series.copy(day = series.day.minusDays(1)), series)),
             groups = mapOf(
                 series.key to HistoryGroupState(
                     false,

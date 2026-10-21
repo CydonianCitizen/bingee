@@ -349,6 +349,50 @@ Implementation and scoped automatic/visual verification are complete. Owner acce
 manual TalkBack check remain pending. The overall v1.3.0 milestone and postponed Details M5 manual
 gate remain open. No commit, push, signing or publication was performed.
 
+### Two-filter alternating layout — 2026-10-21
+
+The owner's follow-up removes the combined filter from History and opens on Movies. Episodes remains
+the separate Series/day view. A saved combined selection starts again on Movies without its old
+cursor, groups or viewport anchor; existing Movies/Episodes selections retain their restoration.
+Consecutive points place content above and below one central rail. Each card keeps its existing
+vertical scroll so expanded episodes and long text remain reachable within that side. The bounded
+horizontal windows, dates, queries, persistence, backup format, dependencies and app version are unchanged.
+
+Verification: all 533 JVM tests execute without failures/errors/skips; Spotless, lint and standard
+debug/AndroidTest builds pass. On the isolated HONOR / Android 13 installation, 14 Room History tests
+pass, followed by 10 UI/navigation tests in each of EN/IT and 8 focused executions across four
+controlled width/font/theme combinations (320/360/411/600 dp, font 1.0/1.3/1.5). Geometry checks cover
+the shared rail, alternating sides and forward/reverse window replacement; expanded groups and
+episode pagination are reachable on both sides. Native screenshots confirm narrow dark and wider
+light layouts. These controlled phone configurations do not certify a physical tablet or manual
+TalkBack. The temporary runner is removed; package inventory and accessibility/font settings are
+preserved. Owner acceptance, manual TalkBack and the overall milestone remain open.
+
+### Compact History cards and clearer copy — 2026-10-21
+
+The owner approved compact cards, closer dates and corrected text while retaining the alternating
+rail and existing behavior. Smaller posters sit beside titles; the repeated media-type line is
+removed and the horizontal node width is reduced. Above font scale 1.3 decorative posters are
+omitted to preserve text space. Dates use centred labels next to their points. The visible filters
+are Movies/Series, with the existing internal Episodes value and Series/day grouping unchanged.
+Expanded groups offer Hide episodes and empty text describes the selected media type. Episodes
+continue to expand and scroll inside their own card; no dedicated panel is introduced.
+
+Room 9, Backup v3, date rules, queries, automatic windows, Details navigation, dependencies and
+v1.3.0/code 11 remain unchanged.
+
+Verification on the isolated HONOR / Android 13 app: 28 IT tests (13 UI, one navigation, 14 Room),
+14 EN UI/navigation tests and 16 focused executions across 320/360/411/600 dp with font 1.0/1.3/1.5
+pass. Four new UI regressions fail before the change and pass afterward: compact dimensions without
+the repeated type, actual date-text alignment/distance on both sides, group-toggle wording and
+type-specific empty states. Existing tests retain automatic forward/reverse windows, Details return,
+recreation and episode pagination on both sides. The full JVM suite executes 533 tests without
+failures/errors/skips. Native screenshots confirm the compact layout in light/dark and the large-font
+poster omission. These are controlled phone configurations, not physical tablet or manual TalkBack
+proof. The temporary runner is removed; package inventory and accessibility/font settings are preserved.
+The final host gate completes on 2026-10-22: Spotless, lint and standard debug/AndroidTest builds
+pass. Owner acceptance and manual TalkBack remain pending; v1.3.0 is not closed by this increment.
+
 ## History H1–H6 checkpoint — 2026-10-20
 
 Historical checkpoint: on 2026-10-21 the owner approved replacing the monthly UI with a continuous

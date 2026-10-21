@@ -217,6 +217,14 @@ native/restore/adaptive/offline checks, Spotless, lint and debug/test builds pas
 plan. Owner acceptance and a new manual TalkBack check remain pending. The H1–H6 evidence below
 applies to the earlier monthly UI; v1.3.0 and the postponed Details M5 manual gate remain open.
 
+The owner's subsequent refinement keeps only Movies/Series, opens on Movies and alternates
+content above/below a central rail. Existing single-type saved selections and bounded loading remain;
+a saved combined selection clears its transient cursor/groups/anchor and restarts on Movies.
+Room, date rules, backup format and application version remain unchanged.
+The next approved refinement compacts each card, centres its date near the point and corrects
+filter, group-toggle and empty-state wording. Series/day groups keep their existing inline
+expansion and internal Episodes filter; no separate episode panel is introduced.
+
 On 2026-10-20 the owner assigned [History H1–H6](superpowers/plans/2026-10-20-history-timeline.md)
 to v1.3.0/code 11. This is an offline diary of retained watched progress, with grouped episodes,
 month/type selection and bounded replacement pages. Movie manual dates take precedence in both

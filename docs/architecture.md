@@ -32,8 +32,17 @@ The owner approved a continuous horizontal timeline on 2026-10-21. Its implement
 automated/visual checks pass; owner acceptance and manual TalkBack for the new interaction remain
 pending. The previous H1–H6 proof covers the superseded monthly UI. The current
 contract starts at the oldest retained dated Movie/Episode and advances to newer activity at the
-right. Dated points connect to title/poster content, with expandable Series/day groups and regular
-spacing that does not imply elapsed-time scale. Type filters remain; month/year controls and
+right. Dated points alternate title/poster content above and below a shared horizontal rail, with
+expandable Series/day groups and regular spacing that does not imply elapsed-time scale. Only
+Movies and Series filters are exposed; Movies is the initial selection. The Series filter retains
+the internal `EPISODES` value and Series/day grouping. A saved combined selection
+returns to Movies with its transient cursor, groups and anchor cleared; saved single-type selections
+keep their existing restoration behavior. Cards scroll vertically within their side of the rail
+to keep long content and episode controls reachable. Compact nodes use a smaller poster beside the
+title, omit the repeated media type and centre the date near its point. Decorative posters are
+omitted above font scale 1.3 to preserve text space. Open groups offer Hide episodes; empty states
+describe the selected media type. Episode expansion remains inline, without a dedicated panel.
+Month/year controls and
 explicit main-page buttons are removed. No persisted data or temporal semantics change.
 
 Your history / La tua storia is a read-only view of currently retained watched progress, not an
