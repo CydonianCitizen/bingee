@@ -32,6 +32,8 @@ import androidx.room.TypeConverters
 internal abstract class BingeeDatabase : RoomDatabase() {
     abstract fun libraryDao(): LibraryDao
 
+    abstract fun historyDao(): HistoryDao
+
     abstract fun detailsDao(): DetailsDao
 
     abstract fun seriesDao(): SeriesDao

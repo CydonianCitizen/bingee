@@ -100,7 +100,8 @@ internal abstract class LibraryDao {
         @ColumnInfo(name = "is_abandoned") val isAbandoned: Boolean,
         @ColumnInfo(name = "last_progress_at") val lastProgressAt: Instant?,
         @ColumnInfo(name = "next_season_number") val nextSeasonNumber: Int?,
-        @ColumnInfo(name = "next_episode_number") val nextEpisodeNumber: Int?
+        @ColumnInfo(name = "next_episode_number") val nextEpisodeNumber: Int?,
+        @ColumnInfo(name = "series_completed_at") val seriesCompletedAt: Instant? = null
     )
 
     @Transaction
@@ -538,6 +539,7 @@ internal abstract class LibraryDao {
                movie_watch_progress.watched_at AS movie_watched_at,
                movie_watch_progress.watched_date AS movie_watched_date,
                series_watch_progress.watched_date AS series_watched_date,
+               series_watch_progress.completed_at AS series_completed_at,
                COALESCE(series_progress.watched_episodes, 0) AS watched_episodes,
                COALESCE(series_progress.trackable_episodes, 0) AS trackable_episodes,
                COALESCE(series_progress.completed_seasons, 0) AS completed_seasons,

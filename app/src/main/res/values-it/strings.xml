@@ -216,7 +216,7 @@
     <string name="detail_screen_title">Dettagli titolo</string>
     <string name="action_save">Salva</string>
     <string name="detail_back">Indietro</string>
-    <string name="detail_refresh">Aggiorna dettagli</string>
+    <string name="detail_refresh">Aggiorna dettagli del titolo</string>
     <string name="detail_loading">Caricamento dettagli titolo</string>
     <string name="detail_error_title">Dettagli non disponibili</string>
     <string name="detail_stale_data">Visualizzazione dettagli salvati durante la verifica aggiornamenti.</string>
@@ -375,6 +375,8 @@
     <string name="detail_seasons_loading">Caricamento stagioni salvate</string>
     <string name="detail_seasons_empty">I metadati delle stagioni non sono ancora disponibili.</string>
     <string name="detail_series_progress">%1$d di %2$d episodi regolari visti · %3$d di %4$d stagioni completate</string>
+    <string name="detail_series_local_progress">Dati episodi locali: %1$s</string>
+    <string name="detail_movie_watched">Visto</string>
     <string name="detail_specials_title">Speciali</string>
     <string name="detail_season_fallback">Stagione %1$d</string>
     <string name="detail_season_number_and_count">Stagione %1$d · %2$d episodi</string>
@@ -383,7 +385,7 @@
     <string name="detail_collapse_season">Nascondi episodi per %1$s</string>
     <string name="detail_season_refreshing">Visualizzazione episodi salvati durante l\'aggiornamento dei metadati.</string>
     <string name="detail_season_stale">I metadati degli episodi in cache potrebbero non essere aggiornati.</string>
-    <string name="detail_refresh_season">Aggiorna metadati stagione</string>
+    <string name="detail_refresh_season">Aggiorna episodi della stagione</string>
     <string name="detail_mark_season_watched">Segna come visti gli episodi tracciabili</string>
     <string name="detail_mark_season_unwatched">Segna stagione come non vista</string>
     <string name="detail_mark_previous_title">Segnare anche gli episodi precedenti?</string>
@@ -583,4 +585,38 @@
     <string name="tvtime_import_episode_group">%1$s · stagione %2$d · %3$d episodi visti</string>
     <string name="tvtime_import_skip_season">Salta questa stagione</string>
     <string name="tvtime_import_invalid_records_summary">%1$d record sorgente non validi non possono essere accettati.</string>
+    <string name="detail_tracking_outside">Non nella tua raccolta</string>
+    <string name="detail_tracking_watch_later">Da vedere</string>
+    <string name="detail_tracking_watching">In visione</string>
+    <string name="detail_tracking_watched">Vista</string>
+    <string name="detail_tracking_caught_up">In pari</string>
+    <string name="detail_tracking_available_watched">Episodi disponibili visti</string>
+    <string name="detail_tracking_abandoned">Abbandonata</string>
+    <string name="detail_tracking_incomplete">Dati degli episodi incompleti. Completamento non verificabile.</string>
+    <string name="detail_next_episode_position">Prossimo: S%1$d E%2$d</string>
+    <string name="detail_next_episode_title">Prossimo: S%1$d E%2$d · %3$s</string>
+    <string name="detail_go_to_episode">Vai all’episodio</string>
+    <string name="available_completion_date_label">Completamento degli episodi disponibili</string>
+    <string name="available_completion_date_edit">Modifica data degli episodi disponibili</string>
+    <string name="history_title">La tua storia</string>
+    <string name="history_information">Informazioni sulla cronologia</string>
+    <string name="history_information_body">La timeline mostra tutti i progressi visti conservati, dai meno recenti ai più recenti, inclusi titoli fuori raccolta e speciali. I punti hanno spaziatura uniforme; nello stesso giorno seguono un ordine stabile, non quello reale di visione. Usa la data manuale del film, se presente, altrimenti il timestamp registrato nel fuso attuale del dispositivo. Le spunte massive non ricostruiscono i giorni reali di visione. Le date future sono nascoste. Togliere lo stato visto rimuove la voce. Le visioni ripetute non sono conservate. Gli speciali compaiono qui ma sono esclusi dalle statistiche mensili.</string>
+    <string name="history_all">Tutti</string>
+    <string name="history_movies">Film</string>
+    <string name="history_episodes">Episodi</string>
+    <string name="history_movie">Film</string>
+    <string name="history_series">Serie TV</string>
+    <string name="history_empty">Nessuna attività di visione salvata.</string>
+    <string name="history_expanded">Episodi espansi</string>
+    <string name="history_collapsed">Episodi compressi</string>
+    <string name="history_special">Speciale %1$d</string>
+    <string name="history_episode_number">S%1$d E%2$d</string>
+    <string name="history_next_page">Pagina successiva</string>
+    <string name="history_previous_episodes">Episodi precedenti</string>
+    <string name="history_next_episodes">Episodi successivi</string>
+    <plurals name="history_episode_count">
+        <item quantity="one">Mostra %1$d episodio</item>
+        <item quantity="many">Mostra %1$d episodi</item>
+        <item quantity="other">Mostra %1$d episodi</item>
+    </plurals>
 </resources>

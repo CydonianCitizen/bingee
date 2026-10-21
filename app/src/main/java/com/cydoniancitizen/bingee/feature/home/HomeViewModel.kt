@@ -9,8 +9,10 @@ import com.cydoniancitizen.bingee.core.model.EpisodePosition
 import com.cydoniancitizen.bingee.core.model.ExternalMediaRef
 import com.cydoniancitizen.bingee.core.model.MediaType
 import com.cydoniancitizen.bingee.core.model.ReleaseDateGroup
+import com.cydoniancitizen.bingee.core.model.ReleaseEvent
 import com.cydoniancitizen.bingee.core.model.groupReleaseEvents
 import com.cydoniancitizen.bingee.core.model.releaseCalendarStartDate
+import com.cydoniancitizen.bingee.core.model.releaseEventComparator
 import com.cydoniancitizen.bingee.core.result.AppError
 import com.cydoniancitizen.bingee.core.result.AppResult
 import com.cydoniancitizen.bingee.domain.calendar.CalendarDateSource
@@ -223,7 +225,20 @@ internal class HomeViewModel @Inject constructor(
                 mutableUiState.update { previous ->
                     val content = when (events) {
                         is AppResult.Success -> {
-                            val groups = groupReleaseEvents(events.value, today)
+                            // Prefer today's/next release; recent-only series keep their latest release.
+                            val seenSeries = mutableSetOf<ExternalMediaRef>()
+                            val visibleEvents = events.value.sortedWith(
+                                compareBy<ReleaseEvent> { it.eventDate.isBefore(today) }
+                                    .thenBy {
+                                        val day = it.eventDate.toEpochDay()
+                                        if (it.eventDate.isBefore(today)) -day else day
+                                    }
+                                    .thenBy { it.episodeNumber == null }
+                                    .thenBy { it.seasonNumber ?: Int.MAX_VALUE }
+                                    .thenBy { it.episodeNumber ?: Int.MAX_VALUE }
+                                    .then(releaseEventComparator)
+                            ).filter { it.mediaType != MediaType.SERIES || seenSeries.add(it.mediaRef) }
+                            val groups = groupReleaseEvents(visibleEvents, today)
                             if (groups.isEmpty()) HomeContentState.Empty else HomeContentState.Events(groups)
                         }
                         is AppResult.Failure -> {

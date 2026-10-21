@@ -92,7 +92,8 @@ class DefaultLibraryRepositoryTest {
                 database.ratingDao(),
                 Clock.fixed(now, ZoneOffset.UTC),
                 dateSource,
-                Dispatchers.Default
+                Dispatchers.Default,
+                historyDatabase = database
             )
     }
 
@@ -145,7 +146,8 @@ class DefaultLibraryRepositoryTest {
             database.ratingDao(),
             Clock.fixed(now, ZoneOffset.UTC),
             dateSource,
-            dispatcher
+            dispatcher,
+            historyDatabase = database
         )
 
         val result = withContext(Dispatchers.Main) { observedRepository.observeEntries().first() }

@@ -46,6 +46,7 @@ object AppRoute {
     const val SETTINGS_ABOUT = "settings/about"
     const val NOTIFICATIONS = "notifications"
     const val STATISTICS = "statistics"
+    const val HISTORY = "history"
     const val PROFILE_COLLECTION = "profile/collection/{collection}"
 
     fun profileCollection(collection: String): String = "profile/collection/$collection"

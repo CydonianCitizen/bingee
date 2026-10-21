@@ -254,7 +254,8 @@ class SeriesAndProgressDaoTest {
             database.ratingDao(),
             Clock.fixed(now, ZoneOffset.UTC),
             dateSource,
-            kotlinx.coroutines.Dispatchers.Default
+            kotlinx.coroutines.Dispatchers.Default,
+            historyDatabase = database
         )
 
         // Missing season 2 episodes mean completion cannot be claimed, so the canonical state stays
@@ -460,7 +461,7 @@ class SeriesAndProgressDaoTest {
             progressDao.markEpisodeWatched(MediaSource.TMDB, "101", today, now)
         )
         assertEquals(
-            ProgressWriteOutcome.SUCCESS,
+            ProgressWriteOutcome.INCOMPLETE,
             progressDao.setMediaWatchedDate(
                 MediaSource.TMDB,
                 MediaType.SERIES,
@@ -488,6 +489,51 @@ class SeriesAndProgressDaoTest {
         val row = libraryDao.observeLibraryProgress(today).first().single { it.localMediaId == 1L }
         assertEquals(0, row.watchedEpisodes)
         assertEquals(0, row.trackableEpisodes)
+    }
+
+    @Test
+    fun completionEvidenceSurvivesClearingDateAndMissingRecordRejectsLaterSave() = runBlocking {
+        storeRegularEpisodes()
+        progressDao.markEpisodeWatched(MediaSource.TMDB, "101", today, now)
+        progressDao.markEpisodeWatched(MediaSource.TMDB, "102", today, now.plusSeconds(1))
+        val row = libraryDao.observeLibraryProgress(today).first().single { it.localMediaId == 1L }
+        assertEquals(now.plusSeconds(1), row.seriesCompletedAt)
+        assertNull(row.seriesWatchedDate)
+        val repository = DefaultLibraryRepository(
+            libraryDao,
+            progressDao,
+            database.ratingDao(),
+            Clock.fixed(now, ZoneOffset.UTC),
+            dateSource,
+            kotlinx.coroutines.Dispatchers.Default,
+            historyDatabase = database
+        )
+        val entry = (
+            repository.observeEntry(
+                com.cydoniancitizen.bingee.core.model.ExternalMediaRef(MediaSource.TMDB, "100"),
+                MediaType.SERIES
+            ).first() as AppResult.Success
+            ).value
+        assertEquals(now.plusSeconds(1), entry?.seriesCompletedAt)
+        progressDao.setMediaWatchedDate(MediaSource.TMDB, MediaType.SERIES, "100", today, now)
+        progressDao.setMediaWatchedDate(MediaSource.TMDB, MediaType.SERIES, "100", null, now)
+        assertEquals(
+            now.plusSeconds(1),
+            libraryDao.observeLibraryProgress(today).first()
+                .single { it.localMediaId == 1L }.seriesCompletedAt
+        )
+        progressDao.markEpisodeUnwatched(MediaSource.TMDB, "101")
+        assertEquals(
+            ProgressWriteOutcome.INCOMPLETE,
+            progressDao.setMediaWatchedDate(MediaSource.TMDB, MediaType.SERIES, "100", today, now)
+        )
+        assertTrue(database.portableSnapshotDao().readSnapshot().seriesProgress.isEmpty())
+        val rejected = repository.setWatchedDate(
+            com.cydoniancitizen.bingee.core.model.ExternalMediaRef(MediaSource.TMDB, "100"),
+            MediaType.SERIES,
+            today
+        )
+        assertEquals(AppResult.Failure(com.cydoniancitizen.bingee.core.result.AppError.InvalidInput), rejected)
     }
 
     private suspend fun storedSeason(externalId: String) =

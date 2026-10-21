@@ -4,6 +4,7 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.aspectRatio
@@ -40,6 +41,7 @@ import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
@@ -85,38 +87,13 @@ internal fun LazyListScope.tvSeriesItems(
                 modifier = Modifier.semantics { heading() },
                 style = MaterialTheme.typography.titleLarge
             )
-            when (content) {
-                SeriesContentState.NotApplicable -> Unit
-                SeriesContentState.Loading -> Text(stringResource(R.string.detail_seasons_loading))
-                is SeriesContentState.Error -> Text(
-                    text = stringResource(content.error.toUiError().messageRes),
-                    color = MaterialTheme.colorScheme.error
-                )
-                is SeriesContentState.Ready -> if (content.progress.trackableEpisodes == 0) {
-                    Text(stringResource(R.string.library_progress_unavailable))
-                } else {
-                    Column(verticalArrangement = Arrangement.spacedBy(BingeeDimensions.elementSpacing)) {
-                        Text(
-                            stringResource(
-                                R.string.detail_series_progress,
-                                content.progress.watchedEpisodes,
-                                content.progress.trackableEpisodes,
-                                content.progress.completedSeasons,
-                                content.progress.trackableSeasons
-                            )
-                        )
-                        WatchProgressBar(content.progress.fraction)
-                    }
-                }
-            }
         }
     }
     if (content !is SeriesContentState.Ready) return
     val seasonItems: (List<CachedSeason>) -> Unit = { seasons ->
         seasons.forEach { season ->
             val ref = season.season.externalRef
-            val hasEpisodes = ref in state.expandedSeasons && season.episodesFetchedAt != null &&
-                season.episodes.isNotEmpty()
+            val hasEpisodes = ref in state.expandedSeasons && season.episodes.isNotEmpty()
             item(key = "season:${ref.source}:${ref.externalId}", contentType = "seasonHeader") {
                 SeasonCard(season, state, onToggleExpanded, onRetrySeason, onToggleSeason, onOpenSettings, modifier)
             }
@@ -223,7 +200,7 @@ private fun SeasonCard(
             } else {
                 stringResource(R.string.detail_season_fallback, season.season.seasonNumber)
             }
-    val hasEpisodes = expanded && season.episodesFetchedAt != null && season.episodes.isNotEmpty()
+    val hasEpisodes = expanded && season.episodes.isNotEmpty()
     Card(
         modifier = modifier.fillMaxWidth().padding(bottom = if (hasEpisodes) 0.dp else BingeeDimensions.contentSpacing),
         shape = if (hasEpisodes) {
@@ -350,7 +327,7 @@ private fun SeasonHeader(
                 contentDescription = null,
                 modifier = Modifier.rotate(chevronRotation)
             )
-            if (season.episodesFetchedAt != null) {
+            if (season.episodesFetchedAt != null || season.episodes.isNotEmpty()) {
                 IconButton(onClick = onRefreshSeason, enabled = refreshEnabled) {
                     Icon(
                         imageVector = Icons.Default.Refresh,
@@ -413,97 +390,103 @@ private fun SeasonWatchedCheckbox(progress: SeasonProgress, enabled: Boolean, on
 
 @Composable
 private fun EpisodeRow(episode: TrackedEpisode, hideSpoilers: Boolean, pending: Boolean, onToggle: () -> Unit) {
-    val metadata = episode.episode
-    val watched = episode.watchState is EpisodeWatchState.Watched
-    val spoilerHidden = hideSpoilers && !watched
-    val unavailable = episode.watchState == EpisodeWatchState.Unavailable
-    val locale = LocalConfiguration.current.locales[0]
-    val watchStateDescription = when {
-        pending -> stringResource(R.string.detail_progress_updating)
-        unavailable -> stringResource(R.string.detail_episode_future)
-        watched -> stringResource(R.string.detail_episode_watched_state)
-        else -> stringResource(R.string.detail_episode_unwatched_state)
-    }
-    Row(
-        // The whole row is the toggle. Merging the descendants and leaving the Checkbox without a
-        // callback of its own keeps this one TalkBack target instead of a row plus a checkbox.
-        modifier = Modifier
-            .fillMaxWidth()
-            .toggleable(
-                value = watched,
-                enabled = !pending && !unavailable,
-                role = Role.Checkbox,
-                onValueChange = { onToggle() }
-            )
-            .semantics(mergeDescendants = true) { stateDescription = watchStateDescription },
-        horizontalArrangement = Arrangement.spacedBy(BingeeDimensions.elementSpacing),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        val shape = MaterialTheme.shapes.small
-        val imageModifier = Modifier
-            .width(120.dp)
-            .aspectRatio(16f / 9f)
-            .clip(shape)
-            .then(if (spoilerHidden) Modifier.blur(SpoilerBlur, BlurredEdgeTreatment(shape)) else Modifier)
-        val placeholder = painterResource(R.drawable.poster_placeholder)
-        if (metadata.stillUrl == null) {
-            Image(
-                painter = placeholder,
-                // The toggleable row owns the combined description of this episode.
-                contentDescription = null,
-                modifier = imageModifier,
-                contentScale = ContentScale.Crop
-            )
-        } else {
-            AsyncImage(
-                model = metadata.stillUrl,
-                contentDescription = null,
-                placeholder = placeholder,
-                error = placeholder,
-                fallback = placeholder,
-                modifier = imageModifier,
-                contentScale = ContentScale.Crop
-            )
+    BoxWithConstraints {
+        // Decorative stills yield to the full title when narrow rows or large fonts need the space.
+        val showThumbnail = maxWidth >= 320.dp && LocalDensity.current.fontScale <= 1.2f
+        val metadata = episode.episode
+        val watched = episode.watchState is EpisodeWatchState.Watched
+        val spoilerHidden = hideSpoilers && !watched
+        val unavailable = episode.watchState == EpisodeWatchState.Unavailable
+        val locale = LocalConfiguration.current.locales[0]
+        val watchStateDescription = when {
+            pending -> stringResource(R.string.detail_progress_updating)
+            unavailable -> stringResource(R.string.detail_episode_future)
+            watched -> stringResource(R.string.detail_episode_watched_state)
+            else -> stringResource(R.string.detail_episode_unwatched_state)
         }
-        Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Text(
-                if (spoilerHidden) {
-                    stringResource(R.string.detail_episode_title_hidden, metadata.episodeNumber)
+        Row(
+            // The whole row is the toggle. Merging the descendants and leaving the Checkbox without a
+            // callback of its own keeps this one TalkBack target instead of a row plus a checkbox.
+            modifier = Modifier
+                .fillMaxWidth()
+                .toggleable(
+                    value = watched,
+                    enabled = !pending && !unavailable,
+                    role = Role.Checkbox,
+                    onValueChange = { onToggle() }
+                )
+                .semantics(mergeDescendants = true) { stateDescription = watchStateDescription },
+            horizontalArrangement = Arrangement.spacedBy(BingeeDimensions.elementSpacing),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            if (showThumbnail) {
+                val shape = MaterialTheme.shapes.small
+                val imageModifier = Modifier
+                    .width(120.dp)
+                    .aspectRatio(16f / 9f)
+                    .clip(shape)
+                    .then(if (spoilerHidden) Modifier.blur(SpoilerBlur, BlurredEdgeTreatment(shape)) else Modifier)
+                val placeholder = painterResource(R.drawable.poster_placeholder)
+                if (metadata.stillUrl == null) {
+                    Image(
+                        painter = placeholder,
+                        // The toggleable row owns the combined description of this episode.
+                        contentDescription = null,
+                        modifier = imageModifier,
+                        contentScale = ContentScale.Crop
+                    )
                 } else {
-                    stringResource(R.string.detail_episode_title, metadata.episodeNumber, metadata.title)
-                },
-                style = MaterialTheme.typography.titleSmall
-            )
-            // Air date and runtime are secondary to the title, which the default body style left
-            // larger than the title it belongs to.
-            val metaStyle = MaterialTheme.typography.bodySmall
-            val metaColor = MaterialTheme.colorScheme.onSurfaceVariant
-            metadata.airDate?.let {
+                    AsyncImage(
+                        model = metadata.stillUrl,
+                        contentDescription = null,
+                        placeholder = placeholder,
+                        error = placeholder,
+                        fallback = placeholder,
+                        modifier = imageModifier,
+                        contentScale = ContentScale.Crop
+                    )
+                }
+            }
+            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 Text(
-                    stringResource(R.string.detail_episode_air_date, it.formatLocalized(locale)),
+                    if (spoilerHidden) {
+                        stringResource(R.string.detail_episode_title_hidden, metadata.episodeNumber)
+                    } else {
+                        stringResource(R.string.detail_episode_title, metadata.episodeNumber, metadata.title)
+                    },
+                    style = MaterialTheme.typography.titleSmall
+                )
+                // Air date and runtime are secondary to the title, which the default body style left
+                // larger than the title it belongs to.
+                val metaStyle = MaterialTheme.typography.bodySmall
+                val metaColor = MaterialTheme.colorScheme.onSurfaceVariant
+                metadata.airDate?.let {
+                    Text(
+                        stringResource(R.string.detail_episode_air_date, it.formatLocalized(locale)),
+                        style = metaStyle,
+                        color = metaColor
+                    )
+                } ?: Text(
+                    stringResource(R.string.detail_episode_air_date_unknown),
                     style = metaStyle,
                     color = metaColor
                 )
-            } ?: Text(
-                stringResource(R.string.detail_episode_air_date_unknown),
-                style = metaStyle,
-                color = metaColor
-            )
-            metadata.runtime?.let {
-                Text(stringResource(R.string.detail_minutes, it.toMinutes()), style = metaStyle, color = metaColor)
+                metadata.runtime?.let {
+                    Text(stringResource(R.string.detail_minutes, it.toMinutes()), style = metaStyle, color = metaColor)
+                }
             }
+            Checkbox(
+                checked = watched,
+                onCheckedChange = null,
+                // The season header's checkbox is clickable, so Material centres its 24dp box in a 48dp
+                // touch target, leaving 12dp of air on each side. This one has no callback of its own
+                // and would otherwise sit flush against the card padding, 12dp to the right of the
+                // checkbox it belongs under. Padding one side costs the title 12dp; centring it in a
+                // 48dp box would cost 24dp and wrap episode titles that fit today at font scale 1.0.
+                modifier = Modifier.padding(end = 12.dp),
+                enabled = !pending && !unavailable
+            )
         }
-        Checkbox(
-            checked = watched,
-            onCheckedChange = null,
-            // The season header's checkbox is clickable, so Material centres its 24dp box in a 48dp
-            // touch target, leaving 12dp of air on each side. This one has no callback of its own
-            // and would otherwise sit flush against the card padding, 12dp to the right of the
-            // checkbox it belongs under. Padding one side costs the title 12dp; centring it in a
-            // 48dp box would cost 24dp and wrap episode titles that fit today at font scale 1.0.
-            modifier = Modifier.padding(end = 12.dp),
-            enabled = !pending && !unavailable
-        )
     }
 }
 

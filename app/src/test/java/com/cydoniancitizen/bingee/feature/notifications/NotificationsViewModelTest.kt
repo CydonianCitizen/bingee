@@ -4,6 +4,8 @@ import com.cydoniancitizen.bingee.core.model.CalendarRefreshOutcome
 import com.cydoniancitizen.bingee.core.model.CalendarRefreshSummary
 import com.cydoniancitizen.bingee.core.model.ContinueWatchingItem
 import com.cydoniancitizen.bingee.core.model.ExternalMediaRef
+import com.cydoniancitizen.bingee.core.model.HistorySnapshot
+import com.cydoniancitizen.bingee.core.model.HistorySnapshotQuery
 import com.cydoniancitizen.bingee.core.model.LibraryEntry
 import com.cydoniancitizen.bingee.core.model.LibraryProgress
 import com.cydoniancitizen.bingee.core.model.LibraryQuery
@@ -357,6 +359,9 @@ class NotificationsViewModelTest {
             MutableStateFlow(AppResult.Success(null))
         override fun observeMembershipRefs(): Flow<AppResult<Set<Pair<ExternalMediaRef, MediaType>>>> =
             MutableStateFlow(AppResult.Success(emptySet()))
+        override fun observeHistory(query: HistorySnapshotQuery): Flow<AppResult<HistorySnapshot>> =
+            error("History is not part of this fixture")
+
         override fun observePersonalViewing() =
             MutableStateFlow<AppResult<List<com.cydoniancitizen.bingee.core.model.PersonalViewingEntry>>>(
                 AppResult.Success(emptyList())

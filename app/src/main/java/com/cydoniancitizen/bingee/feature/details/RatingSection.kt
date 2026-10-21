@@ -9,6 +9,11 @@ import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.heading
@@ -29,6 +34,14 @@ internal fun RatingSection(
     onDismissError: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    var editing by rememberSaveable { mutableStateOf(false) }
+    var awaitingSave by rememberSaveable { mutableStateOf(false) }
+    LaunchedEffect(state) {
+        if (awaitingSave && state is DetailRatingState.Ready && !state.updating) {
+            awaitingSave = false
+            if (state.error == null) editing = false
+        }
+    }
     Column(
         modifier = modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(BingeeDimensions.elementSpacing)
@@ -48,42 +61,65 @@ internal fun RatingSection(
                 val currentDescription = state.rating?.let {
                     stringResource(R.string.detail_rating_value, it.value)
                 } ?: stringResource(R.string.detail_rating_unrated)
-                Text(currentDescription)
-                val selectedDescription = stringResource(R.string.detail_rating_slider, state.selectedValue)
-                Slider(
-                    value = state.selectedValue.toFloat(),
-                    onValueChange = { onSelect(it.roundToInt()) },
-                    valueRange = PersonalRating.MIN_VALUE.toFloat()..PersonalRating.MAX_VALUE.toFloat(),
-                    steps = PersonalRating.MAX_VALUE - PersonalRating.MIN_VALUE - 1,
-                    enabled = !state.updating,
-                    modifier = Modifier.fillMaxWidth().semantics {
-                        stateDescription = selectedDescription
+                if (!editing) {
+                    TextButton(onClick = {
+                        onSelect(state.rating?.value ?: 5)
+                        editing = true
+                    }, enabled = !state.updating) {
+                        Text(currentDescription)
                     }
-                )
-                Text(stringResource(R.string.detail_rating_selected_value, state.selectedValue))
-                state.error?.let { error ->
-                    Text(
-                        text = stringResource(error.toUiError().messageRes),
-                        color = MaterialTheme.colorScheme.error
-                    )
-                    TextButton(onClick = onDismissError) {
-                        Text(stringResource(R.string.action_dismiss))
-                    }
-                }
-                Button(onClick = onSave, enabled = !state.updating, modifier = Modifier.fillMaxWidth()) {
-                    Text(
-                        stringResource(
-                            if (state.updating) R.string.detail_rating_updating else R.string.detail_rating_set
-                        )
-                    )
-                }
-                if (state.rating != null) {
-                    TextButton(
-                        onClick = onRemove,
+                } else {
+                    Text(currentDescription)
+                    val selectedDescription = stringResource(R.string.detail_rating_slider, state.selectedValue)
+                    Slider(
+                        value = state.selectedValue.toFloat(),
+                        onValueChange = { onSelect(it.roundToInt()) },
+                        valueRange = PersonalRating.MIN_VALUE.toFloat()..PersonalRating.MAX_VALUE.toFloat(),
+                        steps = PersonalRating.MAX_VALUE - PersonalRating.MIN_VALUE - 1,
                         enabled = !state.updating,
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Text(stringResource(R.string.detail_rating_remove))
+                        modifier = Modifier.fillMaxWidth().semantics {
+                            stateDescription = selectedDescription
+                        }
+                    )
+                    Text(stringResource(R.string.detail_rating_selected_value, state.selectedValue))
+                    state.error?.let { error ->
+                        Text(
+                            text = stringResource(error.toUiError().messageRes),
+                            color = MaterialTheme.colorScheme.error
+                        )
+                        TextButton(onClick = onDismissError) {
+                            Text(stringResource(R.string.action_dismiss))
+                        }
+                    }
+                    Button(onClick = {
+                        awaitingSave = true
+                        onSave()
+                    }, enabled = !state.updating, modifier = Modifier.fillMaxWidth()) {
+                        Text(
+                            stringResource(
+                                if (state.updating) R.string.detail_rating_updating else R.string.detail_rating_set
+                            )
+                        )
+                    }
+                    if (state.rating != null) {
+                        TextButton(
+                            onClick = {
+                                awaitingSave = true
+                                onRemove()
+                            },
+                            enabled = !state.updating,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text(stringResource(R.string.detail_rating_remove))
+                        }
+                    }
+                    TextButton(onClick = {
+                        onSelect(state.rating?.value ?: 5)
+                        onDismissError()
+                        editing = false
+                        awaitingSave = false
+                    }, enabled = !state.updating) {
+                        Text(stringResource(R.string.action_cancel))
                     }
                 }
             }

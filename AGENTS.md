@@ -4,7 +4,8 @@
 
 Questo repository contiene un'app Android open source, local-first, per tenere traccia di film, serie TV e, in una fase successiva, anime.
 
-Stato corrente: v1.2.5 / versionCode 9, scope concordato verificato e chiuso; pubblicazione non eseguita.
+Stato corrente del codice: v1.3.0 / versionCode 11, Dettagli in corso. History H1–H6 e la prova manuale TalkBack positiva riferita dal proprietario documentano la precedente UI mensile; il 21 ottobre 2026 è stata approvata la correzione a timeline orizzontale continua, implementata e verificata con prove automatiche e visuali nello scope documentato. Accettazione del proprietario e nuova prova manuale TalkBack restano da confermare; le prove precedenti non certificano la nuova interazione. Milestone non chiusa e pubblicazione non eseguita.
+Lo scope concordato di v1.2.5 / versionCode 9 resta verificato e chiuso.
 La manutenzione v1.2.6 è verificata e chiusa nello scope concordato il 19 ottobre 2026, senza
 modifiche di produzione o incremento della versione applicativa. Restano i rinvii documentati in roadmap.
 Room 9 e backup JSON v3 con restore v1/v2/v3 restano invariati.

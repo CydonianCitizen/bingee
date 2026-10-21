@@ -57,7 +57,8 @@ class LibraryProgressRetryTest {
             database.ratingDao(),
             Clock.fixed(now, ZoneOffset.UTC),
             dates,
-            Dispatchers.Default
+            Dispatchers.Default,
+            historyDatabase = database
         )
         assertTrue(repository.add(MediaSearchResult(ref, MediaType.MOVIE, "Retry fixture")) is AppResult.Success)
         database.watchProgressDao().markMovieWatched(ref.source, ref.externalId, now)

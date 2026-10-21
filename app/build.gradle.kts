@@ -18,8 +18,8 @@ android {
         applicationId = "com.cydoniancitizen.bingee"
         minSdk = 33
         targetSdk = 36
-        versionCode = 9
-        versionName = "1.2.5"
+        versionCode = 11
+        versionName = "1.3.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }

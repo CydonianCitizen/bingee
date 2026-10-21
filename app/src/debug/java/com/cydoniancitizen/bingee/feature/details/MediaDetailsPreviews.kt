@@ -2,6 +2,7 @@ package com.cydoniancitizen.bingee.feature.details
 
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.tooling.preview.PreviewParameter
 import com.cydoniancitizen.bingee.core.designsystem.theme.BingeeTheme
 import com.cydoniancitizen.bingee.core.model.MovieWatchState
 import com.cydoniancitizen.bingee.core.model.PersonalRating
@@ -9,6 +10,13 @@ import com.cydoniancitizen.bingee.core.model.deriveSeriesProgress
 import com.cydoniancitizen.bingee.core.result.AppError
 import com.cydoniancitizen.bingee.debug.FakeMediaData
 import java.time.LocalDate
+
+@Preview(name = "M2 personal states", showBackground = true, widthDp = 360)
+@Preview(name = "M2 personal states dark", showBackground = true, widthDp = 360, uiMode = 0x20)
+@Preview(name = "M2 personal states narrow", showBackground = true, widthDp = 320, fontScale = 1.5f)
+@Composable
+private fun PersonalStatesPreview(@PreviewParameter(DetailPersonalPreviewProvider::class) state: MediaDetailsUiState) =
+    PreviewState(state)
 
 @Preview(name = "Movie fresh", showBackground = true)
 @Preview(name = "Movie dark", showBackground = true, uiMode = 0x20)

@@ -12,14 +12,72 @@ preserves verification limits and deferred work. No release publication is impli
 
 ## Current application surface
 
+- The code targets v1.3.0/code 11; Details and History are in progress, without publication or a closure claim. Details keeps its cinematic hero and places membership, watch state, meaningful dates, continuation and compact rating before the synopsis. Seasons remain lazy and inline; secondary metadata follows them.
+- Details derives Series wording from existing tracking/coverage facts and production metadata: ongoing titles can be caught up, ended/canceled titles can be watched, and unknown/contradictory production information uses neutral wording. No new tracking state is persisted. The existing single-entry projection carries the actual Series completion timestamp; date updates reject a missing completion record atomically. Room remains v9 and Backup remains v3.
+- Next-episode commands use the canonical Library projection and shared Continue Watching eligibility policy. Independent episode/progress observations must agree before offering navigation or completion editing. Navigation opens only the target season and consumes its scroll command; spoiler preferences apply to summary titles as well as episode rows.
+- For an abandoned Series in the collection, Details promotes Resume tracking to the standard primary filled Material 3 button. Abandon tracking and collection removal remain secondary; the same callback and updating-state guard own the action.
+- Rating opens on intent and preserves an unsaved selection across repeated observations and recoverable read/write errors. Membership read failures have a persistent local retry, separate from remote title refresh. Title and season refresh labels describe their different scopes; restored cached episodes remain available without a fetch timestamp. Decorative episode thumbnails are omitted in narrow rows or with large fonts to preserve title space; spoiler rules still apply to titles and any displayed stills. The next-episode summary title is limited visually to two lines while retaining its semantic text.
 - TMDB is the only runtime media provider. No Jikan or cross-provider deduplication runs in the app.
 - Top-level navigation is Home, Search, and Your bingee. The personal destination keeps the internal `profile` route and `PROFILE` identifier; only its label and icon present it as Your bingee / Il tuo bingee, a personal collection rather than an account.
-- Your bingee is the personal dashboard: actionable Watching, collection shortcuts with counts, Favorites, and a personal statistics preview. It opens Settings, which indexes the Appearance & Language, Notifications, Data & backup, Privacy, and About subpages, and exposes its own visible Up action alongside system Back.
+- Your bingee is the personal dashboard: actionable Watching, collection shortcuts with counts, Favorites, a personal statistics preview and an entry to Your history. It opens Settings, which indexes the Appearance & Language, Notifications, Data & backup, Privacy, and About subpages, and exposes its own visible Up action alongside system Back.
 - Home is Room-first. Continue Watching follows the featured rows; each card shows the last watched and next episode and marks the next one watched through `WatchProgressRepository`, with undo. Notification Center reads cached release events and supports local refresh feedback.
 - Two Glance home screen widgets in `feature/widget` render the same Room projections as Home: a 2×2 poster of the most recent series in progress with a next-episode button, and a 4×2 view that adds the next two releases. They reach repositories through a Hilt entry point, never call TMDB, follow the in-app theme choice, and redraw through one application-scoped updater while widget instances exist (ADR 0027). The updater compares displayed content; active Glance sessions retain their own subscriptions. The small widget does not read the calendar.
 - Room v9 owns media metadata, seasons, episodes, library membership, watch progress, ratings, release events, notification state, portable preferences, the explicit serial-state override, canonical genre identity, favorite chronology, background refresh attempts, and the language of cached TMDB text.
 - Backup v3 is the versioned JSON export contract (v1 and v2 remain importable) and uses transactional replace restore.
 - The UI ships in English and Italian. About exposes a manual GitHub update checker; it does not perform background update checks.
+
+## Viewing history in v1.3.0
+
+The owner approved a continuous horizontal timeline on 2026-10-21. Its implementation and scoped
+automated/visual checks pass; owner acceptance and manual TalkBack for the new interaction remain
+pending. The previous H1–H6 proof covers the superseded monthly UI. The current
+contract starts at the oldest retained dated Movie/Episode and advances to newer activity at the
+right. Dated points connect to title/poster content, with expandable Series/day groups and regular
+spacing that does not imply elapsed-time scale. Type filters remain; month/year controls and
+explicit main-page buttons are removed. No persisted data or temporal semantics change.
+
+Your history / La tua storia is a read-only view of currently retained watched progress, not an
+append-only event log. It includes watched Movies and Episodes outside the collection, abandoned
+Series and Specials. Unwatch removes an item; marking it again does not reconstruct repeat viewings.
+Season/Series completion records do not create additional items. Artwork and metadata are current
+local values, with the existing image cache or placeholders; composing the timeline needs no provider
+request. A title or episode opens the existing title Details route, without a historical-episode
+deep link or a tracking action.
+
+`ViewingDatePolicy` gives a Movie's manual `watchedDate` precedence over its timestamp; otherwise,
+Movies and Episodes use the current device time zone. Monthly Movie statistics use the same date.
+Specials remain excluded from the existing statistics. Effective days after today are excluded from
+both dated views without editing stored progress. Bulk marks and missing manual dates cannot reveal
+the actual day of viewing, and the original time zone is not stored. The existing calendar date
+source now exposes day and zone together so a zone change on the same day invalidates both views.
+
+The existing LibraryRepository exposes one `observeHistory(HistorySnapshotQuery)` flow. A dedicated
+read-only DAO projects scalar bounds, a bounded overlapping window of up to 90 parent rows and at
+most 20 children per expanded group, using one extra sentinel per query. Windows replace previous
+windows; the visible key/offset anchors the horizontal viewport. One Room invalidation subscription
+reads overview, parents and visible children within the same database transaction; it does not
+combine independent generations. The all-history query groups progress in one query using UTC
+offset segments from Java ZoneRules and a binary SQL lookup at exact transition instants. Fractions
+are truncated only before SQLite calendar arithmetic, preventing nanosecond rounding into another
+day; historical offsets retain second precision. Explicit manual Movie dates still take precedence.
+Outside the conservative year 1–9998 guard or above 399 transitions, the bounded monthly fallback
+uses Java ZoneId day boundaries and jumps to occupied months rather than iterating calendar gaps.
+Existing indices and Room 9 stay
+unchanged. Aggregation may still scan a large dataset: a bounded result does not imply constant
+query cost.
+
+The destination-owned HistoryViewModel preserves filter, cursors, expansion and scroll anchor
+through return/recreation. Saved state contains identifiers and offsets, never history lists or
+images. Expansion keys are pruned when groups leave the current page, and inactive collectors release
+their payload after the subscription grace period. Profile does not retain another History dataset.
+A singleton, in-memory restore generation brackets the existing backup transaction, including
+rollback. History pauses during restore and resets transient local-ID identities at its boundaries,
+retaining the filter; the repository also rejects reads crossing those boundaries. No generation
+is serialized, and Backup v3 / restore v1/v2/v3 are unchanged.
+
+Implementation and verification status is maintained in the
+[History H1–H6 plan](superpowers/plans/2026-10-20-history-timeline.md); unfinished validation does not
+close the encompassing v1.3.0 milestone.
 
 ## Dependency direction
 
@@ -273,6 +331,7 @@ TV Time review counts, filtering, grouping, sorting and review edits run on the 
 - Movie detail, season-summary, and season-episode writes project corresponding events in the same Room transaction. A missing returned date deletes only that subject projection; failure rolls back metadata and event changes together.
 - Migration backfill plus repeatable local backfill derive events without network or credential. Backfill does not create a successful-refresh timestamp.
 - Home joins events to active library membership; removal hides retained events immediately and re-add restores them with retained rating/progress. `releaseCalendarStartDate` fixes the window start at seven calendar days before injected-clock today, with no future cutoff.
+- Home displays at most one release per source-qualified Series: today's or earliest future release, otherwise the latest recent release. Same-day ties prefer an episode to a season premiere, then season/episode number and the existing event ordering. A premiere remains a fallback when it is the nearest known release. Movies remain uncollapsed. This selection belongs to `HomeViewModel` only: stored events, widget selection and notification evaluation retain the full calendar.
 - Date groups sort ascending. Same-date rows sort episode, season, movie, normalized parent title, then provider-aware subject identity.
 - Manual refresh uses at most three concurrent title operations. Movies refresh details. TV refresh first updates details/summaries, then all seasons whose episode cache is missing or stale, whose premiere lies within the Home window, or which have future/undated episodes. The same eligibility applies to season zero.
 - Successful and failed operations are isolated. At least one successful eligible operation permits advancing last-successful refresh after local consistency succeeds; complete failure and empty Library do not advance it.

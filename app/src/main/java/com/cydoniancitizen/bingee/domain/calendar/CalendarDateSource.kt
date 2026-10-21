@@ -22,6 +22,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.shareIn
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
@@ -30,7 +31,13 @@ import kotlinx.coroutines.withTimeoutOrNull
 internal interface CalendarDateSource {
     fun currentDate(): LocalDate
     fun observeDate(): Flow<LocalDate>
+    fun currentContext(): CalendarDateContext = CalendarDateContext(currentDate(), ZoneId.systemDefault())
+    fun observeContext(): Flow<CalendarDateContext> = observeDate().map {
+        CalendarDateContext(it, ZoneId.systemDefault())
+    }
 }
+
+internal data class CalendarDateContext(val today: LocalDate, val zoneId: ZoneId)
 
 @Singleton
 internal class SystemCalendarDateSource @Inject constructor(
@@ -38,7 +45,7 @@ internal class SystemCalendarDateSource @Inject constructor(
     private val clock: Clock
 ) : CalendarDateSource {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
-    private val dateFlow = callbackFlow {
+    private val contextFlow = callbackFlow {
         val signals = Channel<Unit>(Channel.CONFLATED)
         val receiver = object : BroadcastReceiver() {
             override fun onReceive(context: Context, intent: Intent) {
@@ -53,8 +60,8 @@ internal class SystemCalendarDateSource @Inject constructor(
         context.registerReceiver(receiver, filter, Context.RECEIVER_EXPORTED)
         val monitor = launch {
             while (isActive) {
-                trySend(currentDate())
                 val zone = ZoneId.systemDefault()
+                trySend(CalendarDateContext(currentLocalDate(clock, zone), zone))
                 val waitMillis = millisUntilNextLocalMidnight(clock.instant(), zone)
                 withTimeoutOrNull(waitMillis) { signals.receive() }
             }
@@ -72,7 +79,14 @@ internal class SystemCalendarDateSource @Inject constructor(
 
     override fun currentDate(): LocalDate = currentLocalDate(clock, ZoneId.systemDefault())
 
-    override fun observeDate(): Flow<LocalDate> = dateFlow
+    override fun observeDate(): Flow<LocalDate> = contextFlow.map { it.today }.distinctUntilChanged()
+
+    override fun currentContext(): CalendarDateContext {
+        val zone = ZoneId.systemDefault()
+        return CalendarDateContext(currentLocalDate(clock, zone), zone)
+    }
+
+    override fun observeContext(): Flow<CalendarDateContext> = contextFlow
 }
 
 @VisibleForTesting

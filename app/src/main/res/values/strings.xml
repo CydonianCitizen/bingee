@@ -206,7 +206,7 @@
     <string name="detail_screen_title">Title details</string>
     <string name="action_save">Save</string>
     <string name="detail_back">Back</string>
-    <string name="detail_refresh">Refresh details</string>
+    <string name="detail_refresh">Refresh title details</string>
     <string name="detail_loading">Loading title details</string>
     <string name="detail_error_title">Details unavailable</string>
     <string name="detail_stale_data">Showing saved details while checking for updates.</string>
@@ -251,6 +251,8 @@
     <string name="detail_seasons_loading">Loading saved seasons</string>
     <string name="detail_seasons_empty">No season metadata is available yet.</string>
     <string name="detail_series_progress">%1$d of %2$d regular episodes watched · %3$d of %4$d seasons complete</string>
+    <string name="detail_series_local_progress">Local episode data: %1$s</string>
+    <string name="detail_movie_watched">Watched</string>
     <string name="detail_specials_title">Specials</string>
     <string name="detail_season_fallback">Season %1$d</string>
     <string name="detail_season_number_and_count">Season %1$d · %2$d episodes</string>
@@ -259,7 +261,7 @@
     <string name="detail_collapse_season">Hide episodes for %1$s</string>
     <string name="detail_season_refreshing">Showing saved episodes while refreshing metadata.</string>
     <string name="detail_season_stale">Cached episode metadata may be out of date.</string>
-    <string name="detail_refresh_season">Refresh season metadata</string>
+    <string name="detail_refresh_season">Refresh season episodes</string>
     <string name="detail_mark_season_watched">Mark trackable episodes watched</string>
     <string name="detail_mark_season_unwatched">Mark season unwatched</string>
     <string name="detail_mark_previous_title">Mark earlier episodes too?</string>
@@ -575,4 +577,37 @@
         <item>January</item><item>February</item><item>March</item><item>April</item><item>May</item><item>June</item>
         <item>July</item><item>August</item><item>September</item><item>October</item><item>November</item><item>December</item>
     </string-array>
+    <string name="detail_tracking_outside">Not in your collection</string>
+    <string name="detail_tracking_watch_later">Watch later</string>
+    <string name="detail_tracking_watching">Watching</string>
+    <string name="detail_tracking_watched">Watched</string>
+    <string name="detail_tracking_caught_up">Caught up</string>
+    <string name="detail_tracking_available_watched">Available episodes watched</string>
+    <string name="detail_tracking_abandoned">Abandoned</string>
+    <string name="detail_tracking_incomplete">Episode data is incomplete. Completion cannot be verified.</string>
+    <string name="detail_next_episode_position">Next: S%1$d E%2$d</string>
+    <string name="detail_next_episode_title">Next: S%1$d E%2$d · %3$s</string>
+    <string name="detail_go_to_episode">Go to episode</string>
+    <string name="available_completion_date_label">Available episodes completed</string>
+    <string name="available_completion_date_edit">Edit available-episode completion date</string>
+    <string name="history_title">Your history</string>
+    <string name="history_information">About your history</string>
+    <string name="history_information_body">This timeline shows all retained watched progress, from oldest to newest, including titles outside your collection and specials. Points are evenly spaced; within a day their order is stable, not the actual viewing order. Dates use a movie date you entered, otherwise the recorded timestamp in the current device time zone. Bulk updates do not reconstruct actual viewing days. Future dates are hidden. Marking an item unwatched removes its entry. Repeat viewings are not retained. Specials appear here but are excluded from monthly statistics.</string>
+    <string name="history_all">All</string>
+    <string name="history_movies">Movies</string>
+    <string name="history_episodes">Episodes</string>
+    <string name="history_movie">Movie</string>
+    <string name="history_series">TV series</string>
+    <string name="history_empty">No saved viewing activity.</string>
+    <string name="history_expanded">Episodes expanded</string>
+    <string name="history_collapsed">Episodes collapsed</string>
+    <string name="history_special">Special %1$d</string>
+    <string name="history_episode_number">S%1$d E%2$d</string>
+    <string name="history_next_page">Next page</string>
+    <string name="history_previous_episodes">Previous episodes</string>
+    <string name="history_next_episodes">Next episodes</string>
+    <plurals name="history_episode_count">
+        <item quantity="one">Show %1$d episode</item>
+        <item quantity="other">Show %1$d episodes</item>
+    </plurals>
 </resources>

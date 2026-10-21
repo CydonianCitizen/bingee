@@ -99,7 +99,7 @@ Pre-existing low-priority debt must not automatically expand the current scope.
 | **v1.2.4** | **8** | Technical / test / release polish | Remove small current technical risks without changing product architecture |
 | **v1.2.5** | **9** | Dead-code cleanup + targeted performance improvements + documentation sync | Lean, resource-efficient baseline before the large UI cycle |
 | **v1.2.6** | **10 (planned)** | Audit and targeted maintenance | Audit current code, address proven dead code/over-engineering and study future optimization tradeoffs |
-| **v1.3.0** | **11 (planned)** | Major UI/UX #1 | Rebuild Details around a clear personal-tracker hierarchy |
+| **v1.3.0** | **11** | Major UI/UX #1 | Details and History implementation/verification in progress; milestone open |
 | **v1.3.1** | **12 (planned)** | Major UI/UX #2 | Reorganize Home around current personal activity |
 | **v1.3.2** | **13 (planned)** | Major UI/UX #3 | Make Collection a coherent personal-management surface |
 | **v1.3.3** | **14 (planned)** | Major UI/UX #4 | Unify Bingee's cross-screen UI language and interaction hierarchy |
@@ -108,8 +108,30 @@ Pre-existing low-priority debt must not automatically expand the current scope.
 > Version numbers may only move forward. Room and Backup versions must **not** be bumped merely because the app version changes. Schema/format bumps require an actual persistence contract change.
 
 The inserted v1.2.6 reserved the next code and shifted later planned codes only. Its agreed
-maintenance scope closed without an application-version change; code 10 remains unapplied and the
-application configuration remains v1.2.5/code 9. No later milestone is started by this documentation change.
+maintenance scope closed without an application-version change; code 10 remains unapplied. The
+configuration was still v1.2.5/code 9 at that closure. The subsequently authorized v1.3.0 work now
+targets code 11, as recorded above.
+
+## v1.3.0 addition — La tua storia / History
+
+Update 2026-10-21: the owner approved a continuous horizontal all-history timeline, oldest retained
+dated Movie/Episode first, regular spacing and expandable Series/day groups. Month/year selection
+and main page buttons are replaced by automatic bounded loading. Implementation and scoped automatic/
+visual verification pass; owner acceptance and a new manual TalkBack check remain pending. The H1–H6
+results below certify the preceding monthly UI only. The amended History plan records fresh evidence,
+while v1.3.0 and the postponed Details M5 manual gate remain open.
+
+The owner assigned the [History implementation plan](docs/superpowers/plans/2026-10-20-history-timeline.md)
+to v1.3.0/code 11 on 2026-10-20 and authorized H1–H6 implementation. It joins the ongoing Details work:
+effective viewing dates shared with monthly statistics, bounded Room reads, screen state,
+UI/navigation, large-history/restore validation and final gates. H1–H6 are delivered and verified
+with the measurement limits recorded in the plan. The owner reports a positive manual TalkBack
+result for filters, month/year, group expansion, information and Details return. The host suite passes 528 JVM tests; the phone passes a full 388-test native run plus one
+subsequent focused v1/v2/v3 History restore test. Debug/test/release, R8, Spotless and lint pass;
+reports and diagnostic sources stay ignored under `.audit/`. v1.3.0 remains open, including its
+independent Details/Home acceptance gates. v1.3.1–v1.3.4 and their version codes remain unchanged.
+Room 9 and Backup v3 remain unchanged. The earlier prohibition on speculative History architecture
+still applies to unrelated modifications; it does not prohibit this explicitly scoped feature.
 
 ---
 
@@ -582,6 +604,43 @@ closed on 2026-10-19, as recorded below.
 
 # v1.3.0 — Major UI/UX #1: Details as a true personal-tracker screen
 
+Implementation milestones and acceptance criteria for GPT 6.1 Sol are in the
+[v1.3.0 Details implementation plan](docs/superpowers/plans/2026-10-19-v1.3.0-details.md).
+The plan records explicit design assumptions and maps M1–M5 to the numbered changes below;
+it does not mark implementation or verification complete and preserves the A1–A7/B1–B5 gates.
+
+**Implementation status — 2026-10-19:** code now targets 1.3.0/code 11. The personal summary,
+derived Series wording, compact rating editor, meaningful date controls, next-episode navigation
+and clearer season/title refresh scopes are implemented. The Details checkpoint passes with 508 JVM
+and 287 isolated Android 13 tests, Spotless, lint (0 errors/38 warnings), debug/AndroidTest and
+unsigned release/R8 builds. Global read-only source audit and a synthetic fresh-process offline
+smoke pass. Adaptive coverage remains partial after repeated host QEMU crashes; TalkBack and
+remaining navigation/lifecycle combinations need verification. This milestone is not closed.
+Room 9, Backup v3, restore compatibility, cache and backup retention are unchanged. See
+[implementation notes](docs/release-notes-1.3.0.md) for coverage limits. Earlier historical statements
+that v1.3.0 had not started describe their dated checkpoints, not the current state.
+
+The subsequent M1 derivation-test follow-up completes the first open M1 test item without changing
+production: 57 focused and 513 full JVM tests pass, together with Spotless, lint (0 errors/38 existing
+warnings) and debug build. The subsequent M2 preview/hierarchy pass verifies seven debug fixture
+states on HONOR CMA-LX1 / Android 13 (seven EN hierarchy tests and 33 selected IT Details/preview
+tests pass). The subsequent Resume action fix applies primary Material 3 prominence only to
+abandoned Series, with a phone RED/GREEN regression and 34 selected IT Details/preview tests
+passing. The subsequent M2 residual checks verify its functional checklist: actual Activity
+recreation, back navigation and Room rating/timestamps, pending/error/duplicate-touch cases;
+7 EN navigation and 35 IT Details/preview tests pass. The updated host gate passes 514 JVM tests,
+Spotless, lint (0 errors/38 existing warnings) and debug/AndroidTest builds, without further
+production changes. M3 and remaining native/final gates stay open. The implementation notes
+define the scoped visual variants and limitations; no final A5 audit or milestone closure is claimed.
+
+The 2026-10-21 M5 accessibility checkpoint adds three native tests: eight focused active-TalkBack
+EN/IT runs and 49 ordinary IT Details/preview regressions pass on HONOR / Android 13. Production
+is unchanged. The owner deferred manual speech/gesture/reading-order validation after an injected
+swipe did not advance focus; the M5 accessibility checkbox remains open. Original accessibility
+settings are restored; only the isolated synthetic app remains installed for the later check.
+See the [checkpoint and limits](docs/release-notes-1.3.0.md#m5-accessibility-checkpoint--2026-10-21).
+This does not close M5, the Home/calendar review, global/release gates or v1.3.0.
+
 ## Goal
 
 Preserve the cinematic Details identity while making the user's personal relationship with a title immediately understandable.
@@ -728,6 +787,25 @@ At minimum:
 - partial Series metadata;
 - expanded season;
 - future episode.
+
+## 11. Home release calendar — scoped addition agreed on 2026-10-19
+
+Home now shows at most one release per source-qualified Series across date groups: today's or
+earliest future release, otherwise its latest recent release. Same-day ties prefer an episode,
+then season/episode number and the existing deterministic ordering. A season premiere remains
+a fallback when it is the nearest known release. Movies remain visible independently, including
+when a Movie and Series share a provider ID. Only the Home presentation is filtered; the stored
+calendar, widgets, notifications, Room schema and backup remain unchanged. The updated host gate
+passes 511 JVM tests, Spotless, lint (zero errors/38 existing warnings) and debug build. Android,
+native smoke and release/R8 evidence in the Details checkpoint predates this Home change; those
+checks have not been repeated for it.
+
+- [ ] Review and agree the Home/calendar presentation within **v1.3.0**, including section hierarchy
+  and whether/how to access the other releases. No broader design has been selected or implemented.
+
+The wider personal-activity Home redesign below remains planned for v1.3.1; it does not replace
+this explicitly added v1.3.0 review. Verification of the scoped change is recorded in the
+[implementation notes](docs/release-notes-1.3.0.md). The milestone remains open.
 
 ---
 
@@ -1132,7 +1210,7 @@ Run a final Impeccable whole-app audit and confirm:
 
 - [ ] Confirm the change belongs to the CURRENT roadmap item/version.
 - [ ] Do not implement tasks from later versions.
-- [ ] Do not add future History / Year Recap architecture.
+- [ ] Confine History to the explicitly approved v1.3.0 H1–H6 plan; do not add repeat-viewing or Year Recap architecture.
 - [ ] Do not bump Room unless the persistence schema truly changes.
 - [ ] Do not bump Backup unless the portable format truly changes.
 - [ ] Do not introduce a framework/service/interface merely to remove a few repeated lines.
@@ -1443,11 +1521,25 @@ UI gate uses the recorded per-item native evidence at 320dp/IT/font 1.5, 360dp/I
 - [x] Change only if a concrete issue is proven.
 - [x] Make radar sizing container-aware where window assumption remains.
 - [x] Update directly affected docs.
-- [ ] Run modification #7 global hardware-efficiency audit covering CPU/rendering, memory, database/disk, network and battery/background work.
-- [ ] Classify measured bottlenecks separately from source-level hypotheses; verify any applied optimization with comparable evidence.
-- [ ] Run mandatory GLOBAL audit after each numbered modification.
-- [ ] Run final v1.2.4 global audit.
-- [ ] Pass release gate.
+- [x] Record modification #7 through the independent 2026-10-10 audit of the v1.2.4 baseline and its selected v1.2.5 performance follow-up; retain the documented measurement limits.
+- [x] Classify measured bottlenecks separately from source-level hypotheses using the v1.2.5 performance closure record; retain unexecuted matrices as limits, not completed measurements.
+- [x] Retain the recorded GLOBAL audits for modifications #1–#6 and reconcile subsequent audit work with the closed v1.2.5/v1.2.6 scopes.
+- [x] Resolve the historical final-audit gate through the owner's deferral to v1.2.6 and that milestone's completed read-only audit, without claiming a separate final audit of the old v1.2.4 artifact.
+- [x] Resolve the historical release-verification gate through the subsequent v1.2.5 final verification, including the full Android suite and isolated R8 checks within their recorded coverage; publication remains separate.
+
+## v1.2.4 status reconciliation — 2026-10-19
+
+These five historical tracking items are resolved by the work and scope decisions already
+recorded, rather than by repeating their original operations on an old artifact. The independent
+audit and selected follow-up are traced in the [v1.2.5 performance checklist](docs/checklist-1.2.5-performance.md),
+whose [closure record](docs/checklist-1.2.5-performance.md#stato-di-chiusura--18-ottobre-2026)
+separates verified results, accepted limits and deferred measurements. The
+[v1.2.5 final verification](#final-closure-record--2026-10-18) and
+[v1.2.6 closure](#v126-closure-record--2026-10-19) govern the later verification and audit outcomes.
+No new audit, test, benchmark or release was performed for this reconciliation. The dated
+modification records below remain historical snapshots; their then-open gates do not create
+outstanding v1.2.4 tasks. Unexecuted matrices and future index/cache studies retain their existing
+limits and deferrals; they are not retroactively marked as measured or implemented.
 
 Modification #1 completion record (2026-10-08): Part II A1–A7 applied from clean `main` at `fb1358a025fa681b1b4b07e73c0c75de18684bb6`. Ordinary instrumentation selectors now use existing resources, plurals, localized month arrays and semantic roles/state across screens and Activity navigation; fixture titles and deliberate visible-copy contracts remain literal. Explicit EN/IT vocabulary and singular/plural expectations remain. A test-only `TestLocaleRule` applies `uiLocale=en` (default) or `it` before Compose Activity creation, including native dialogs/menus, and restores the previous Android app locale without changing saved Bingee preferences. README documents the Italian suite command. Notifications tests now exercise the production content instead of a test-local replacement; the route retains ViewModel, Flow and snackbar ownership. Added loading/error/retry/Back coverage. No visual geometry, persistence, dependency or navigation change. Production Kotlin +22/-2 LOC; one route/content boundary reused by production and tests, no generic framework or new reactive query. App 1.2.4 / code 8, Room 9 and Backup 3 unchanged.
 
@@ -1889,6 +1981,7 @@ start of v1.3 is part of this closure.
 - [ ] Preserve stale/cache/error states.
 - [ ] Clarify title refresh vs season refresh scope.
 - [ ] Run full Details state matrix.
+- [ ] Review and agree Home/calendar presentation within v1.3.0 (scoped addition #11).
 - [ ] Run mandatory GLOBAL audit after each numbered modification.
 - [ ] Remove any old Details UI paths made dead by redesign before release.
 - [ ] Run final v1.3.0 global audit.

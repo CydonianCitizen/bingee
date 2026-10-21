@@ -18,7 +18,8 @@ data class LibraryEntry(
     val favoriteAddedAt: Instant? = null,
     val watchedDate: LocalDate? = null,
     val isAbandoned: Boolean = false,
-    val inLibrary: Boolean = true
+    val inLibrary: Boolean = true,
+    val seriesCompletedAt: Instant? = null
 ) {
     init {
         require(title.isNotBlank()) { "Library title must not be blank" }

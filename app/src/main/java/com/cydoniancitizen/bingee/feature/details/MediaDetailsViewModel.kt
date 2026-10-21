@@ -9,6 +9,7 @@ import com.cydoniancitizen.bingee.core.model.CachedSeason
 import com.cydoniancitizen.bingee.core.model.Episode
 import com.cydoniancitizen.bingee.core.model.EpisodeWatchState
 import com.cydoniancitizen.bingee.core.model.ExternalMediaRef
+import com.cydoniancitizen.bingee.core.model.LibraryProgress
 import com.cydoniancitizen.bingee.core.model.MediaSource
 import com.cydoniancitizen.bingee.core.model.MediaType
 import com.cydoniancitizen.bingee.core.model.MovieWatchState
@@ -127,11 +128,14 @@ internal data class MediaDetailsUiState(
     val isInLibrary: Boolean? = null,
     val isFavorite: Boolean = false,
     val isAbandoned: Boolean = false,
+    val libraryProgress: LibraryProgress = LibraryProgress.Unavailable,
+    val seriesCompletedAt: java.time.Instant? = null,
     val watchedDate: java.time.LocalDate? = null,
     val favoriteUpdating: Boolean = false,
     val watchedDateUpdating: Boolean = false,
     val libraryAction: DetailLibraryActionState = DetailLibraryActionState.IDLE,
     val libraryError: AppError? = null,
+    val membershipError: AppError? = null,
     val movieProgress: MovieProgressState = MovieProgressState.NotApplicable,
     val series: SeriesDetailUiState = SeriesDetailUiState(),
     val progressError: AppError? = null,
@@ -160,6 +164,7 @@ internal class MediaDetailsViewModel @Inject constructor(
     private var automaticRefreshStarted = false
     private var seasonSummaryBootstrapStarted = false
     private var refreshJob: Job? = null
+    private var membershipJob: Job? = null
     private val seasonRefreshJobs = mutableMapOf<ExternalMediaRef, Job>()
 
     init {
@@ -447,8 +452,14 @@ internal class MediaDetailsViewModel @Inject constructor(
         }
     }
 
+    fun retryMembership() {
+        routeArgs?.let(::observeMembership)
+    }
+
     private fun observeMembership(args: DetailRouteArgs) {
-        viewModelScope.launch {
+        membershipJob?.cancel()
+        mutableUiState.update { it.copy(membershipError = null) }
+        membershipJob = viewModelScope.launch {
             libraryRepository.observeEntry(requireNotNull(routeReference), args.mediaType).collectLatest { result ->
                 mutableUiState.update {
                     when (result) {
@@ -459,9 +470,12 @@ internal class MediaDetailsViewModel @Inject constructor(
                             isInLibrary = result.value?.inLibrary == true,
                             isFavorite = result.value?.isFavorite ?: false,
                             isAbandoned = result.value?.isAbandoned == true,
-                            watchedDate = result.value?.watchedDate
+                            libraryProgress = result.value?.progress ?: LibraryProgress.Unavailable,
+                            seriesCompletedAt = result.value?.seriesCompletedAt,
+                            watchedDate = result.value?.watchedDate,
+                            membershipError = null
                         )
-                        is AppResult.Failure -> it.copy(libraryError = result.error)
+                        is AppResult.Failure -> it.copy(membershipError = result.error)
                     }
                 }
             }
@@ -554,12 +568,21 @@ internal class MediaDetailsViewModel @Inject constructor(
                             state.copy(
                                 rating = DetailRatingState.Ready(
                                     rating = result.value,
-                                    selectedValue = result.value?.value ?: previous?.selectedValue ?: 5,
+                                    selectedValue = if (previous != null &&
+                                        previous.selectedValue != (previous.rating?.value ?: 5)
+                                    ) {
+                                        previous.selectedValue
+                                    } else {
+                                        result.value?.value ?: 5
+                                    },
                                     updating = previous?.updating == true
                                 )
                             )
                         }
-                        is AppResult.Failure -> state.copy(rating = DetailRatingState.Error(result.error))
+                        is AppResult.Failure -> state.copy(
+                            rating = (state.rating as? DetailRatingState.Ready)?.copy(error = result.error)
+                                ?: DetailRatingState.Error(result.error)
+                        )
                     }
                 }
             }

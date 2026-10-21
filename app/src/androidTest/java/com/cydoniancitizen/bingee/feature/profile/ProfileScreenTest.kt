@@ -45,6 +45,23 @@ import org.junit.Rule
 import org.junit.Test
 
 class ProfileScreenTest {
+    @Test
+    fun dashboardOpensHistoryWithoutChangingCollectionNavigation() {
+        val opened = AtomicBoolean(false)
+        composeRule.setContent {
+            BingeeTheme {
+                YourBingeeContent(
+                    state = ProfileUiState(today = LocalDate.of(2026, 10, 20), isLoading = false),
+                    onOpenSettings = {}, onOpenDetails = { _, _ -> }, onOpenCollection = {},
+                    onNavigateToSearch = {}, onOpenStatistics = {}, onRetryStatistics = {}, onRetry = {},
+                    onOpenHistory = { opened.set(true) }
+                )
+            }
+        }
+        composeRule.onNodeWithText(context.getString(R.string.history_title)).performClick()
+        assertTrue(opened.get())
+    }
+
     @get:Rule(order = 0)
     val localeRule = TestLocaleRule()
 

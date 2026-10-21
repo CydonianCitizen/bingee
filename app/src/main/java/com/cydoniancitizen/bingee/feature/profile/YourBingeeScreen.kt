@@ -82,7 +82,8 @@ internal fun YourBingeeContent(
     onOpenStatistics: () -> Unit,
     onRetryStatistics: () -> Unit,
     onRetry: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onOpenHistory: () -> Unit = {}
 ) {
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
     Scaffold(
@@ -134,6 +135,9 @@ internal fun YourBingeeContent(
                 ),
                 verticalArrangement = Arrangement.spacedBy(32.dp)
             ) {
+                item {
+                    TextButton(onClick = onOpenHistory) { Text(stringResource(R.string.history_title)) }
+                }
                 item {
                     WatchingSection(
                         items = state.watching,

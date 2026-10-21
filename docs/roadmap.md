@@ -2,6 +2,116 @@
 
 This document retains earlier delivery summaries. The [canonical development roadmap and checklist](../BINGEE_DEVELOPMENT_ROADMAP_AND_CHECKLIST.md) defines the active implementation order and release gates.
 
+## In progress in `v1.3.0` — Details and History
+
+The code targets 1.3.0/code 11. Details now places a compact personal summary before the synopsis,
+derives Series relationship wording without changing canonical tracking rules, opens rating editing
+on intent, and navigates to the projected next episode. Meaningful completion dates require an actual
+record; season refresh scope and long-title allocation are clearer. The hero, Room 9, Backup v3,
+cache and backup retention policies are unchanged. See the [implementation notes](release-notes-1.3.0.md)
+and [M1–M5 plan](superpowers/plans/2026-10-19-v1.3.0-details.md).
+
+The Details checkpoint passes: 508 JVM and 287 isolated Android 13 tests, Spotless, lint, debug and
+unsigned release/R8 builds. Source audit and a fresh-process offline smoke with synthetic data pass.
+Adaptive coverage remains partial after repeated host QEMU crashes; TalkBack and remaining
+navigation/lifecycle combinations still need verification. The milestone remains open. No commit
+or publication is implied; see the notes for the exact coverage and rejected screenshot captures.
+
+The subsequent scoped Home change displays one release per Series: today's/earliest future,
+otherwise the latest recent release. Movies remain visible; persisted events, widgets and
+notifications retain their existing behavior. **Reviewing and agreeing the Home/calendar
+presentation is still open within v1.3.0**, as requested on 2026-10-19; no broader layout has been
+selected. The wider v1.3.1 Home redesign remains separate. The Home checkpoint passes 511 JVM
+tests, Spotless, lint (zero errors, 38 existing warnings) and debug build. Android and release/R8
+checks above predate this Home change and have not been repeated for it.
+
+The subsequent M1 derivation-test item is verified, bringing the current full JVM suite to 513
+passing tests; Spotless, lint and debug build pass. Production is unchanged by this test-only
+follow-up. The subsequent M2 pass adds seven shared debug preview fixtures and verifies hierarchy
+on HONOR CMA-LX1 / Android 13: seven EN hierarchy tests and 33 selected IT Details/preview tests pass.
+The scoped native visual variants are documented in the notes. The subsequent Resume change uses
+a primary filled Material 3 button for abandoned Series; Abandon/removal remain secondary. Its
+new phone regression passes after failing before the fix; 34 selected IT Details/preview tests
+pass. The later M2 residual pass verifies the functional checklist with real Activity recreation,
+navigation back and Room rating/timestamp checks, plus pending/error/duplicate-touch regressions.
+All 7 selected EN navigation and 35 IT Details/preview tests pass; the host gate passes 514 JVM
+tests, Spotless, lint (zero errors/38 existing warnings) and debug/AndroidTest builds. Production
+is unchanged by this verification step. M3, the remaining native matrix, TalkBack and final
+audit/release gates stay open; this does not close v1.3.0.
+
+The first M3 test item is subsequently verified on the same isolated phone installation: 2
+focused EN and 36 IT Details/preview tests pass, covering closed/open seasons, missing rows,
+loading, error and explicit retry before episode navigation. The standard host gate passes
+515 JVM tests, Spotless, lint (zero errors/38 existing warnings) and debug/AndroidTest builds,
+with production unchanged. M3 target invalidation and assistive-technology checks remain open.
+
+The subsequent 2026-10-20 M3 stale-target check passes 2 new EN and 38 IT Details/preview tests
+on the same phone: disappearing targets and title changes cancel pending commands; subsequent
+data does not restart scrolling, and a fresh Go reaches the valid row. Production is unchanged;
+the host gate passes, reusing 515 unchanged JVM tests as UP-TO-DATE. M3 assistive-technology
+checks, later phases and the milestone remain open.
+
+The final M3 row check subsequently passes on HONOR / Android 13 at 360 dp/font 1.0: the row
+fits below the toolbar, exposes one actionable accessible toggle, and retains scroll/focus on
+spontaneous refresh. Two focused EN/IT runs use active TalkBack; all 39 ordinary IT Details/preview
+tests pass. The host gate passes with 515 unchanged JVM tests reused as UP-TO-DATE. Production
+and personal accessibility settings are preserved. The scoped M3 checklist is verified; manual
+gesture/audio checks and the complete adaptive matrix are not implied. M4–M5, Home/calendar,
+global gates and v1.3.0 remain open.
+
+The first M4 content item subsequently passes on the same phone at 360 dp/font 1.0: 2 new
+focused EN and 41 IT Details/preview tests cover wrapping long titles, text spoiler rules,
+disabled future rows, separate specials and localized season-refresh messages with saved rows
+retained. Production is unchanged; the host gate passes with 515 JVM tests reused as UP-TO-DATE.
+M4's adaptive thumbnail/font matrix and complete per-season loading/error/retry/offline check
+remain open, as do M5, Home/calendar and the global/release gates.
+
+The subsequent M4 adaptive check passes all 18 EN/IT width/font combinations (320/360/411 dp,
+font 1.0/1.3/1.5) on the phone through controlled Compose-window configurations: 36 focused
+executions and 42 ordinary IT Details/preview tests pass. Existing thumbnail omission protects
+text space; the visible 411 dp/font 1.0 branch verifies actual spoiler blur with a local synthetic
+image. Production and system display/font settings are unchanged; the host gate passes with
+515 JVM tests reused as UP-TO-DATE. M4 per-season loading/error/retry/offline, the broader M5
+matrix, Home/calendar and global/release gates remain open.
+
+The final scoped M4 item subsequently passes: per-season loading/error/retry leaves another cached
+season readable, and an actual disconnected Room/Activity test preserves two saved seasons after
+failed refresh, explicit retry and recreation. The isolated app has no credential, so that refresh
+fails before networking; socket errors and successful retry are separately controlled fixtures.
+Three focused EN tests, 43 IT Details/preview tests and 8 navigation tests pass, alongside 29 focused
+and 515 unfiltered JVM tests actually executed, Spotless, lint and debug/AndroidTest builds.
+Production is unchanged; phone connections and package inventory are restored. The local M4
+checklist is verified. M5, Home/calendar, the wider matrix and global/release gates remain open;
+neither process-death coverage nor milestone closure is implied.
+
+The first M5 state-matrix item subsequently passes on the same phone at 360 dp/font 1.0, IT/Light:
+67 state cases (52 valid membership/rating/favorite combinations and 15 targeted metadata/cache
+cases), one test with six local-read loading/error transitions, and 44 Details/preview regressions.
+Controlled UiState fixtures exercise real native UI; these are not live-provider or Room persistence
+checks for every combination. Production is unchanged; Spotless, lint and debug/AndroidTest builds
+pass, reusing the unchanged 515 JVM tests as UP-TO-DATE. Temporary packages are removed and the
+phone inventory preserved. The separate language/theme/adaptive/editor matrix, assistive-technology,
+integration, Home/calendar and global/release gates remain open. M5 and v1.3.0 remain open.
+
+The second M5 item subsequently passes all 48 EN/IT x Light/Dark x 320/360/411/600 dp x
+font 1.0/1.3/1.5 configurations for representative Movie/Series long-content and open-editor
+fixtures: 96 focused executions and 46 ordinary IT Details/preview regressions pass. Actual
+font scale is checked inside the date dialog as well. These are controlled configurations on
+the phone, including process-local resource overrides restored after each test, not physical
+tablet or full 67-state Cartesian coverage. Production and personal settings are unchanged;
+host checks pass with the unchanged 515 JVM tests reused as UP-TO-DATE. Temporary packages
+are removed. M5 TalkBack, integration/offline/concurrency, Home/calendar and final audit/release
+gates remain open; neither M5 nor v1.3.0 is closed.
+
+The 2026-10-21 M5 accessibility checkpoint passes eight focused runs with active TalkBack in
+EN/IT and 49 ordinary IT Details/preview regressions on the HONOR / Android 13. Native roles,
+state, editor cancellation, touch targets and episode focus are covered without production
+changes. An injected swipe did not advance focus; reading order, gestures and speech still
+require the owner's manual check, deferred by the owner. The M5 checkbox remains open.
+The isolated synthetic app stays ready; its runner is removed and original accessibility
+settings restored. See the [checkpoint and limits](release-notes-1.3.0.md#m5-accessibility-checkpoint--2026-10-21).
+Integration/offline/concurrency, Home/calendar, final gates and milestone closure remain open.
+
 ## Completed agreed scope in `v1.2.5` — 2026-10-18
 
 Version 1.2.5/code 9 is closed within the owner's agreed scope: final checks, full Android suite
@@ -97,9 +207,32 @@ See [v1.2.3 release notes](release-notes-1.2.3.md) for the changed behavior. The
 
 - Current Room v9 stores portable appearance, spoiler, and collection-view settings with the other restorable preferences. Room v8 introduced their one-time DataStore bridge; v9 adds recoverable technical notification claims. Backup v3 exports portable data, keeps v1/v2 imports compatible, and rejects documents that exceed the 50 MiB or v3 record ceilings. TV Time shares the current 50,000-media, 100,000-season, and 100,000-episode limits. Legacy v1/v2 episode reads retain their 500,000-record ceiling.
 
+## History addition in v1.3.0 — in progress
+
+On 2026-10-21 the owner approved correction to one continuous horizontal timeline, oldest retained
+dated Movie/Episode first and newer activity toward the right, with regular spacing and expandable
+Series/day groups. Automatic bounded loading replaces the month/year controls and main page buttons.
+Implementation, automated checks and scoped visual validation are complete: 530 JVM tests, focused
+native/restore/adaptive/offline checks, Spotless, lint and debug/test builds pass as detailed in the
+plan. Owner acceptance and a new manual TalkBack check remain pending. The H1–H6 evidence below
+applies to the earlier monthly UI; v1.3.0 and the postponed Details M5 manual gate remain open.
+
+On 2026-10-20 the owner assigned [History H1–H6](superpowers/plans/2026-10-20-history-timeline.md)
+to v1.3.0/code 11. This is an offline diary of retained watched progress, with grouped episodes,
+month/type selection and bounded replacement pages. Movie manual dates take precedence in both
+the diary and monthly statistics. Repeat viewings and manual episode dates remain outside scope.
+The implemented read model uses one Room transaction for overview, parents and requested children,
+with replacement pages of 30 rows and 20 Episodes per open group. The destination-owned ViewModel
+retains filter/month/anchor and resets transient local-ID state across restore. It does not retain
+another complete viewing dataset in Profile. Room 9, Backup v3 and later planned version codes
+remain unchanged. History H1–H6 verification is recorded in the plan, including the owner-reported
+positive TalkBack check on the exercised controls. This closes the scoped History implementation
+and verification; the overall v1.3.0 milestone and its independent Details/Home gates remain open.
+
 ## Deferred
 
 - A large (4×4) home screen widget remains to be designed.
-- `La tua storia` / History, a year recap, and a later viewing-mode split remain planned rather than implemented.
+
+- A year recap and a later viewing-mode split remain planned rather than implemented.
 - FTS, cache eviction infrastructure, generalized job-management abstractions, and other P3-7 optimizations remain measurement-driven work.
 - Accounts, cloud sync, social features, streaming availability, recommendations, Jikan, and cross-provider deduplication remain out of scope.

@@ -104,6 +104,7 @@ internal fun MediaDetailsScreen(
         onBack = onBack,
         onRefresh = viewModel::refresh,
         onRetry = viewModel::retry,
+        onRetryMembership = viewModel::retryMembership,
         onToggleLibrary = viewModel::toggleLibrary,
         onToggleFavorite = viewModel::toggleFavorite,
         onToggleSeriesAbandoned = viewModel::toggleSeriesAbandoned,
@@ -150,7 +151,8 @@ internal fun MediaDetailsContent(
     onSaveRating: () -> Unit = {},
     onRemoveRating: () -> Unit = {},
     onDismissRatingError: () -> Unit = {},
-    onDismissProgressError: () -> Unit = {}
+    onDismissProgressError: () -> Unit = {},
+    onRetryMembership: () -> Unit = {}
 ) {
     val listState = rememberLazyListState()
     val snackbarHostState = remember { SnackbarHostState() }
@@ -227,18 +229,11 @@ internal fun MediaDetailsContent(
                 details = content.cached.details,
                 isStale = content.cached.freshness == CacheFreshness.STALE,
                 refreshError = (state.refresh as? DetailRefreshState.Error)?.error,
-                today = state.today,
-                isInLibrary = state.isInLibrary,
-                isAbandoned = state.isAbandoned,
-                isLibraryUpdating = state.libraryAction == DetailLibraryActionState.UPDATING,
-                watchedDate = state.watchedDate,
-                watchedDateUpdating = state.watchedDateUpdating,
+                state = state,
                 onSetWatchedDate = onSetWatchedDate,
                 onToggleLibrary = onToggleLibrary,
+                onRetryMembership = onRetryMembership,
                 onToggleSeriesAbandoned = onToggleSeriesAbandoned,
-                movieProgress = state.movieProgress,
-                series = state.series,
-                rating = state.rating,
                 onToggleMovieWatched = onToggleMovieWatched,
                 onToggleSeasonExpanded = onToggleSeasonExpanded,
                 onRetrySeason = onRetrySeason,
@@ -369,17 +364,10 @@ private fun DetailBody(
     details: MediaDetails,
     isStale: Boolean,
     refreshError: AppError?,
-    today: LocalDate,
-    isInLibrary: Boolean?,
-    isAbandoned: Boolean,
-    isLibraryUpdating: Boolean,
-    watchedDate: LocalDate?,
-    watchedDateUpdating: Boolean,
+    state: MediaDetailsUiState,
     onSetWatchedDate: (LocalDate?) -> Unit,
-    movieProgress: MovieProgressState,
-    series: SeriesDetailUiState,
-    rating: DetailRatingState,
     onToggleLibrary: () -> Unit,
+    onRetryMembership: () -> Unit,
     onToggleSeriesAbandoned: () -> Unit,
     onToggleMovieWatched: () -> Unit,
     onToggleSeasonExpanded: (com.cydoniancitizen.bingee.core.model.CachedSeason) -> Unit,
@@ -393,124 +381,90 @@ private fun DetailBody(
     onOpenSettings: () -> Unit
 ) {
     val locale = LocalConfiguration.current.locales[0]
-    val sectionModifier = Modifier
-        .fillMaxWidth()
-        .padding(horizontal = BingeeDimensions.screenPadding)
+    val sectionModifier = Modifier.fillMaxWidth().padding(horizontal = BingeeDimensions.screenPadding)
+    val series = state.series
+    var pendingEpisode by remember { mutableStateOf<com.cydoniancitizen.bingee.core.model.TrackedEpisode?>(null) }
+    val leadingKeys = listOfNotNull(
+        "hero",
+        "banner".takeIf { refreshError != null || isStale },
+        "personal",
+        "overview".takeIf { details.overview != null }
+    )
+    val nextReference = state.seriesPersonalSummary()?.nextEpisode?.episode?.externalRef
+    val toolbarHeight = with(LocalDensity.current) { TopAppBarDefaults.TopAppBarExpandedHeight.roundToPx() }
+    LaunchedEffect(pendingEpisode, series.expandedSeasons, series.content, leadingKeys.size, nextReference) {
+        val target = pendingEpisode ?: return@LaunchedEffect
+        if (target.episode.seriesRef != details.externalRef || target.episode.externalRef != nextReference) {
+            pendingEpisode = null
+            return@LaunchedEffect
+        }
+        val offset = seriesEpisodeItemOffset(series, target.episode.externalRef) ?: return@LaunchedEffect
+        try {
+            listState.animateScrollToItem(leadingKeys.size + offset, scrollOffset = -toolbarHeight)
+        } finally {
+            // A gesture or data update must not replay an interrupted command.
+            if (pendingEpisode == target) pendingEpisode = null
+        }
+    }
     LazyColumn(
         state = listState,
         modifier = Modifier.fillMaxSize(),
         contentPadding = contentPadding,
         verticalArrangement = Arrangement.Top
     ) {
-        detailSectionItem(key = "hero") { DetailHero(details) }
-        if (refreshError != null || isStale) {
-            detailSectionItem(key = "banner") {
-                val message = if (refreshError != null) {
-                    stringResource(
-                        R.string.detail_refresh_failed,
-                        stringResource(refreshError.toUiError().messageRes)
-                    )
-                } else {
-                    stringResource(R.string.detail_stale_data)
-                }
-                OfflineBanner(message = message, modifier = sectionModifier)
-            }
-        }
-        detailSectionItem(key = "chips") {
-            DetailChips(
-                statusLabel = stringResource(statusString(details.productionStatus)),
-                genres = details.genres,
-                modifier = sectionModifier
-            )
-        }
-        detailSectionItem(key = "library") {
-            val label = stringResource(
-                when {
-                    isLibraryUpdating -> R.string.library_action_updating
-                    isInLibrary == true -> R.string.library_action_remove
-                    else -> R.string.library_action_add
-                }
-            )
-            val libraryEnabled = isInLibrary != null && !isLibraryUpdating
-            // Adding a title is what this screen is for, so it keeps the filled button. Removing one
-            // discards the user's own record and has no undo, so it steps down to tonal rather than
-            // staying the loudest control on the page.
-            if (isInLibrary == true) {
-                FilledTonalButton(
-                    onClick = onToggleLibrary,
-                    enabled = libraryEnabled,
-                    modifier = sectionModifier
-                ) {
-                    Text(label)
-                }
-            } else {
-                Button(onClick = onToggleLibrary, enabled = libraryEnabled, modifier = sectionModifier) {
-                    Text(label)
-                }
-            }
-        }
-        details.overview?.let { overview ->
-            detailSectionItem(key = "overview") {
-                Column(
-                    modifier = sectionModifier,
-                    verticalArrangement = Arrangement.spacedBy(BingeeDimensions.elementSpacing)
-                ) {
-                    Text(
-                        text = stringResource(R.string.detail_overview),
-                        style = MaterialTheme.typography.titleLarge
-                    )
-                    Text(overview, style = MaterialTheme.typography.bodyLarge)
-                }
-            }
-        }
-        detailSectionItem(key = "rating") {
-            RatingSection(
-                state = rating,
-                onSelect = onSelectRating,
-                onSave = onSaveRating,
-                onRemove = onRemoveRating,
-                onDismissError = onDismissRatingError,
-                modifier = sectionModifier
-            )
-        }
-        if (details.mediaType == MediaType.MOVIE) {
-            detailSectionItem(key = "progress") {
-                MovieProgressSection(movieProgress, onToggleMovieWatched, sectionModifier)
-            }
-        } else {
-            tvSeriesItems(
-                state = series,
-                onToggleExpanded = onToggleSeasonExpanded,
-                onRetrySeason = onRetrySeason,
-                onToggleEpisode = onToggleEpisode,
-                onToggleSeason = onToggleSeasonWatched,
-                onOpenSettings = onOpenSettings,
-                modifier = sectionModifier
-            )
-            if (isInLibrary == true) {
-                detailSectionItem(key = "abandon") {
-                    TextButton(
-                        onClick = onToggleSeriesAbandoned,
-                        enabled = !isLibraryUpdating,
-                        modifier = Modifier.padding(horizontal = BingeeDimensions.screenPadding)
-                    ) {
-                        Text(
+        leadingKeys.forEach { key ->
+            detailSectionItem(key = key) {
+                when (key) {
+                    "hero" -> DetailHero(details)
+                    "banner" -> {
+                        val message = if (refreshError != null) {
                             stringResource(
-                                if (isAbandoned) R.string.series_tracking_restore else R.string.series_tracking_abandon
+                                R.string.detail_refresh_failed,
+                                stringResource(refreshError.toUiError().messageRes)
                             )
-                        )
+                        } else {
+                            stringResource(R.string.detail_stale_data)
+                        }
+                        OfflineBanner(message, modifier = sectionModifier)
+                    }
+                    "personal" -> DetailPersonalSummary(
+                        state, onToggleLibrary, onToggleMovieWatched, onToggleSeriesAbandoned, onSetWatchedDate,
+                        onGoToEpisode = { target ->
+                            val season = (series.content as? SeriesContentState.Ready)?.seasons
+                                ?.firstOrNull { it.season.externalRef == target.episode.seasonRef }
+                            if (season != null) {
+                                pendingEpisode = target
+                                if (season.season.externalRef !in series.expandedSeasons) onToggleSeasonExpanded(season)
+                            }
+                        },
+                        onSelectRating, onSaveRating, onRemoveRating, onDismissRatingError,
+                        onRetryMembership, modifier = sectionModifier
+                    )
+                    "overview" -> Column(
+                        modifier = sectionModifier,
+                        verticalArrangement = Arrangement.spacedBy(BingeeDimensions.elementSpacing)
+                    ) {
+                        Text(stringResource(R.string.detail_overview), style = MaterialTheme.typography.titleLarge)
+                        Text(requireNotNull(details.overview), style = MaterialTheme.typography.bodyLarge)
                     }
                 }
             }
         }
-        detailSectionItem(key = "watchedDate") {
-            WatchedDateSection(
-                watchedDate = watchedDate,
-                today = today,
-                isUpdating = watchedDateUpdating,
-                releaseDate = details.releaseDate,
-                mediaType = details.mediaType,
-                onSetWatchedDate = onSetWatchedDate,
+        if (details.mediaType == MediaType.SERIES) {
+            tvSeriesItems(
+                series,
+                onToggleSeasonExpanded,
+                onRetrySeason,
+                onToggleEpisode,
+                onToggleSeasonWatched,
+                onOpenSettings,
+                sectionModifier
+            )
+        }
+        detailSectionItem(key = "chips") {
+            DetailChips(
+                stringResource(statusString(details.productionStatus)),
+                details.genres,
                 modifier = sectionModifier
             )
         }
@@ -521,18 +475,16 @@ private fun DetailBody(
             ) {
                 details.episodeRuntime?.let {
                     DetailField(
-                        labelRes = R.string.detail_episode_runtime,
-                        value = stringResource(R.string.detail_minutes, it.toMinutes())
+                        R.string.detail_episode_runtime,
+                        stringResource(R.string.detail_minutes, it.toMinutes())
                     )
                 }
-                details.releaseDate?.let {
-                    DetailField(R.string.detail_date, it.formatLocalized(locale))
-                }
-                details.originalLanguage?.let {
-                    DetailField(R.string.detail_original_language, it)
-                }
+                details.releaseDate?.let { DetailField(R.string.detail_date, it.formatLocalized(locale)) }
+                details.originalLanguage?.let { DetailField(R.string.detail_original_language, it) }
                 if (refreshError == AppError.Unauthorized) {
-                    Button(onClick = onOpenSettings) { Text(stringResource(R.string.search_open_settings)) }
+                    Button(onClick = onOpenSettings) {
+                        Text(stringResource(R.string.search_open_settings))
+                    }
                 }
             }
         }
@@ -560,19 +512,29 @@ private fun statusString(status: ProductionStatus): Int = when (status) {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun WatchedDateSection(
+internal fun WatchedDateSection(
     watchedDate: LocalDate?,
     today: LocalDate,
     isUpdating: Boolean,
     releaseDate: LocalDate?,
     mediaType: MediaType,
     onSetWatchedDate: (LocalDate?) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    canClear: Boolean = watchedDate != null,
+    isFinalCompletion: Boolean = true
 ) {
     var showDialog by remember { mutableStateOf(false) }
     val locale = LocalConfiguration.current.locales[0]
-    val labelRes = if (mediaType == MediaType.MOVIE) R.string.watched_date_label else R.string.completion_date_label
-    val editRes = if (mediaType == MediaType.MOVIE) R.string.watched_date_edit else R.string.completion_date_edit
+    val labelRes = when {
+        mediaType == MediaType.MOVIE -> R.string.watched_date_label
+        isFinalCompletion -> R.string.completion_date_label
+        else -> R.string.available_completion_date_label
+    }
+    val editRes = when {
+        mediaType == MediaType.MOVIE -> R.string.watched_date_edit
+        isFinalCompletion -> R.string.completion_date_edit
+        else -> R.string.available_completion_date_edit
+    }
 
     Column(
         modifier = modifier.fillMaxWidth(),
@@ -590,13 +552,13 @@ private fun WatchedDateSection(
             horizontalArrangement = Arrangement.spacedBy(BingeeDimensions.elementSpacing),
             verticalArrangement = Arrangement.spacedBy(BingeeDimensions.elementSpacing)
         ) {
-            Button(
+            FilledTonalButton(
                 onClick = { showDialog = true },
                 enabled = !isUpdating
             ) {
                 Text(stringResource(editRes))
             }
-            if (watchedDate != null) {
+            if (canClear) {
                 TextButton(
                     onClick = { onSetWatchedDate(null) },
                     enabled = !isUpdating
@@ -616,7 +578,8 @@ private fun WatchedDateSection(
                 onSetWatchedDate(date)
                 showDialog = false
             },
-            onDismiss = { showDialog = false }
+            onDismiss = { showDialog = false },
+            isFinalCompletion = isFinalCompletion
         )
     }
 }
@@ -629,7 +592,8 @@ internal fun WatchedDateDialog(
     releaseDate: LocalDate?,
     mediaType: MediaType = MediaType.MOVIE,
     onConfirm: (LocalDate) -> Unit,
-    onDismiss: () -> Unit
+    onDismiss: () -> Unit,
+    isFinalCompletion: Boolean = true
 ) {
     var selectedChoice by remember { mutableStateOf(WatchedDateChoice.TODAY) }
     var customDate by remember { mutableStateOf(currentDate ?: today) }
@@ -643,7 +607,11 @@ internal fun WatchedDateDialog(
         WatchedDateChoice.CUSTOM_DATE -> customDate
     }
 
-    val titleRes = if (mediaType == MediaType.MOVIE) R.string.watched_date_label else R.string.completion_date_label
+    val titleRes = when {
+        mediaType == MediaType.MOVIE -> R.string.watched_date_label
+        isFinalCompletion -> R.string.completion_date_label
+        else -> R.string.available_completion_date_label
+    }
     val futureDateError = stringResource(R.string.watched_date_future_error, today.formatLocalized(locale))
     val beforeReleaseDateError = releaseDate?.let {
         stringResource(R.string.watched_date_before_release_error, it.formatLocalized(locale))

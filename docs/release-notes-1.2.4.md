@@ -1,6 +1,6 @@
 # Bingee 1.2.4 — runtime reliability and container-aware statistics
 
-These notes describe the implemented v1.2.4 changes. The [canonical development checklist](../BINGEE_DEVELOPMENT_ROADMAP_AND_CHECKLIST.md#v124-checklist) records verification separately. The hardware-efficiency audit (#7), final global audit and release gate remain open; this document does not announce a published release.
+These notes describe the implemented v1.2.4 changes. The [canonical development checklist](../BINGEE_DEVELOPMENT_ROADMAP_AND_CHECKLIST.md#v124-checklist) records verification separately. Its [status reconciliation](../BINGEE_DEVELOPMENT_ROADMAP_AND_CHECKLIST.md#v124-status-reconciliation--2026-10-19) resolves the historical hardware-efficiency audit (#7), final-audit and verification gates through the work and scope decisions recorded in v1.2.5/v1.2.6, retaining their coverage limits. This document does not announce a published release.
 
 ## Changed behavior
 
@@ -14,6 +14,6 @@ These notes describe the implemented v1.2.4 changes. The [canonical development 
 
 Instrumented UI tests resolve ordinary controls from localized resources and existing semantics; tests of visible wording and fixture titles retain explicit expectations. The locale rule applies English or Italian before Activity creation and restores the previous app locale without changing saved preferences. Notification Center component tests render the production content. See [Build and verify](../README.md#build-and-verify) for locale execution.
 
-Release-only behavior is checked on the actual R8/minified artifact, including native notification taps, launcher shortcuts, both widget actions and offline relaunch. Debug instrumentation is complementary evidence. See [Optimized release smoke](../README.md#optimized-release-smoke) for the repeatable procedure; the canonical checklist retains the scoped results and remaining final gates.
+Release-only behavior is checked on the actual R8/minified artifact, including native notification taps, launcher shortcuts, both widget actions and offline relaunch. Debug instrumentation is complementary evidence. See [Optimized release smoke](../README.md#optimized-release-smoke) for the repeatable procedure; the canonical checklist retains the scoped results and verification limits.
 
 The app remains local-first. App version is 1.2.4 with versionCode 8; Room schema 9, Backup format 3, portable user data and the privacy model are unchanged by these modifications.

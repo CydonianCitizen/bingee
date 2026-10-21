@@ -336,8 +336,8 @@ internal abstract class WatchProgressDao {
                 insertMovieProgress(MovieWatchProgressEntity(media.localMediaId, now, watchedDate))
             }
         } else {
-            val existing = getSeriesProgressByMediaId(media.localMediaId)
-            if (existing != null) insertSeriesProgress(existing.copy(watchedDate = watchedDate))
+            val existing = getSeriesProgressByMediaId(media.localMediaId) ?: return ProgressWriteOutcome.INCOMPLETE
+            insertSeriesProgress(existing.copy(watchedDate = watchedDate))
         }
         return ProgressWriteOutcome.SUCCESS
     }

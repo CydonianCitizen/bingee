@@ -1,8 +1,12 @@
 package com.cydoniancitizen.bingee.data.library
 
+import androidx.room.withTransaction
 import com.cydoniancitizen.bingee.core.model.ContinueWatchingItem
 import com.cydoniancitizen.bingee.core.model.EpisodePosition
 import com.cydoniancitizen.bingee.core.model.ExternalMediaRef
+import com.cydoniancitizen.bingee.core.model.HistoryOverviewQuery
+import com.cydoniancitizen.bingee.core.model.HistorySnapshot
+import com.cydoniancitizen.bingee.core.model.HistorySnapshotQuery
 import com.cydoniancitizen.bingee.core.model.LibraryEntry
 import com.cydoniancitizen.bingee.core.model.LibraryQuery
 import com.cydoniancitizen.bingee.core.model.MediaSearchResult
@@ -17,6 +21,8 @@ import com.cydoniancitizen.bingee.core.model.normalizeLibrarySearch
 import com.cydoniancitizen.bingee.core.model.tmdbIdOrNull
 import com.cydoniancitizen.bingee.core.result.AppError
 import com.cydoniancitizen.bingee.core.result.AppResult
+import com.cydoniancitizen.bingee.data.importexport.RestoreGeneration
+import com.cydoniancitizen.bingee.data.library.local.BingeeDatabase
 import com.cydoniancitizen.bingee.data.library.local.LibraryDao
 import com.cydoniancitizen.bingee.data.library.local.MediaEntity
 import com.cydoniancitizen.bingee.data.library.local.ProgressWriteOutcome
@@ -44,6 +50,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
@@ -58,8 +65,41 @@ internal class DefaultLibraryRepository @Inject constructor(
     private val ratingDao: RatingDao,
     private val clock: Clock,
     private val dateSource: CalendarDateSource,
-    @param:DefaultDispatcher private val projectionDispatcher: CoroutineDispatcher
+    @param:DefaultDispatcher private val projectionDispatcher: CoroutineDispatcher,
+    private val historyDatabase: BingeeDatabase,
+    private val restoreGeneration: RestoreGeneration =
+        RestoreGeneration()
 ) : LibraryRepository {
+    override fun observeHistory(query: HistorySnapshotQuery) = historyDatabase.invalidationTracker.createFlow(
+        "media_entries",
+        "external_refs",
+        "movie_watch_progress",
+        "episodes",
+        "seasons",
+        "episode_watch_progress"
+    ).map {
+        val before = restoreGeneration.changes.value
+        if (before.activeRestores > 0 || before.generation != query.restoreGeneration) return@map null
+        val snapshot = historyDatabase.withTransaction {
+            val dao = historyDatabase.historyDao()
+            val overviewQuery = HistoryOverviewQuery(query.page.context, query.page.filter)
+            val overview = dao.readOverview(HistoryQueries.overview(overviewQuery)).toHistoryOverview(overviewQuery)
+            val page = dao.readHistoryWindow(query.page, overview)
+            val groups = page.items.filter { it.mediaType == MediaType.SERIES }.mapNotNull { item ->
+                val requested = query.groups[item.key] ?: return@mapNotNull null
+                val childQuery = requested.copy(
+                    context = query.page.context,
+                    day = item.day,
+                    mediaId = item.mediaId
+                )
+                item.key to persistenceRead {
+                    dao.readEpisodes(HistoryQueries.episodes(childQuery)).toEpisodePage(childQuery)
+                }
+            }.toMap()
+            HistorySnapshot(overview, page, groups)
+        }
+        if (restoreGeneration.changes.value != before) null else snapshot
+    }.filterNotNull().asPersistenceResult { it }.flowOn(projectionDispatcher)
     private val progressScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
     /**
@@ -273,16 +313,22 @@ internal class DefaultLibraryRepository @Inject constructor(
         mediaType: MediaType,
         watchedDate: LocalDate?
     ): AppResult<Unit> = withNormalizedExternalId(ref) { externalId ->
-        persistenceRead {
-            val outcome = watchProgressDao.setMediaWatchedDate(
-                source = ref.source,
-                mediaType = mediaType,
-                externalId = externalId,
-                watchedDate = watchedDate,
-                now = clock.instant()
-            )
-            if (outcome == ProgressWriteOutcome.NOT_FOUND) {
-                throw IllegalStateException("Media entity not found for watched date update")
+        when (
+            val result = persistenceRead {
+                watchProgressDao.setMediaWatchedDate(
+                    source = ref.source,
+                    mediaType = mediaType,
+                    externalId = externalId,
+                    watchedDate = watchedDate,
+                    now = clock.instant()
+                )
+            }
+        ) {
+            is AppResult.Failure -> result
+            is AppResult.Success -> when (result.value) {
+                ProgressWriteOutcome.SUCCESS -> AppResult.Success(Unit)
+                ProgressWriteOutcome.NOT_FOUND -> AppResult.Failure(AppError.CorruptedData)
+                else -> AppResult.Failure(AppError.InvalidInput)
             }
         }
     }

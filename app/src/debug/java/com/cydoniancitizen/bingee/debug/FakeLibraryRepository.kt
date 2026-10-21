@@ -2,6 +2,8 @@ package com.cydoniancitizen.bingee.debug
 
 import com.cydoniancitizen.bingee.core.model.ContinueWatchingItem
 import com.cydoniancitizen.bingee.core.model.ExternalMediaRef
+import com.cydoniancitizen.bingee.core.model.HistorySnapshot
+import com.cydoniancitizen.bingee.core.model.HistorySnapshotQuery
 import com.cydoniancitizen.bingee.core.model.LibraryEntry
 import com.cydoniancitizen.bingee.core.model.LibraryProgress
 import com.cydoniancitizen.bingee.core.model.LibraryQuery
@@ -34,6 +36,9 @@ class FakeLibraryRepository(
 
     override fun observeMembershipRefs(): Flow<AppResult<Set<Pair<ExternalMediaRef, MediaType>>>> =
         entries.map { current -> AppResult.Success(current.mapTo(linkedSetOf()) { it.mediaRef to it.mediaType }) }
+
+    override fun observeHistory(query: HistorySnapshotQuery): Flow<AppResult<HistorySnapshot>> =
+        error("History is not part of this fixture")
 
     override fun observePersonalViewing(): Flow<AppResult<List<PersonalViewingEntry>>> = entries.map { current ->
         AppResult.Success(current.mapNotNull(::toPersonalViewingEntry))

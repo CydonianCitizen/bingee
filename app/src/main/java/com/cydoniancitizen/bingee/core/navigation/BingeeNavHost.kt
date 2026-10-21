@@ -25,6 +25,7 @@ import com.cydoniancitizen.bingee.core.model.MediaType
 import com.cydoniancitizen.bingee.core.model.tmdbIdOrNull
 import com.cydoniancitizen.bingee.data.settings.ProfileCollection
 import com.cydoniancitizen.bingee.feature.details.MediaDetailsScreen
+import com.cydoniancitizen.bingee.feature.history.HistoryScreen
 import com.cydoniancitizen.bingee.feature.home.HomeScreen
 import com.cydoniancitizen.bingee.feature.notifications.NotificationsScreen
 import com.cydoniancitizen.bingee.feature.onboarding.OnboardingRoute
@@ -32,6 +33,11 @@ import com.cydoniancitizen.bingee.feature.profile.ProfileCollectionShortcut
 import com.cydoniancitizen.bingee.feature.profile.ProfileScreen
 import com.cydoniancitizen.bingee.feature.profile.StatisticsScreen
 import com.cydoniancitizen.bingee.feature.search.SearchScreen
+import com.cydoniancitizen.bingee.feature.settings.AboutSettingsScreen
+import com.cydoniancitizen.bingee.feature.settings.AppearanceLanguageSettingsScreen
+import com.cydoniancitizen.bingee.feature.settings.DataBackupSettingsScreen
+import com.cydoniancitizen.bingee.feature.settings.NotificationSettingsScreen
+import com.cydoniancitizen.bingee.feature.settings.PrivacySettingsScreen
 import com.cydoniancitizen.bingee.feature.settings.SettingsIndexScreen
 import com.cydoniancitizen.bingee.feature.tvtimeimport.TvTimeImportScreen
 
@@ -75,6 +81,7 @@ fun BingeeNavHost(
             ProfileScreen(
                 onOpenSettings = { navController.navigate(AppRoute.SETTINGS) },
                 onOpenStatistics = { navController.navigate(AppRoute.STATISTICS) },
+                onOpenHistory = { navController.navigate(AppRoute.HISTORY) },
                 onOpenDetails = { reference, mediaType ->
                     navController.openDetails(reference, mediaType)
                 },
@@ -123,6 +130,12 @@ fun BingeeNavHost(
                 )
             }
         }
+        composable(AppRoute.HISTORY) {
+            HistoryScreen(
+                onBack = navController::popBackStack,
+                onOpenDetails = { reference, mediaType -> navController.openDetails(reference, mediaType) }
+            )
+        }
         composable(AppRoute.STATISTICS) { entry ->
             val statisticsOwner = remember(entry) {
                 try {
@@ -151,24 +164,24 @@ fun BingeeNavHost(
             )
         }
         composable(AppRoute.SETTINGS_APPEARANCE) {
-            com.cydoniancitizen.bingee.feature.settings.AppearanceLanguageSettingsScreen(
+            AppearanceLanguageSettingsScreen(
                 onBack = navController::popBackStack
             )
         }
         composable(AppRoute.SETTINGS_NOTIFICATIONS) {
-            com.cydoniancitizen.bingee.feature.settings.NotificationSettingsScreen(onBack = navController::popBackStack)
+            NotificationSettingsScreen(onBack = navController::popBackStack)
         }
         composable(AppRoute.SETTINGS_DATA_BACKUP) {
-            com.cydoniancitizen.bingee.feature.settings.DataBackupSettingsScreen(
+            DataBackupSettingsScreen(
                 onBack = navController::popBackStack,
                 onOpenTvTimeImport = { navController.navigate(AppRoute.TV_TIME_IMPORT) }
             )
         }
         composable(AppRoute.SETTINGS_PRIVACY) {
-            com.cydoniancitizen.bingee.feature.settings.PrivacySettingsScreen(onBack = navController::popBackStack)
+            PrivacySettingsScreen(onBack = navController::popBackStack)
         }
         composable(AppRoute.SETTINGS_ABOUT) {
-            com.cydoniancitizen.bingee.feature.settings.AboutSettingsScreen(onBack = navController::popBackStack)
+            AboutSettingsScreen(onBack = navController::popBackStack)
         }
         composable(AppRoute.NOTIFICATIONS) {
             NotificationsScreen(

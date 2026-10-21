@@ -6,6 +6,8 @@ import com.cydoniancitizen.bingee.core.model.CalendarRefreshSummary
 import com.cydoniancitizen.bingee.core.model.ContinueWatchingItem
 import com.cydoniancitizen.bingee.core.model.EpisodePosition
 import com.cydoniancitizen.bingee.core.model.ExternalMediaRef
+import com.cydoniancitizen.bingee.core.model.HistorySnapshot
+import com.cydoniancitizen.bingee.core.model.HistorySnapshotQuery
 import com.cydoniancitizen.bingee.core.model.LibraryEntry
 import com.cydoniancitizen.bingee.core.model.LibraryProgress
 import com.cydoniancitizen.bingee.core.model.LibraryQuery
@@ -59,6 +61,93 @@ class HomeViewModelTest {
     @After
     fun cancelViewModels() {
         createdViewModels.forEach { it.viewModelScope.cancel() }
+    }
+
+    @Test
+    fun calendarShowsOneUpcomingReleasePerSeriesWithoutHidingMoviesOrOtherSeries() =
+        runTest(mainDispatcherRule.dispatcher) {
+            val seriesRef = ExternalMediaRef(MediaSource.TMDB, "shared-id")
+            val episode = event("ep2", ReleaseSubjectType.EPISODE, ReleaseEventType.EPISODE_AIRING, today.plusDays(1))
+                .copy(mediaRef = seriesRef, title = "Same title", episodeNumber = 2)
+            val laterEpisode = episode.copy(
+                subject = episode.subject.copy(externalId = "ep10"),
+                episodeNumber = 10
+            )
+            val recent = episode.copy(
+                subject = episode.subject.copy(externalId = "recent"),
+                eventDate = today.minusDays(1)
+            )
+            val premiere = event(
+                "season",
+                ReleaseSubjectType.SEASON,
+                ReleaseEventType.SEASON_PREMIERE,
+                today.plusDays(1)
+            )
+                .copy(mediaRef = seriesRef)
+            val movie = event("movie", ReleaseSubjectType.MEDIA, ReleaseEventType.MOVIE_RELEASE, today)
+                .copy(mediaRef = seriesRef)
+            val otherSeries = episode.copy(mediaRef = ExternalMediaRef(MediaSource.TMDB, "another-id"))
+            val input = listOf(laterEpisode, premiere, recent, otherSeries, movie) +
+                (1..100).map { index ->
+                    episode.copy(
+                        subject = episode.subject.copy(externalId = "later-$index"),
+                        eventDate = today.plusDays(index.toLong() + 1)
+                    )
+                } + episode
+            val repository = FakeCalendarRepository(input)
+            val vm = viewModel(repository, FakeCoordinator(success()))
+            runCurrent()
+            val shown = (vm.uiState.value.content as HomeContentState.Events).groups.flatMap { it.events }
+            assertEquals(listOf(movie, otherSeries, episode), shown)
+            assertEquals(input, (repository.events.value as AppResult.Success).value)
+        }
+
+    @Test
+    fun calendarKeepsLatestRecentReleaseAndPremiereFallbackUsingQualifiedSeriesIdentity() =
+        runTest(mainDispatcherRule.dispatcher) {
+            val old = event("old", ReleaseSubjectType.EPISODE, ReleaseEventType.EPISODE_AIRING, today.minusDays(5))
+            val latest = old.copy(subject = old.subject.copy(externalId = "latest"), eventDate = today.minusDays(1))
+            val premiere = event(
+                "premiere",
+                ReleaseSubjectType.SEASON,
+                ReleaseEventType.SEASON_PREMIERE,
+                today.plusDays(3)
+            )
+            val otherProvider = latest.copy(
+                mediaRef = latest.mediaRef.copy(source = MediaSource.IMDB),
+                subject = latest.subject.copy(source = MediaSource.IMDB)
+            )
+            val vm = viewModel(
+                FakeCalendarRepository(listOf(old, latest, premiere, otherProvider)),
+                FakeCoordinator(success())
+            )
+            runCurrent()
+            val shown = (vm.uiState.value.content as HomeContentState.Events).groups.flatMap { it.events }
+            assertEquals(setOf(latest, premiere, otherProvider), shown.toSet())
+            assertEquals(3, shown.size)
+        }
+
+    @Test
+    fun calendarSelectionMovesForwardWithDateAndReconcilesUpdatedEvents() = runTest(mainDispatcherRule.dispatcher) {
+        val current = event("current", ReleaseSubjectType.EPISODE, ReleaseEventType.EPISODE_AIRING, today)
+        val next = current.copy(subject = current.subject.copy(externalId = "next"), eventDate = today.plusDays(1))
+        val dateSource = FakeDateSource(today)
+        val repository = FakeCalendarRepository(listOf(next, current))
+        val vm = viewModel(repository, FakeCoordinator(success()), dateSource = dateSource)
+        runCurrent()
+        assertEquals(
+            listOf(current),
+            (vm.uiState.value.content as HomeContentState.Events).groups.flatMap { it.events }
+        )
+        dateSource.advanceTo(today.plusDays(1))
+        runCurrent()
+        assertEquals(listOf(next), (vm.uiState.value.content as HomeContentState.Events).groups.flatMap { it.events })
+        repository.events.value = AppResult.Success(listOf(current))
+        runCurrent()
+        assertEquals(
+            listOf(current),
+            (vm.uiState.value.content as HomeContentState.Events).groups.flatMap { it.events }
+        )
     }
 
     @Test
@@ -549,11 +638,12 @@ class HomeViewModelTest {
         featuredRepository: com.cydoniancitizen.bingee.domain.repository.FeaturedReleasesRepository =
             FakeFeaturedRepo(),
         libraryRepository: com.cydoniancitizen.bingee.domain.repository.LibraryRepository = FakeLibraryRepo(),
-        watchProgressRepository: WatchProgressRepository = FakeWatchProgressRepository()
+        watchProgressRepository: WatchProgressRepository = FakeWatchProgressRepository(),
+        dateSource: CalendarDateSource = FakeDateSource(today)
     ) = HomeViewModel(
         repository,
         coordinator,
-        FakeDateSource(today),
+        dateSource,
 
         featuredRepository,
         libraryRepository,
@@ -585,6 +675,9 @@ class HomeViewModelTest {
 
         override suspend fun setSeriesAbandoned(ref: ExternalMediaRef, isAbandoned: Boolean): AppResult<Unit> =
             AppResult.Failure(AppError.UnsupportedData)
+        override fun observeHistory(query: HistorySnapshotQuery): Flow<AppResult<HistorySnapshot>> =
+            error("History is not part of this fixture")
+
         override fun observePersonalViewing() =
             MutableStateFlow<AppResult<List<com.cydoniancitizen.bingee.core.model.PersonalViewingEntry>>>(
                 AppResult.Success(emptyList())

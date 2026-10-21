@@ -231,9 +231,8 @@ private fun calculateMonthlyViewing(
     val requested = Array(12) { MonthlyAccumulator() }
     val current = if (selectedYear == currentDate.year) requested else Array(12) { MonthlyAccumulator() }
     var firstYear = currentDate.year
-    fun record(type: MediaType, watchedAt: Instant, runtime: Int?) {
+    fun record(type: MediaType, date: LocalDate, runtime: Int?) {
         checkCancelled()
-        val date = watchedAt.atZone(zoneId).toLocalDate()
         if (date.isAfter(currentDate)) return
         firstYear = minOf(firstYear, date.year)
         val bucket = when (date.year) {
@@ -255,9 +254,26 @@ private fun calculateMonthlyViewing(
     entries.forEach { entry ->
         checkCancelled()
         when (entry.mediaType) {
-            MediaType.MOVIE -> entry.movieWatchedAt?.let { record(MediaType.MOVIE, it, entry.movieRuntimeMinutes) }
+            MediaType.MOVIE -> entry.movieWatchedAt?.let {
+                record(
+                    MediaType.MOVIE,
+                    com.cydoniancitizen.bingee.domain.policy.ViewingDatePolicy.effectiveMovieDate(
+                        it,
+                        entry.watchedDate,
+                        zoneId
+                    ),
+                    entry.movieRuntimeMinutes
+                )
+            }
             MediaType.SERIES -> entry.watchedRegularEpisodeActivities.forEach {
-                record(MediaType.SERIES, it.watchedAt, it.runtimeMinutes)
+                record(
+                    MediaType.SERIES,
+                    com.cydoniancitizen.bingee.domain.policy.ViewingDatePolicy.effectiveEpisodeDate(
+                        it.watchedAt,
+                        zoneId
+                    ),
+                    it.runtimeMinutes
+                )
             }
         }
     }

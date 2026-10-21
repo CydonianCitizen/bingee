@@ -3,9 +3,12 @@ package com.cydoniancitizen.bingee.feature.profile
 import com.cydoniancitizen.bingee.core.model.ContinueWatchingItem
 import com.cydoniancitizen.bingee.core.model.ExternalMediaRef
 import com.cydoniancitizen.bingee.core.model.Genre
+import com.cydoniancitizen.bingee.core.model.HistorySnapshot
+import com.cydoniancitizen.bingee.core.model.HistorySnapshotQuery
 import com.cydoniancitizen.bingee.core.model.LibraryEntry
 import com.cydoniancitizen.bingee.core.model.LibraryProgress
 import com.cydoniancitizen.bingee.core.model.LibraryQuery
+import com.cydoniancitizen.bingee.core.model.MediaSearchResult
 import com.cydoniancitizen.bingee.core.model.MediaSource
 import com.cydoniancitizen.bingee.core.model.MediaType
 import com.cydoniancitizen.bingee.core.model.MovieWatchState
@@ -347,16 +350,17 @@ class ProfileViewModelTest {
                 movieWatchedAt = Instant.parse("2026-03-01T00:30:00Z"),
                 movieRuntimeMinutes = 120
             )
+            val dates = TestCalendarDateSource(LocalDate.of(2026, 3, 1))
             val viewModel = createViewModel(
                 FakeLibraryRepo(emptyList(), listOf(movie)),
                 FakeDisplayModePrefs(),
-                TestCalendarDateSource(LocalDate.of(2026, 3, 1))
+                dates
             )
             runCurrent()
             assertEquals(120L, viewModel.uiState.value.statistics.monthlyViewing.months[2].movieMinutes)
 
             TimeZone.setDefault(TimeZone.getTimeZone("America/Los_Angeles"))
-            viewModel.setStatisticsMediaScope(StatisticsMediaScope.SERIES)
+            dates.changeZone(ZoneId.of("America/Los_Angeles"))
             runCurrent()
             assertEquals(120L, viewModel.uiState.value.statistics.monthlyViewing.months[1].movieMinutes)
             assertEquals(0L, viewModel.uiState.value.statistics.monthlyViewing.months[2].movieMinutes)
@@ -769,6 +773,9 @@ class ProfileViewModelTest {
             flowOf(AppResult.Success(null))
         override fun observeMembershipRefs(): Flow<AppResult<Set<Pair<ExternalMediaRef, MediaType>>>> =
             flowOf(AppResult.Success(emptySet()))
+        override fun observeHistory(query: HistorySnapshotQuery): Flow<AppResult<HistorySnapshot>> =
+            error("History is not part of this fixture")
+
         override fun observePersonalViewing(): Flow<AppResult<List<PersonalViewingEntry>>> = flow {
             observePersonalViewingCalls++
             activeViewing++
@@ -783,11 +790,10 @@ class ProfileViewModelTest {
             observeFakeContinueWatching()
         override suspend fun setSeriesAbandoned(ref: ExternalMediaRef, isAbandoned: Boolean): AppResult<Unit> =
             AppResult.Failure(AppError.UnsupportedData)
-        override suspend fun add(
-            result: com.cydoniancitizen.bingee.core.model.MediaSearchResult
-        ): AppResult<LibraryEntry> = AppResult.Failure(com.cydoniancitizen.bingee.core.result.AppError.Unknown)
+        override suspend fun add(result: MediaSearchResult): AppResult<LibraryEntry> =
+            AppResult.Failure(AppError.Unknown)
         override suspend fun add(ref: ExternalMediaRef, mediaType: MediaType): AppResult<LibraryEntry> =
-            AppResult.Failure(com.cydoniancitizen.bingee.core.result.AppError.Unknown)
+            AppResult.Failure(AppError.Unknown)
         override suspend fun remove(ref: ExternalMediaRef, mediaType: MediaType): AppResult<Unit> =
             AppResult.Success(Unit)
         override suspend fun setFavorite(
@@ -795,10 +801,8 @@ class ProfileViewModelTest {
             mediaType: MediaType,
             isFavorite: Boolean
         ): AppResult<Unit> = AppResult.Success(Unit)
-        override suspend fun setFavorite(
-            result: com.cydoniancitizen.bingee.core.model.MediaSearchResult,
-            isFavorite: Boolean
-        ): AppResult<Unit> = AppResult.Success(Unit)
+        override suspend fun setFavorite(result: MediaSearchResult, isFavorite: Boolean): AppResult<Unit> =
+            AppResult.Success(Unit)
         override suspend fun setWatchedDate(
             ref: ExternalMediaRef,
             mediaType: MediaType,

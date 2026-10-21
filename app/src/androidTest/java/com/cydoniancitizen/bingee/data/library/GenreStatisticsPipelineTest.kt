@@ -59,7 +59,8 @@ class GenreStatisticsPipelineTest {
             database.ratingDao(),
             Clock.fixed(now, ZoneOffset.UTC),
             TestCalendarDateSource(today),
-            kotlinx.coroutines.Dispatchers.Default
+            kotlinx.coroutines.Dispatchers.Default,
+            historyDatabase = database
         )
         store = BackupDataStore(
             database,

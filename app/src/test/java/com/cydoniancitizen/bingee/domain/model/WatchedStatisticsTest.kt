@@ -21,6 +21,48 @@ class WatchedStatisticsTest {
     private val zone = ZoneId.of("Europe/Rome")
 
     @Test
+    fun manualMovieDateDeterminesMonthAndRemovingItRestoresTimestampMonth() {
+        val movie = movie(
+            "manual",
+            watchedAt = instant("2026-10-05T12:00:00Z"),
+            watchedDate = LocalDate.of(2026, 9, 3),
+            runtimeMinutes = 90
+        )
+        val today = LocalDate.of(2026, 10, 20)
+        val dated = calculateWatchedStatistics(listOf(movie), zone, today, 2026)
+        assertEquals(90L, dated.monthlyViewing.months[8].movieMinutes)
+        assertEquals(0L, dated.monthlyViewing.months[9].movieMinutes)
+        val undated = calculateWatchedStatistics(listOf(movie.copy(watchedDate = null)), zone, today, 2026)
+        assertEquals(90L, undated.monthlyViewing.months[9].movieMinutes)
+        assertEquals(dated.movieWatchTimeMinutes, undated.movieWatchTimeMinutes)
+        assertEquals(instant("2026-10-05T12:00:00Z"), movie.movieWatchedAt)
+    }
+
+    @Test
+    fun effectiveFutureDateIsExcludedButPastManualDateOverridesFutureTimestamp() {
+        val today = LocalDate.of(2026, 10, 20)
+        val entries = listOf(
+            movie(
+                "future",
+                watchedAt = instant("2026-10-01T00:00:00Z"),
+                watchedDate = today.plusDays(1),
+                runtimeMinutes = 50
+            ),
+            movie(
+                "past",
+                watchedAt = instant("2027-01-01T00:00:00Z"),
+                watchedDate = today.minusDays(1),
+                runtimeMinutes = 90
+            )
+        )
+        assertEquals(
+            90L,
+            calculateWatchedStatistics(entries, zone, today, 2026)
+                .monthlyViewing.months[9].movieMinutes
+        )
+    }
+
+    @Test
     fun emptyHistoryProducesEmptyStatistics() {
         val stats = calculateWatchedStatistics(emptyList(), zone)
 

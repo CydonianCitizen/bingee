@@ -4,9 +4,16 @@ import android.content.Context
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
+import androidx.lifecycle.SavedStateHandle
+import androidx.lifecycle.ViewModelStore
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import com.cydoniancitizen.bingee.core.model.HistoryContext
+import com.cydoniancitizen.bingee.core.model.HistoryEpisodeQuery
+import com.cydoniancitizen.bingee.core.model.HistoryFilter
+import com.cydoniancitizen.bingee.core.model.HistoryPageQuery
+import com.cydoniancitizen.bingee.core.model.HistorySnapshotQuery
 import com.cydoniancitizen.bingee.core.model.LibraryProgress
 import com.cydoniancitizen.bingee.core.model.MediaSource
 import com.cydoniancitizen.bingee.core.model.MediaType
@@ -35,13 +42,22 @@ import com.cydoniancitizen.bingee.data.settings.ProfileViewMode
 import com.cydoniancitizen.bingee.data.settings.bingeePreferenceData
 import com.cydoniancitizen.bingee.data.settings.bingeePreferences
 import com.cydoniancitizen.bingee.domain.model.calculateWatchedStatistics
+import com.cydoniancitizen.bingee.feature.history.HistoryViewModel
 import com.cydoniancitizen.bingee.testutil.TestCalendarDateSource
 import java.time.Clock
 import java.time.Instant
 import java.time.LocalDate
+import java.time.YearMonth
 import java.time.ZoneOffset
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.cancelAndJoin
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeout
 import org.junit.After
 import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
@@ -56,6 +72,7 @@ import org.junit.runner.RunWith
 class BackupDataStoreTest {
     private lateinit var database: BingeeDatabase
     private lateinit var store: BackupDataStore
+    private val restoreGeneration = RestoreGeneration()
     private val exportedAt = Instant.parse("2026-08-04T10:00:00Z")
     private val validationDate = LocalDate.of(2026, 8, 18)
 
@@ -78,7 +95,8 @@ class BackupDataStoreTest {
                 ApplicationProvider.getApplicationContext(),
                 database,
                 database.portableSnapshotDao()
-            )
+            ),
+            restoreGeneration
         )
     }
 
@@ -149,6 +167,7 @@ class BackupDataStoreTest {
     fun restoreReplacesPortableStateRegeneratesIdsAndSupportsRepeatImport() = runBlocking {
         val first = plan("1", includeSeries = false)
         store.restore(first)
+        assertEquals(2L, restoreGeneration.changes.value.generation)
         val firstId = database.portableSnapshotDao().readSnapshot().media.single().localMediaId
 
         val second = plan("2", includeSeries = true)
@@ -194,6 +213,104 @@ class BackupDataStoreTest {
             }
             assertTrue("restore must fail at ${failedStage.name}", failed)
             assertEquals(before, database.portableSnapshotDao().readSnapshot())
+        }
+    }
+
+    @Test
+    fun restoreWhileHistoryIsUnsubscribedResetsLocalIdentityAndKeepsSelection() = runBlocking {
+        store.restore(roundTripPlan())
+        val repository = DefaultLibraryRepository(
+            database.libraryDao(),
+            database.watchProgressDao(),
+            database.ratingDao(),
+            Clock.fixed(exportedAt, ZoneOffset.UTC),
+            TestCalendarDateSource(validationDate),
+            Dispatchers.Default,
+            database,
+            restoreGeneration
+        )
+        val saved = SavedStateHandle()
+        val vm = withContext(Dispatchers.Main) {
+            HistoryViewModel(repository, TestCalendarDateSource(validationDate), restoreGeneration, saved)
+        }
+        val owner = ViewModelStore().apply { put("history", vm) }
+        var collector = launch(Dispatchers.Default) { vm.uiState.collect() }
+        try {
+            withContext(Dispatchers.Main) {
+                vm.selectFilter(HistoryFilter.EPISODES)
+            }
+            val before = withTimeout(10000) { vm.uiState.first { !it.loading && it.page.items.isNotEmpty() } }
+            val group = before.page.items.first()
+            withContext(Dispatchers.Main) { vm.toggleGroup(group) }
+            withTimeout(10000) { vm.uiState.first { it.groups[group.key]?.loading == false } }
+            withContext(Dispatchers.Main) { vm.saveAnchor(group.key, 12) }
+            collector.cancelAndJoin()
+            delay(5200) // A retained back-stack owner with no active History UI subscriber.
+            store.restore(roundTripPlan())
+            withTimeout(10000) {
+                while (saved.get<Long>("history_restore") != restoreGeneration.changes.value.generation) delay(10)
+            }
+            assertNull(vm.anchorKey)
+            assertTrue(saved.get<ArrayList<String>>("history_groups").orEmpty().isEmpty())
+            collector = launch(Dispatchers.Default) { vm.uiState.collect() }
+            val after = withTimeout(10000) { vm.uiState.first { !it.loading && it.page.items.isNotEmpty() } }
+            assertEquals(HistoryFilter.EPISODES, after.filter)
+            assertTrue(after.groups.isEmpty())
+            assertEquals(before.page.items.map { it.title }, after.page.items.map { it.title })
+        } finally {
+            collector.cancelAndJoin()
+            withContext(Dispatchers.Main) { owner.clear() }
+        }
+    }
+
+    @Test
+    fun everySupportedBackupVersionRestoresManualMovieDatesAndAbandonedSpecialsInHistory() = runBlocking {
+        val original = roundTripPlan().document
+        val manualDay = LocalDate.of(2026, 6, 18)
+        val context = HistoryContext(validationDate, ZoneOffset.UTC)
+        val repository = DefaultLibraryRepository(
+            database.libraryDao(),
+            database.watchProgressDao(),
+            database.ratingDao(),
+            Clock.fixed(exportedAt, ZoneOffset.UTC),
+            TestCalendarDateSource(validationDate),
+            Dispatchers.Default,
+            database,
+            restoreGeneration
+        )
+        for (version in 1..3) {
+            val document = original.copy(
+                schemaVersion = version,
+                data = original.data.copy(
+                    movieProgress = original.data.movieProgress.mapIndexed { index, progress ->
+                        if (index == 0) progress.copy(watchedDate = manualDay) else progress
+                    }
+                )
+            )
+            val decoded = exportedDocument(BackupJsonCodec.encode(document))
+            store.restore((validate(decoded) as BackupValidationResult.Success).plan)
+            suspend fun read(month: Int) = (
+                repository.observeHistory(
+                    HistorySnapshotQuery(
+                        HistoryPageQuery(YearMonth.of(2026, month), context),
+                        restoreGeneration = restoreGeneration.changes.value.generation
+                    )
+                ).first() as AppResult.Success
+                ).value
+            assertEquals("550", read(6).page.items.single().detailsRef?.externalId)
+            val group = read(7).page.items.single { it.mediaType == MediaType.SERIES }
+            val snapshot = (
+                repository.observeHistory(
+                    HistorySnapshotQuery(
+                        HistoryPageQuery(YearMonth.of(2026, 7), context),
+                        mapOf(group.key to HistoryEpisodeQuery(context, group.day, group.mediaId)),
+                        restoreGeneration.changes.value.generation
+                    )
+                ).first() as AppResult.Success
+                ).value
+            val children = (snapshot.groups.getValue(group.key) as AppResult.Success).value
+            assertEquals(1, group.episodeCount)
+            assertEquals(0, children.items.single().season)
         }
     }
 
@@ -540,7 +657,8 @@ class BackupDataStoreTest {
             database.ratingDao(),
             Clock.fixed(exportedAt, ZoneOffset.UTC),
             TestCalendarDateSource(validationDate),
-            kotlinx.coroutines.Dispatchers.Default
+            kotlinx.coroutines.Dispatchers.Default,
+            historyDatabase = database
         )
         val entries = (repository.observeEntries().first() as AppResult.Success).value
         val library = entries.associate { it.mediaRef.externalId to (it.serialState == SeriesTrackingState.WATCHED) }

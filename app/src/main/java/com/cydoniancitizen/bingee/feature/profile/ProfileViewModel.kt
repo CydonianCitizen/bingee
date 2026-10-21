@@ -355,10 +355,11 @@ internal class ProfileViewModel @Inject constructor(
         var cachedZone: ZoneId? = null
         combine(
             statisticsRetries.flatMapLatest { libraryRepository.observePersonalViewing() },
-            dateSource.observeDate(),
+            dateSource.observeContext(),
             statisticsRequests
         ) { result, currentDate, request -> Triple(result, currentDate, request) }
-            .mapLatest { (result, currentDate, request) ->
+            .mapLatest { (result, dateContext, request) ->
+                val currentDate = dateContext.today
                 if (result is AppResult.Success) {
                     if (personalViewingEntries !== result.value) cachedStatistics = null
                     personalViewingEntries = result.value
@@ -367,7 +368,7 @@ internal class ProfileViewModel @Inject constructor(
                 val update = withContext(statisticsDispatcher) {
                     val context = currentCoroutineContext()
                     val year = request.year ?: currentDate.year
-                    val zone = ZoneId.systemDefault()
+                    val zone = dateContext.zoneId
                     // Media scope changes genres, not viewing totals or the monthly history.
                     val statistics = cachedStatistics?.takeIf {
                         cachedDate == currentDate && cachedYear == year && cachedZone == zone

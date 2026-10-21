@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalConfiguration
@@ -51,25 +52,33 @@ internal fun MovieProgressSection(state: MovieProgressState, onToggle: () -> Uni
                     watchedLabel == null -> stringResource(R.string.detail_movie_unwatched)
                     else -> watchedLabel
                 }
-                Text(watchedLabel ?: stringResource(R.string.detail_movie_unwatched))
-                Button(
-                    onClick = onToggle,
-                    enabled = !state.updating,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .semantics {
-                            stateDescription = watchStateDescription
+                Text(
+                    stringResource(
+                        if (watched !=
+                            null
+                        ) {
+                            R.string.detail_movie_watched
+                        } else {
+                            R.string.detail_movie_unwatched
                         }
-                ) {
-                    Text(
-                        stringResource(
-                            when {
-                                state.updating -> R.string.detail_progress_updating
-                                watched != null -> R.string.detail_mark_unwatched
-                                else -> R.string.detail_mark_watched
-                            }
-                        )
                     )
+                )
+                val actionModifier = Modifier.fillMaxWidth().semantics { stateDescription = watchStateDescription }
+                val actionLabel = stringResource(
+                    when {
+                        state.updating -> R.string.detail_progress_updating
+                        watched != null -> R.string.detail_mark_unwatched
+                        else -> R.string.detail_mark_watched
+                    }
+                )
+                if (watched != null) {
+                    TextButton(onClick = onToggle, enabled = !state.updating, modifier = actionModifier) {
+                        Text(actionLabel)
+                    }
+                } else {
+                    Button(onClick = onToggle, enabled = !state.updating, modifier = actionModifier) {
+                        Text(actionLabel)
+                    }
                 }
             }
         }

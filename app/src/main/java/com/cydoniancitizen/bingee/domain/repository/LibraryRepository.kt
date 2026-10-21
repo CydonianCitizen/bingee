@@ -2,6 +2,8 @@ package com.cydoniancitizen.bingee.domain.repository
 
 import com.cydoniancitizen.bingee.core.model.ContinueWatchingItem
 import com.cydoniancitizen.bingee.core.model.ExternalMediaRef
+import com.cydoniancitizen.bingee.core.model.HistorySnapshot
+import com.cydoniancitizen.bingee.core.model.HistorySnapshotQuery
 import com.cydoniancitizen.bingee.core.model.LibraryEntry
 import com.cydoniancitizen.bingee.core.model.LibraryQuery
 import com.cydoniancitizen.bingee.core.model.MediaSearchResult
@@ -12,6 +14,8 @@ import java.time.LocalDate
 import kotlinx.coroutines.flow.Flow
 
 interface LibraryRepository {
+    fun observeHistory(query: HistorySnapshotQuery): Flow<AppResult<HistorySnapshot>>
+
     fun observeEntries(query: LibraryQuery = LibraryQuery()): Flow<AppResult<List<LibraryEntry>>>
 
     fun observeEntry(ref: ExternalMediaRef, mediaType: MediaType): Flow<AppResult<LibraryEntry?>>

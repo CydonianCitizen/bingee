@@ -8,6 +8,8 @@ import com.cydoniancitizen.bingee.core.model.ContinueWatchingItem
 import com.cydoniancitizen.bingee.core.model.Episode
 import com.cydoniancitizen.bingee.core.model.EpisodeWatchState
 import com.cydoniancitizen.bingee.core.model.ExternalMediaRef
+import com.cydoniancitizen.bingee.core.model.HistorySnapshot
+import com.cydoniancitizen.bingee.core.model.HistorySnapshotQuery
 import com.cydoniancitizen.bingee.core.model.LibraryEntry
 import com.cydoniancitizen.bingee.core.model.LibraryQuery
 import com.cydoniancitizen.bingee.core.model.MediaDetails
@@ -35,6 +37,7 @@ import java.time.Instant
 import java.time.LocalDate
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
@@ -329,6 +332,48 @@ class MediaDetailsViewModelTest {
     }
 
     @Test
+    fun failedSeasonLoadPreservesRowsAndRetriesOnlyOnExplicitRequest() = runTest(mainDispatcherRule.dispatcher) {
+        for (hasRows in listOf(false, true)) {
+            val cached = cachedSeason().let {
+                if (hasRows) {
+                    it.copy(episodesFetchedAt = Instant.EPOCH)
+                } else {
+                    it.copy(episodes = emptyList(), progress = SeasonProgress.EMPTY)
+                }
+            }
+            val repository = FakeSeriesRepository(listOf(cached)).apply {
+                refreshResult = AppResult.Failure(AppError.NetworkUnavailable)
+            }
+            val vm = viewModel(
+                args(mediaType = MediaType.SERIES),
+                FakeDetailsRepository(cachedSeries()),
+                series = repository
+            )
+            runCurrent()
+            vm.toggleSeasonExpanded(cached)
+            val expectedLoad = if (hasRows) SeasonLoadState.Refreshing else SeasonLoadState.Loading
+            assertEquals(expectedLoad, vm.uiState.value.series.seasonLoads[cached.season.externalRef])
+            vm.retrySeason(cached)
+            runCurrent()
+            assertEquals(listOf(Triple(550L, 1, false)), repository.refreshes)
+            assertEquals(
+                SeasonLoadState.Error(AppError.NetworkUnavailable),
+                vm.uiState.value.series.seasonLoads[cached.season.externalRef]
+            )
+            assertEquals(listOf(cached), (vm.uiState.value.series.content as SeriesContentState.Ready).seasons)
+            runCurrent()
+            assertEquals(1, repository.refreshes.size)
+            repository.refreshResult = AppResult.Success(Unit)
+            vm.retrySeason(cached)
+            vm.retrySeason(cached)
+            runCurrent()
+            assertEquals(listOf(Triple(550L, 1, false), Triple(550L, 1, true)), repository.refreshes)
+            assertEquals(SeasonLoadState.Idle, vm.uiState.value.series.seasonLoads[cached.season.externalRef])
+            assertEquals(setOf(cached.season.externalRef), vm.uiState.value.series.expandedSeasons)
+        }
+    }
+
+    @Test
     fun emptySeasonSummaryCacheBootstrapsOnceEvenWhenVersionTwoDetailsAreFresh() =
         runTest(mainDispatcherRule.dispatcher) {
             val details = FakeDetailsRepository(cachedSeries())
@@ -397,6 +442,94 @@ class MediaDetailsViewModelTest {
             (viewModel.uiState.value.rating as DetailRatingState.Ready).error
         )
         assertTrue(viewModel.uiState.value.content is DetailContentState.Content)
+    }
+
+    @Test
+    fun repeatedRatingObservationsAndReadErrorsPreserveTheDraft() = runTest(mainDispatcherRule.dispatcher) {
+        val repository = FakeRatingRepository(initial = PersonalRating(8))
+        val vm = viewModel(rating = repository)
+        runCurrent()
+        vm.selectRating(9)
+        repository.rating.emit(AppResult.Success(PersonalRating(8)))
+        runCurrent()
+        assertEquals(9, (vm.uiState.value.rating as DetailRatingState.Ready).selectedValue)
+        repository.rating.emit(AppResult.Failure(AppError.LocalStorageFailure))
+        runCurrent()
+        val failed = vm.uiState.value.rating as DetailRatingState.Ready
+        assertEquals(9, failed.selectedValue)
+        assertEquals(AppError.LocalStorageFailure, failed.error)
+        repository.rating.emit(AppResult.Success(PersonalRating(8)))
+        runCurrent()
+        assertEquals(9, (vm.uiState.value.rating as DetailRatingState.Ready).selectedValue)
+        assertTrue(repository.actions.isEmpty())
+    }
+
+    @Test
+    fun rapidRatingCommandsWriteOnceUntilThePendingOperationCompletes() = runTest(mainDispatcherRule.dispatcher) {
+        val repository = FakeRatingRepository(initial = PersonalRating(8))
+        val vm = viewModel(rating = repository)
+        runCurrent()
+        vm.selectRating(9)
+        vm.setRating()
+        vm.setRating()
+        vm.removeRating()
+        assertTrue((vm.uiState.value.rating as DetailRatingState.Ready).updating)
+        runCurrent()
+        assertEquals(listOf("set:9"), repository.actions)
+        vm.removeRating()
+        vm.removeRating()
+        vm.setRating()
+        runCurrent()
+        assertEquals(listOf("set:9", "remove"), repository.actions)
+        assertEquals(null, (vm.uiState.value.rating as DetailRatingState.Ready).rating)
+    }
+
+    @Test
+    fun membershipReadFailureIsPersistentAndRetryResubscribesWithoutRemoteRefresh() =
+        runTest(mainDispatcherRule.dispatcher) {
+            val library = FakeLibraryRepository(member = true)
+            library.readError = AppError.LocalStorageFailure
+            val remote = FakeDetailsRepository(cached(CacheFreshness.FRESH))
+            val vm = viewModel(details = remote, library = library)
+            runCurrent()
+            vm.dismissLibraryError()
+            assertEquals(AppError.LocalStorageFailure, vm.uiState.value.membershipError)
+            assertNull(vm.uiState.value.isInLibrary)
+            library.readError = null
+            vm.retryMembership()
+            runCurrent()
+            assertNull(vm.uiState.value.membershipError)
+            assertEquals(true, vm.uiState.value.isInLibrary)
+            assertEquals(2, library.reads)
+            assertTrue(remote.refreshes.isEmpty())
+        }
+
+    @Test
+    fun membershipProjectionKeepsCanonicalNextEpisodeAndCompletionEvidence() = runTest(mainDispatcherRule.dispatcher) {
+        val now = Instant.parse("2026-08-03T10:00:00Z")
+        val progress = com.cydoniancitizen.bingee.core.model.LibraryProgress.Series(
+            com.cydoniancitizen.bingee.core.model.SeriesProgress(
+                1,
+                2,
+                0,
+                1,
+                false,
+                nextEpisode = com.cydoniancitizen.bingee.core.model.EpisodePosition(1, 2)
+            )
+        )
+        val entry = FakeLibraryRepository.libraryEntry().copy(
+            mediaType = MediaType.SERIES,
+            progress = progress,
+            seriesCompletedAt = now
+        )
+        val vm = viewModel(
+            args(MediaType.SERIES),
+            FakeDetailsRepository(cachedSeries()),
+            library = FakeLibraryRepository(initialEntry = entry)
+        )
+        runCurrent()
+        assertEquals(progress, vm.uiState.value.libraryProgress)
+        assertEquals(now, vm.uiState.value.seriesCompletedAt)
     }
 
     private fun viewModel(
@@ -504,10 +637,14 @@ class MediaDetailsViewModelTest {
     private class FakeLibraryRepository(
         member: Boolean = false,
         cachedOnly: Boolean = false,
-        private val failure: AppError? = null
+        private val failure: AppError? = null,
+        initialEntry: LibraryEntry? = null
     ) : LibraryRepository {
+        var readError: AppError? = null
+        var reads = 0
         private val entry = MutableStateFlow(
             when {
+                initialEntry != null -> initialEntry
                 member -> libraryEntry()
                 cachedOnly -> libraryEntry().copy(inLibrary = false)
                 else -> null
@@ -520,10 +657,15 @@ class MediaDetailsViewModelTest {
             AppResult.Failure(AppError.UnsupportedData)
         override fun observeEntries(query: LibraryQuery): Flow<AppResult<List<LibraryEntry>>> =
             entry.map { AppResult.Success(listOfNotNull(it)) }
-        override fun observeEntry(ref: ExternalMediaRef, mediaType: MediaType): Flow<AppResult<LibraryEntry?>> =
-            entry.map { AppResult.Success(it) }
+        override fun observeEntry(ref: ExternalMediaRef, mediaType: MediaType): Flow<AppResult<LibraryEntry?>> {
+            reads++
+            return readError?.let { flowOf(AppResult.Failure(it)) } ?: entry.map { AppResult.Success(it) }
+        }
         override fun observeMembershipRefs(): Flow<AppResult<Set<Pair<ExternalMediaRef, MediaType>>>> =
             entry.map { AppResult.Success(listOfNotNull(it?.let { e -> e.mediaRef to e.mediaType }).toSet()) }
+        override fun observeHistory(query: HistorySnapshotQuery): Flow<AppResult<HistorySnapshot>> =
+            error("History is not part of this fixture")
+
         override fun observePersonalViewing() =
             flowOf<AppResult<List<com.cydoniancitizen.bingee.core.model.PersonalViewingEntry>>>(
                 AppResult.Success(emptyList())
@@ -608,7 +750,9 @@ class MediaDetailsViewModelTest {
 
     private class FakeRatingRepository(initial: PersonalRating? = null, private val failure: AppError? = null) :
         RatingRepository {
-        private val rating = MutableStateFlow<AppResult<PersonalRating?>>(AppResult.Success(initial))
+        val rating = MutableSharedFlow<AppResult<PersonalRating?>>(replay = 1).apply {
+            tryEmit(AppResult.Success(initial))
+        }
         val actions = mutableListOf<String>()
 
         override fun observeRating(
@@ -623,14 +767,14 @@ class MediaDetailsViewModelTest {
         ): AppResult<Unit> {
             actions += "set:${rating.value}"
             failure?.let { return AppResult.Failure(it) }
-            this.rating.value = AppResult.Success(rating)
+            this.rating.emit(AppResult.Success(rating))
             return AppResult.Success(Unit)
         }
 
         override suspend fun removeRating(reference: ExternalMediaRef, mediaType: MediaType): AppResult<Unit> {
             actions += "remove"
             failure?.let { return AppResult.Failure(it) }
-            rating.value = AppResult.Success(null)
+            rating.emit(AppResult.Success(null))
             return AppResult.Success(Unit)
         }
     }

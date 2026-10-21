@@ -66,7 +66,8 @@ internal fun LibraryItemWithRefs.toDomain(
         favoriteAddedAt = media.favoriteAddedAt,
         watchedDate = domainWatchedDate,
         isAbandoned = progressRow?.isAbandoned == true,
-        inLibrary = inLibrary
+        inLibrary = inLibrary,
+        seriesCompletedAt = progressRow?.seriesCompletedAt
     )
 }
 

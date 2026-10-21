@@ -56,7 +56,8 @@ internal class BackupDataStore @Inject constructor(
     private val snapshotDao: PortableSnapshotDao,
     private val releaseEventDao: ReleaseEventDao,
     private val notificationPreferences: DataStoreReleaseNotificationPreferences,
-    private val portableUserPreferences: PortableUserPreferencesStore
+    private val portableUserPreferences: PortableUserPreferencesStore,
+    private val restoreGeneration: RestoreGeneration = RestoreGeneration()
 ) {
     suspend fun readPortableData(): BackupData {
         notificationPreferences.preferences.first()
@@ -224,188 +225,196 @@ internal class BackupDataStore @Inject constructor(
         plan: ValidatedBackupPlan,
         failureInjector: RestoreFailureInjector = RestoreFailureInjector {}
     ) {
-        database.withTransaction {
-            val data = plan.document.data
-            val exportedAt = plan.document.exportedAt
-            snapshotDao.deleteNotificationDeliveries()
-            snapshotDao.deleteReleaseEvents()
-            snapshotDao.deleteEpisodeProgress()
-            snapshotDao.deleteMovieProgress()
-            snapshotDao.deleteSeriesProgress()
-            snapshotDao.deleteSeriesStateOverrides()
-            snapshotDao.deleteRatings()
-            snapshotDao.deleteMemberships()
-            snapshotDao.deleteEpisodes()
-            snapshotDao.deleteSeasons()
-            snapshotDao.deleteGenres()
-            snapshotDao.deleteDetails()
-            snapshotDao.deleteRefs()
-            snapshotDao.deleteMedia()
-            snapshotDao.deleteCalendarRefreshState()
-            snapshotDao.deletePreferences()
+        restoreGeneration.beginRestore()
+        try {
+            database.withTransaction {
+                val data = plan.document.data
+                val exportedAt = plan.document.exportedAt
+                snapshotDao.deleteNotificationDeliveries()
+                snapshotDao.deleteReleaseEvents()
+                snapshotDao.deleteEpisodeProgress()
+                snapshotDao.deleteMovieProgress()
+                snapshotDao.deleteSeriesProgress()
+                snapshotDao.deleteSeriesStateOverrides()
+                snapshotDao.deleteRatings()
+                snapshotDao.deleteMemberships()
+                snapshotDao.deleteEpisodes()
+                snapshotDao.deleteSeasons()
+                snapshotDao.deleteGenres()
+                snapshotDao.deleteDetails()
+                snapshotDao.deleteRefs()
+                snapshotDao.deleteMedia()
+                snapshotDao.deleteCalendarRefreshState()
+                snapshotDao.deletePreferences()
 
-            val mediaIds = linkedMapOf<String, Long>()
-            data.media.forEach { media ->
-                val localId = snapshotDao.insertMedia(
-                    MediaEntity(
-                        mediaType = media.mediaType,
-                        title = media.title,
-                        originalTitle = media.originalTitle,
-                        overview = media.overview,
-                        posterUrl = media.posterUrl,
-                        releaseDate = media.releaseDate,
-                        createdAt = exportedAt,
-                        metadataUpdatedAt = exportedAt,
-                        isFavorite = media.isFavorite,
-                        favoriteAddedAt = media.favoriteAddedAt,
-                        runtimeMinutes = media.runtimeMinutes
+                val mediaIds = linkedMapOf<String, Long>()
+                data.media.forEach { media ->
+                    val localId = snapshotDao.insertMedia(
+                        MediaEntity(
+                            mediaType = media.mediaType,
+                            title = media.title,
+                            originalTitle = media.originalTitle,
+                            overview = media.overview,
+                            posterUrl = media.posterUrl,
+                            releaseDate = media.releaseDate,
+                            createdAt = exportedAt,
+                            metadataUpdatedAt = exportedAt,
+                            isFavorite = media.isFavorite,
+                            favoriteAddedAt = media.favoriteAddedAt,
+                            runtimeMinutes = media.runtimeMinutes
+                        )
                     )
-                )
-                mediaIds[media.primaryRef.key(media.mediaType)] = localId
-            }
-            failureInjector.check(RestoreStage.MEDIA)
+                    mediaIds[media.primaryRef.key(media.mediaType)] = localId
+                }
+                failureInjector.check(RestoreStage.MEDIA)
 
-            data.media.forEach { media ->
-                val localId = checkNotNull(mediaIds[media.primaryRef.key(media.mediaType)])
-                media.externalRefs.forEach { ref ->
-                    mediaIds[ref.key(media.mediaType)] = localId
-                    snapshotDao.insertExternalRef(
-                        ExternalRefEntity(localId, ref.source, media.mediaType, ref.externalId)
+                data.media.forEach { media ->
+                    val localId = checkNotNull(mediaIds[media.primaryRef.key(media.mediaType)])
+                    media.externalRefs.forEach { ref ->
+                        mediaIds[ref.key(media.mediaType)] = localId
+                        snapshotDao.insertExternalRef(
+                            ExternalRefEntity(localId, ref.source, media.mediaType, ref.externalId)
+                        )
+                    }
+                }
+                failureInjector.check(RestoreStage.EXTERNAL_REFERENCES)
+
+                data.media.forEach { media ->
+                    val localId = checkNotNull(mediaIds[media.primaryRef.key(media.mediaType)])
+                    snapshotDao.insertGenres(
+                        media.genres.mapIndexed { order, genre ->
+                            MediaGenreEntity(localId, order, genre.name, genre.source, genre.genreId)
+                        }
                     )
                 }
-            }
-            failureInjector.check(RestoreStage.EXTERNAL_REFERENCES)
+                failureInjector.check(RestoreStage.GENRES)
 
-            data.media.forEach { media ->
-                val localId = checkNotNull(mediaIds[media.primaryRef.key(media.mediaType)])
-                snapshotDao.insertGenres(
-                    media.genres.mapIndexed { order, genre ->
-                        MediaGenreEntity(localId, order, genre.name, genre.source, genre.genreId)
-                    }
-                )
-            }
-            failureInjector.check(RestoreStage.GENRES)
+                val seasonIds = linkedMapOf<String, Long>()
+                data.seasons.forEach { season ->
+                    val localId = snapshotDao.insertSeason(
+                        SeasonEntity(
+                            localMediaId = checkNotNull(mediaIds[season.mediaRef.key(MediaType.SERIES)]),
+                            source = season.externalRef.source,
+                            externalId = season.externalRef.externalId,
+                            seasonNumber = season.seasonNumber,
+                            name = season.name,
+                            overview = season.overview,
+                            posterUrl = season.posterUrl,
+                            airDate = season.airDate,
+                            episodeCount = season.episodeCount,
+                            metadataUpdatedAt = exportedAt,
+                            episodesFetchedAt = null,
+                            isKnownEmpty = season.isKnownEmpty
+                        )
+                    )
+                    seasonIds[season.externalRef.key()] = localId
+                }
+                failureInjector.check(RestoreStage.SEASONS)
 
-            val seasonIds = linkedMapOf<String, Long>()
-            data.seasons.forEach { season ->
-                val localId = snapshotDao.insertSeason(
-                    SeasonEntity(
-                        localMediaId = checkNotNull(mediaIds[season.mediaRef.key(MediaType.SERIES)]),
-                        source = season.externalRef.source,
-                        externalId = season.externalRef.externalId,
-                        seasonNumber = season.seasonNumber,
-                        name = season.name,
-                        overview = season.overview,
-                        posterUrl = season.posterUrl,
-                        airDate = season.airDate,
-                        episodeCount = season.episodeCount,
-                        metadataUpdatedAt = exportedAt,
-                        episodesFetchedAt = null,
-                        isKnownEmpty = season.isKnownEmpty
+                val episodeIds = linkedMapOf<String, Long>()
+                data.episodes.forEach { episode ->
+                    val localId = snapshotDao.insertEpisode(
+                        EpisodeEntity(
+                            localSeasonId = checkNotNull(seasonIds[episode.seasonRef.key()]),
+                            source = episode.externalRef.source,
+                            externalId = episode.externalRef.externalId,
+                            episodeNumber = episode.episodeNumber,
+                            title = episode.title,
+                            overview = episode.overview,
+                            airDate = episode.airDate,
+                            runtimeMinutes = episode.runtimeMinutes,
+                            stillUrl = episode.stillUrl,
+                            metadataUpdatedAt = exportedAt
+                        )
+                    )
+                    episodeIds[episode.externalRef.key()] = localId
+                }
+                failureInjector.check(RestoreStage.EPISODES)
+
+                data.library.forEach { entry ->
+                    snapshotDao.insertMembership(
+                        LibraryMembershipEntity(mediaIds.resolve(entry.mediaRef, entry.mediaType), entry.addedAt)
+                    )
+                }
+                failureInjector.check(RestoreStage.LIBRARY_MEMBERSHIP)
+
+                data.abandonedSeries.forEach { abandoned ->
+                    snapshotDao.insertSeriesStateOverride(
+                        SeriesStateOverrideEntity(checkNotNull(mediaIds[abandoned.mediaRef.key(MediaType.SERIES)]))
+                    )
+                }
+                failureInjector.check(RestoreStage.SERIES_STATE)
+
+                data.movieProgress.forEach { progress ->
+                    snapshotDao.insertMovieProgress(
+                        MovieWatchProgressEntity(
+                            localMediaId = checkNotNull(mediaIds[progress.mediaRef.key(MediaType.MOVIE)]),
+                            watchedAt = progress.watchedAt,
+                            watchedDate = progress.watchedDate
+                        )
+                    )
+                }
+                failureInjector.check(RestoreStage.MOVIE_PROGRESS)
+
+                data.seriesProgress.forEach { progress ->
+                    snapshotDao.insertSeriesProgress(
+                        SeriesWatchProgressEntity(
+                            localMediaId = checkNotNull(mediaIds[progress.mediaRef.key(MediaType.SERIES)]),
+                            watchedDate = progress.watchedDate,
+                            completedAt = progress.completedAt
+                        )
+                    )
+                }
+                failureInjector.check(RestoreStage.SERIES_PROGRESS)
+
+                data.episodeProgress.forEach { progress ->
+                    snapshotDao.insertEpisodeProgress(
+                        EpisodeWatchProgressEntity(
+                            checkNotNull(episodeIds[progress.episodeRef.key()]),
+                            progress.watchedAt
+                        )
+                    )
+                }
+                failureInjector.check(RestoreStage.EPISODE_PROGRESS)
+
+                data.ratings.forEach { rating ->
+                    snapshotDao.insertRating(
+                        MediaRatingEntity(
+                            mediaIds.resolve(rating.mediaRef, rating.mediaType),
+                            rating.rating,
+                            rating.ratedAt,
+                            rating.updatedAt
+                        )
+                    )
+                }
+                failureInjector.check(RestoreStage.RATINGS)
+
+                snapshotDao.replacePreferences(
+                    PortablePreferencesEntity(
+                        notificationLeadDays = data.preferences.notificationLeadDays,
+                        notifyMovieReleases = data.preferences.notifyMovieReleases,
+                        notifySeasonPremieres = data.preferences.notifySeasonPremieres,
+                        notifyEpisodeAirings = data.preferences.notifyEpisodeAirings,
+                        legacyBridgeCompleted = true,
+                        theme = data.preferences.theme.name,
+                        language = data.preferences.language.name,
+                        hideEpisodeSpoilers = data.preferences.hideEpisodeSpoilers,
+                        watchedMoviesDisplayMode = data.preferences.profileDisplayModes.watchedMovies.name,
+                        watchedTvSeriesDisplayMode = data.preferences.profileDisplayModes.watchedTvSeries.name,
+                        watchLaterMoviesDisplayMode = data.preferences.profileDisplayModes.watchLaterMovies.name,
+                        watchLaterTvSeriesDisplayMode = data.preferences.profileDisplayModes.watchLaterTvSeries.name,
+                        favoritesMoviesDisplayMode = data.preferences.profileDisplayModes.favoritesMovies.name,
+                        favoritesTvSeriesDisplayMode = data.preferences.profileDisplayModes.favoritesTvSeries.name,
+                        legacySettingsBridgeCompleted = true
                     )
                 )
-                seasonIds[season.externalRef.key()] = localId
+                failureInjector.check(RestoreStage.PORTABLE_PREFERENCES)
+
+                releaseEventDao.backfill(exportedAt)
+                failureInjector.check(RestoreStage.RELEASE_EVENTS)
             }
-            failureInjector.check(RestoreStage.SEASONS)
-
-            val episodeIds = linkedMapOf<String, Long>()
-            data.episodes.forEach { episode ->
-                val localId = snapshotDao.insertEpisode(
-                    EpisodeEntity(
-                        localSeasonId = checkNotNull(seasonIds[episode.seasonRef.key()]),
-                        source = episode.externalRef.source,
-                        externalId = episode.externalRef.externalId,
-                        episodeNumber = episode.episodeNumber,
-                        title = episode.title,
-                        overview = episode.overview,
-                        airDate = episode.airDate,
-                        runtimeMinutes = episode.runtimeMinutes,
-                        stillUrl = episode.stillUrl,
-                        metadataUpdatedAt = exportedAt
-                    )
-                )
-                episodeIds[episode.externalRef.key()] = localId
-            }
-            failureInjector.check(RestoreStage.EPISODES)
-
-            data.library.forEach { entry ->
-                snapshotDao.insertMembership(
-                    LibraryMembershipEntity(mediaIds.resolve(entry.mediaRef, entry.mediaType), entry.addedAt)
-                )
-            }
-            failureInjector.check(RestoreStage.LIBRARY_MEMBERSHIP)
-
-            data.abandonedSeries.forEach { abandoned ->
-                snapshotDao.insertSeriesStateOverride(
-                    SeriesStateOverrideEntity(checkNotNull(mediaIds[abandoned.mediaRef.key(MediaType.SERIES)]))
-                )
-            }
-            failureInjector.check(RestoreStage.SERIES_STATE)
-
-            data.movieProgress.forEach { progress ->
-                snapshotDao.insertMovieProgress(
-                    MovieWatchProgressEntity(
-                        localMediaId = checkNotNull(mediaIds[progress.mediaRef.key(MediaType.MOVIE)]),
-                        watchedAt = progress.watchedAt,
-                        watchedDate = progress.watchedDate
-                    )
-                )
-            }
-            failureInjector.check(RestoreStage.MOVIE_PROGRESS)
-
-            data.seriesProgress.forEach { progress ->
-                snapshotDao.insertSeriesProgress(
-                    SeriesWatchProgressEntity(
-                        localMediaId = checkNotNull(mediaIds[progress.mediaRef.key(MediaType.SERIES)]),
-                        watchedDate = progress.watchedDate,
-                        completedAt = progress.completedAt
-                    )
-                )
-            }
-            failureInjector.check(RestoreStage.SERIES_PROGRESS)
-
-            data.episodeProgress.forEach { progress ->
-                snapshotDao.insertEpisodeProgress(
-                    EpisodeWatchProgressEntity(checkNotNull(episodeIds[progress.episodeRef.key()]), progress.watchedAt)
-                )
-            }
-            failureInjector.check(RestoreStage.EPISODE_PROGRESS)
-
-            data.ratings.forEach { rating ->
-                snapshotDao.insertRating(
-                    MediaRatingEntity(
-                        mediaIds.resolve(rating.mediaRef, rating.mediaType),
-                        rating.rating,
-                        rating.ratedAt,
-                        rating.updatedAt
-                    )
-                )
-            }
-            failureInjector.check(RestoreStage.RATINGS)
-
-            snapshotDao.replacePreferences(
-                PortablePreferencesEntity(
-                    notificationLeadDays = data.preferences.notificationLeadDays,
-                    notifyMovieReleases = data.preferences.notifyMovieReleases,
-                    notifySeasonPremieres = data.preferences.notifySeasonPremieres,
-                    notifyEpisodeAirings = data.preferences.notifyEpisodeAirings,
-                    legacyBridgeCompleted = true,
-                    theme = data.preferences.theme.name,
-                    language = data.preferences.language.name,
-                    hideEpisodeSpoilers = data.preferences.hideEpisodeSpoilers,
-                    watchedMoviesDisplayMode = data.preferences.profileDisplayModes.watchedMovies.name,
-                    watchedTvSeriesDisplayMode = data.preferences.profileDisplayModes.watchedTvSeries.name,
-                    watchLaterMoviesDisplayMode = data.preferences.profileDisplayModes.watchLaterMovies.name,
-                    watchLaterTvSeriesDisplayMode = data.preferences.profileDisplayModes.watchLaterTvSeries.name,
-                    favoritesMoviesDisplayMode = data.preferences.profileDisplayModes.favoritesMovies.name,
-                    favoritesTvSeriesDisplayMode = data.preferences.profileDisplayModes.favoritesTvSeries.name,
-                    legacySettingsBridgeCompleted = true
-                )
-            )
-            failureInjector.check(RestoreStage.PORTABLE_PREFERENCES)
-
-            releaseEventDao.backfill(exportedAt)
-            failureInjector.check(RestoreStage.RELEASE_EVENTS)
+        } finally {
+            restoreGeneration.endRestore()
         }
     }
 

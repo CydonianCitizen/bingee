@@ -103,6 +103,7 @@ internal fun ProfileScreen(
     onOpenDetails: (ExternalMediaRef, MediaType) -> Unit,
     modifier: Modifier = Modifier,
     onOpenStatistics: () -> Unit = {},
+    onOpenHistory: () -> Unit = {},
     onNavigateToSearch: () -> Unit = {},
     onOpenCollection: (ProfileCollectionShortcut) -> Unit = {},
     collectionFilter: ProfileCollection? = null,
@@ -131,6 +132,7 @@ internal fun ProfileScreen(
             onOpenCollection = onOpenCollection,
             onNavigateToSearch = onNavigateToSearch,
             onOpenStatistics = onOpenStatistics,
+            onOpenHistory = onOpenHistory,
             onRetryStatistics = viewModel::retryStatistics,
             onRetry = viewModel::retry,
             modifier = modifier
