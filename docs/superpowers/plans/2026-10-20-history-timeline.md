@@ -1,5 +1,11 @@
 # La tua storia — Piano implementativo in milestone
 
+**Stato finale, 22 ottobre 2026:** History corrente e scope v1.3.0 verificati e chiusi
+dopo accettazione/TalkBack del proprietario, integrazione, suite Android/R8, audit globale
+e allineamento documentale. Il [record canonico](../../../BINGEE_DEVELOPMENT_ROADMAP_AND_CHECKLIST.md#v130-closure-record--2026-10-22)
+conserva limiti e rinvii. I checkpoint precedenti sotto restano storici.
+Nessun commit, push, firma o pubblicazione nel passaggio finale.
+
 ## Correzione approvata il 21 ottobre 2026 — timeline orizzontale continua
 
 Il proprietario ha approvato la sostituzione della navigazione mensile descritta sotto: una linea
@@ -17,7 +23,8 @@ le selezioni singole conservano il ripristino esistente. Query, date e paginazio
 La verifica di questo incremento è riportata nelle
 [note v1.3.0](../../release-notes-1.3.0.md#two-filter-alternating-layout--2026-10-21):
 533 JVM, 14 Room e 28 esecuzioni UI/adattive passano, insieme a Spotless, lint e build debug/test.
-Accettazione del proprietario e TalkBack manuale restano aperti.
+Il 22 ottobre 2026 il proprietario conferma anche il TalkBack manuale sulla versione compatta
+alternata e approva l'interazione corrente, nello scope documentato sotto.
 Scompaiono selettori mese/anno e pagine principali esplicite:
 il caricamento ai bordi è automatico e limitato, con posizione conservata al ritorno dai Dettagli.
 
@@ -25,10 +32,11 @@ Questa approvazione sostituisce i default precedenti di apertura sul mese corren
 decrescente e pagine principali sostitutive visibili. Le prove H1–H6 sotto documentano la precedente
 UI mensile; non certificano la nuova interazione. La correzione è implementata e verificata con
 prove automatiche e visuali sotto descritte; accettazione del proprietario e nuova prova manuale
-TalkBack restano da confermare.
+TalkBack sono confermate il 22 ottobre 2026.
 L'esecuzione è autorizzata con Astra Medium orchestratore e GPT-6.1 Sol High implementatore,
 senza commit o push e senza ulteriore gate progettuale. Il lavoro dirty Dettagli/Home preesistente
-va conservato. La milestone v1.3.0 e il gate manuale Dettagli M5 rinviato restano aperti.
+va conservato. La milestone v1.3.0 resta aperta; il gate manuale Dettagli M5 rinviato è verificato
+dal proprietario il 22 ottobre nello scope riportato nel relativo piano.
 
 ### Passi e confini dell'incremento
 
@@ -60,7 +68,19 @@ I percorsi sorgenti seguenti sono relativi a `app/src/main/java/com/cydonianciti
 - [x] Finestra limitata, ancora stabile e riconciliazione delle generazioni.
 - [x] UI orizzontale, gruppi, adattamento e controlli automatici verificati nello scope dichiarato.
 - [x] Gate, review e documentazione aggiornati con evidenze nuove.
-- [ ] Accettazione del proprietario della nuova interazione e prova manuale TalkBack specifica.
+- [x] Accettazione del proprietario della nuova interazione e prova manuale TalkBack specifica.
+
+**Prova manuale del proprietario, 22 ottobre 2026:** su HONOR CMA-LX1 / Android 13,
+360 dp/font 1.0 e UI inglese, con TalkBack collegato ed esplorazione tattile attiva, il proprietario
+conferma «Tutto corretto» per i soli filtri Movies/Series, lettura cronologica di date/titoli,
+raggiungibilità delle schede sopra/sotto e scorrimento orizzontale con due dita. Conferma poi
+«Tutto corretto» per espansione/esplorazione/chiusura dei gruppi Serie, stato espanso/compresso
+e ritorno dai Dettagli alla posizione precedente. Alla domanda sull'interazione compatta alternata
+risponde «Sì, approvata». L'app sintetica esistente è aggiornata dal codice corrente, senza INTERNET;
+nessuna modifica di produzione per questa prova. Le cinque impostazioni iniziali di accessibilità
+sono verificate ripristinate e l'inventario pacchetti è invariato. Evidenze in
+`.audit/accessibility-2026-10-22/`, escluse da Git. Questo completa il gate manuale della History
+corrente, senza certificare ogni dispositivo o configurazione TalkBack né chiudere v1.3.0.
 
 Date, speciali, attività fuori raccolta/abbandonate e semantica dei progressi restano quelle di H1.
 Room 9, Backup v3/restore v1/v2/v3, dipendenze e cache non cambiano. La finestra limita il payload,
@@ -133,8 +153,9 @@ La finestra mantiene al massimo 90 parent e 20 figli per gruppo aperto trattenut
 isolato è stato rimosso; resta la sola app `historyhorizontal130` con dati sintetici, aperta sulla
 timeline per la valutazione del proprietario. Inventario delle altre app, cinque impostazioni di
 accessibilità, risoluzione/densità e font scale del telefono sono conservati. Nessun commit, push o
-pubblicazione. v1.3.0 e Dettagli M5 manuale restano aperti; il precedente TalkBack non certifica
-questa nuova UI. Evidenze grezze e probe restano esclusi da Git sotto `.audit/history-horizontal/`.
+pubblicazione. Al checkpoint del 21 ottobre v1.3.0 e Dettagli M5 manuale restavano aperti;
+il precedente TalkBack non certificava questa nuova UI. La prova manuale del 22 ottobre è
+documentata sopra. Evidenze grezze e probe restano esclusi da Git sotto `.audit/history-horizontal/`.
 
 ---
 

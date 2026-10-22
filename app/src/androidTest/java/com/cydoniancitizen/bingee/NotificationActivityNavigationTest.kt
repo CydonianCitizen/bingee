@@ -6,11 +6,13 @@ import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasScrollAction
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.isDisplayed
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
@@ -18,21 +20,23 @@ import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.performSemanticsAction
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
-import androidx.room.Room
 import androidx.test.core.app.ActivityScenario
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import com.cydoniancitizen.bingee.core.model.MediaSource
 import com.cydoniancitizen.bingee.core.model.MediaType
+import com.cydoniancitizen.bingee.core.navigation.AppShortcut
 import com.cydoniancitizen.bingee.core.navigation.DetailRouteArgs
-import com.cydoniancitizen.bingee.data.library.local.ALL_MIGRATIONS
 import com.cydoniancitizen.bingee.data.library.local.BingeeDatabase
+import com.cydoniancitizen.bingee.data.library.local.DebugDatabaseEntryPoint
 import com.cydoniancitizen.bingee.data.library.local.EpisodeEntity
 import com.cydoniancitizen.bingee.data.library.local.MediaDetailsEntity
 import com.cydoniancitizen.bingee.data.library.local.MediaEntity
 import com.cydoniancitizen.bingee.data.library.local.SeasonEntity
 import com.cydoniancitizen.bingee.data.notification.NotificationDetailIntent
 import com.cydoniancitizen.bingee.data.settings.bingeePreferences
+import com.cydoniancitizen.bingee.testutil.scrollListTo
+import dagger.hilt.android.EntryPointAccessors
 import java.time.Instant
 import java.time.LocalDate
 import kotlinx.coroutines.flow.first
@@ -214,6 +218,98 @@ class NotificationActivityNavigationTest {
     }
 
     @Test
+    fun detailEpisodeChangesReachHomeAndWatchingCollectionAfterRecreation() = withCachedTitles { database ->
+        val today = LocalDate.now()
+        runBlocking {
+            val cached = database.detailsDao().getCachedDetails(MediaSource.TMDB, MediaType.SERIES, "990001")!!
+            database.detailsDao().storeDetails(
+                cached.media,
+                MediaSource.TMDB,
+                "990001",
+                cached.details!!.copy(productionStatus = "RETURNING_SERIES", numberOfSeasons = 1, numberOfEpisodes = 3),
+                emptyList()
+            )
+            database.libraryDao().addToLibrary(cached.media, MediaSource.TMDB, "990001", Instant.now())
+            database.seriesDao().storeSeasonEpisodes(
+                MediaSource.TMDB,
+                "990001",
+                SeasonEntity(
+                    localMediaId = 0, source = MediaSource.TMDB, externalId = "9900150",
+                    seasonNumber = 1, name = "Integration season", overview = null, posterUrl = null,
+                    airDate = today.minusYears(1), episodeCount = 3, metadataUpdatedAt = Instant.now(),
+                    episodesFetchedAt = null
+                ),
+                (1..3).map { number ->
+                    EpisodeEntity(
+                        localSeasonId = 0, source = MediaSource.TMDB, externalId = "990015$number",
+                        episodeNumber = number, title = "Integration episode $number", overview = null,
+                        airDate = if (number == 3) today.plusDays(1) else today.minusDays(1),
+                        runtimeMinutes = 40, stillUrl = null, metadataUpdatedAt = Instant.now()
+                    )
+                },
+                Instant.now()
+            )
+            database.watchProgressDao().markEpisodeWatched(MediaSource.TMDB, "9900151", today, Instant.now())
+        }
+        fun savedEpisodes() = runBlocking {
+            database.seriesDao().observeSeriesSeasons(MediaSource.TMDB, "990001").first().single().episodes
+        }
+        val firstWatchedAt = savedEpisodes().first().progress?.watchedAt
+        val openDescription = context.getString(R.string.home_open_continue_details, "Navigation series")
+        val episodeLabel = context.getString(R.string.detail_episode_title, 2, "Integration episode 2")
+        ActivityScenario.launch<MainActivity>(Intent(context, MainActivity::class.java)).use { scenario ->
+            composeRule.scrollListTo(hasContentDescription(openDescription)).performClick()
+            assertTitle("Navigation series")
+            composeRule.waitUntil(5_000) {
+                runCatching {
+                    composeRule.scrollListTo(hasText(context.getString(R.string.detail_go_to_episode))).isDisplayed()
+                }.getOrDefault(false)
+            }
+            composeRule.scrollListTo(hasText(context.getString(R.string.detail_go_to_episode))).performClick()
+            composeRule.onNodeWithText(episodeLabel).performScrollTo().performClick()
+            composeRule.waitUntil(5_000) { savedEpisodes()[1].progress != null }
+            var previous: MainActivity? = null
+            scenario.onActivity {
+                previous = it
+                it.recreate()
+            }
+            composeRule.waitForIdle()
+            scenario.onActivity { assertNotSame(previous, it) }
+            composeRule.scrollListTo(hasText(context.getString(R.string.detail_tracking_caught_up))).assertIsDisplayed()
+            assertEquals(firstWatchedAt, savedEpisodes().first().progress?.watchedAt)
+            assertEquals(null, savedEpisodes().last().progress)
+            scenario.onActivity { it.onBackPressedDispatcher.onBackPressed() }
+            composeRule.waitUntil(5_000) {
+                runBlocking {
+                    database.libraryDao().observeContinueWatchingRows(MediaSource.TMDB, today).first().isEmpty()
+                }
+            }
+            composeRule.onNodeWithContentDescription(openDescription).assertDoesNotExist()
+            scenario.onActivity { activity ->
+                InstrumentationRegistry.getInstrumentation().callActivityOnNewIntent(
+                    activity,
+                    Intent(context, MainActivity::class.java).apply {
+                        action = AppShortcut.ACTION_OPEN
+                        putExtra(AppShortcut.EXTRA_DESTINATION, "watching")
+                    }
+                )
+            }
+            composeRule.waitUntil(5_000) {
+                composeRule.onNodeWithText(context.getString(R.string.profile_watching_empty_title)).isDisplayed()
+            }
+            composeRule.onNodeWithText("Navigation series").assertDoesNotExist()
+            deliver(scenario, MediaType.SERIES, 990001)
+            composeRule.scrollListTo(hasText("Integration season")).performClick()
+            composeRule.scrollListTo(hasText(episodeLabel)).performClick()
+            composeRule.waitUntil(5_000) { savedEpisodes()[1].progress == null }
+            scenario.onActivity { it.onBackPressedDispatcher.onBackPressed() }
+            assertTitle("Navigation series")
+            scenario.onActivity { it.onBackPressedDispatcher.onBackPressed() }
+            composeRule.scrollListTo(hasContentDescription(openDescription)).assertIsDisplayed()
+        }
+    }
+
+    @Test
     fun savedSeasonsRemainReadableAfterFailedRefreshRetryAndActivityRecreation() = withCachedTitles { database ->
         val requireOffline = InstrumentationRegistry.getArguments().getString("requireOffline") == "true"
         fun checkOffline() {
@@ -347,9 +443,7 @@ class NotificationActivityNavigationTest {
     }
 
     private fun withCachedTitles(test: (BingeeDatabase) -> Unit) {
-        val database = Room.databaseBuilder(context, BingeeDatabase::class.java, BingeeDatabase.DATABASE_NAME)
-            .addMigrations(*ALL_MIGRATIONS)
-            .build()
+        val database = EntryPointAccessors.fromApplication(context, DebugDatabaseEntryPoint::class.java).database()
         val localIds = mutableListOf<Long>()
         try {
             runBlocking {
@@ -392,7 +486,6 @@ class NotificationActivityNavigationTest {
                     arrayOf(id)
                 )
             }
-            database.close()
         }
     }
 }

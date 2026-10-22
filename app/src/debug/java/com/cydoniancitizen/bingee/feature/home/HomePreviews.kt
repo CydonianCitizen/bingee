@@ -117,6 +117,12 @@ private fun calendarState(): HomeUiState {
                     },
                     rows
                 )
+            }.sortedBy {
+                when (it.category) {
+                    ReleaseDateCategory.TODAY -> 0
+                    ReleaseDateCategory.UPCOMING -> 1
+                    ReleaseDateCategory.RECENT -> 2
+                }
             }
         ),
         lastSuccessfulRefreshAt = Instant.parse("2026-08-03T10:00:00Z"),

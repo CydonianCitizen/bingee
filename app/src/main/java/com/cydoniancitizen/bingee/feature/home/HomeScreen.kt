@@ -5,6 +5,7 @@ import androidx.compose.foundation.gestures.snapping.rememberSnapFlingBehavior
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.aspectRatio
@@ -43,10 +44,16 @@ import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
@@ -70,6 +77,7 @@ import com.cydoniancitizen.bingee.core.model.ReleaseDateCategory
 import com.cydoniancitizen.bingee.core.model.ReleaseDateGroup
 import com.cydoniancitizen.bingee.core.model.ReleaseEvent
 import com.cydoniancitizen.bingee.core.model.ReleaseEventType
+import com.cydoniancitizen.bingee.core.ui.formatLocalized
 import com.cydoniancitizen.bingee.core.ui.toUiError
 import java.time.Instant
 import java.time.ZoneId
@@ -119,6 +127,7 @@ internal fun HomeContent(
     onDismissSnackbar: () -> Unit = {}
 ) {
     val snackbarHostState = remember { SnackbarHostState() }
+    var showAllReleases by rememberSaveable { mutableStateOf(false) }
     val feedback = state.snackbar
     val feedbackText = when (feedback) {
         is HomeSnackbar.EpisodeMarked -> stringResource(
@@ -149,7 +158,7 @@ internal fun HomeContent(
         // One lazy list for the whole screen: the calendar, both discovery rows, and Continue Watching compose
         // only as they scroll into view, and no vertical scroller is nested inside another.
         LazyColumn(
-            modifier = Modifier.fillMaxSize(),
+            modifier = Modifier.fillMaxSize().testTag("home-list"),
             contentPadding = PaddingValues(BingeeDimensions.screenPadding),
             verticalArrangement = Arrangement.Top
         ) {
@@ -211,29 +220,61 @@ internal fun HomeContent(
                         onRetry = onRetryLocal
                     )
                 }
-                is HomeContentState.Events -> content.groups.forEach { group ->
-                    item(key = "date:${group.date}", contentType = "dateHeader") {
-                        Box(Modifier.padding(bottom = BingeeDimensions.elementSpacing)) { DateHeader(group) }
-                    }
-                    items(
-                        group.events,
-                        key = { "release:${it.stableKey}" },
-                        contentType = { "release" }
-                    ) { event ->
-                        Box(
-                            Modifier.padding(
-                                bottom = if (event ==
-                                    group.events.last()
-                                ) {
-                                    BingeeDimensions.contentSpacing
-                                } else {
-                                    BingeeDimensions.elementSpacing
+                is HomeContentState.Events -> {
+                    if (content.allGroups != content.groups) {
+                        homeSectionItem(key = "calendarMode") {
+                            FlowRow(
+                                Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Text(
+                                    stringResource(
+                                        if (showAllReleases) {
+                                            R.string.home_calendar_all
+                                        } else {
+                                            R.string.home_calendar_summary
+                                        }
+                                    ),
+                                    modifier = Modifier.align(Alignment.CenterVertically),
+                                    style = MaterialTheme.typography.bodyMedium
+                                )
+                                TextButton(onClick = { showAllReleases = !showAllReleases }) {
+                                    Text(
+                                        stringResource(
+                                            if (showAllReleases) R.string.home_show_summary else R.string.home_show_all
+                                        )
+                                    )
                                 }
-                            )
-                        ) {
-                            ReleaseEventCard(event, group.category, onClick = {
-                                onOpenDetails(event.mediaRef, event.mediaType)
-                            })
+                            }
+                        }
+                    }
+                    val groups = if (showAllReleases) content.allGroups else content.groups
+                    groups.forEach { group ->
+                        item(key = "date:${group.date}", contentType = "dateHeader") {
+                            Box(Modifier.padding(bottom = BingeeDimensions.elementSpacing)) {
+                                DateHeader(group, state.today)
+                            }
+                        }
+                        items(
+                            group.events,
+                            key = { "release:${it.stableKey}" },
+                            contentType = { "release" }
+                        ) { event ->
+                            Box(
+                                Modifier.padding(
+                                    bottom = if (event ==
+                                        group.events.last()
+                                    ) {
+                                        BingeeDimensions.contentSpacing
+                                    } else {
+                                        BingeeDimensions.elementSpacing
+                                    }
+                                )
+                            ) {
+                                ReleaseEventCard(event, onClick = {
+                                    onOpenDetails(event.mediaRef, event.mediaType)
+                                })
+                            }
                         }
                     }
                 }
@@ -261,26 +302,6 @@ internal fun HomeContent(
                     )
                 }
             }
-
-            // General TMDB discovery content follows the personal calendar, and Continue Watching closes the
-            // screen after it. Films and series get a row each: one merged row buried whichever type the
-            // interleave happened to push right.
-            featuredRow(
-                titleRes = R.string.home_featured_movies,
-                items = state.featuredMovies,
-                libraryMemberships = state.libraryMemberships,
-                addingToWatchlist = state.addingToWatchlist,
-                onAddToWatchlist = onAddToWatchlist,
-                onOpenDetails = onOpenDetails
-            )
-            featuredRow(
-                titleRes = R.string.home_featured_series,
-                items = state.featuredSeries,
-                libraryMemberships = state.libraryMemberships,
-                addingToWatchlist = state.addingToWatchlist,
-                onAddToWatchlist = onAddToWatchlist,
-                onOpenDetails = onOpenDetails
-            )
 
             if (state.continueWatching.isNotEmpty()) {
                 homeSectionItem(key = "continueWatchingTitle") {
@@ -316,6 +337,26 @@ internal fun HomeContent(
                     }
                 }
             }
+
+            // General TMDB discovery content follows the personal calendar and Continue Watching.
+            // Films and series get a row each: one merged row buried whichever type the
+            // interleave happened to push right.
+            featuredRow(
+                titleRes = R.string.home_featured_movies,
+                items = state.featuredMovies,
+                libraryMemberships = state.libraryMemberships,
+                addingToWatchlist = state.addingToWatchlist,
+                onAddToWatchlist = onAddToWatchlist,
+                onOpenDetails = onOpenDetails
+            )
+            featuredRow(
+                titleRes = R.string.home_featured_series,
+                items = state.featuredSeries,
+                libraryMemberships = state.libraryMemberships,
+                addingToWatchlist = state.addingToWatchlist,
+                onAddToWatchlist = onAddToWatchlist,
+                onOpenDetails = onOpenDetails
+            )
         }
         SnackbarHost(snackbarHostState, modifier = Modifier.align(Alignment.BottomCenter))
     }
@@ -620,47 +661,51 @@ private fun FeedbackRow(
 }
 
 @Composable
-private fun DateHeader(group: ReleaseDateGroup) {
+private fun DateHeader(group: ReleaseDateGroup, today: java.time.LocalDate) {
     val category = when (group.category) {
         ReleaseDateCategory.RECENT -> stringResource(R.string.home_date_recent)
         ReleaseDateCategory.TODAY -> stringResource(R.string.home_date_today)
-        ReleaseDateCategory.UPCOMING -> stringResource(R.string.home_date_upcoming)
+        ReleaseDateCategory.UPCOMING -> stringResource(
+            if (group.date == today.plusDays(1)) R.string.home_date_tomorrow else R.string.home_date_upcoming
+        )
     }
+    val locale = LocalConfiguration.current.locales[0]
+    val shortDate = remember(group.date, locale) { group.date.formatLocalized(locale) }
+    val fullDate = remember(group.date, locale) { fullDateFormatter(locale).format(group.date) }
+    val description = stringResource(R.string.home_date_header, fullDate, category)
     Text(
-        text = stringResource(R.string.home_date_header, group.date.localized(), category),
-        modifier = Modifier.fillMaxWidth().semantics { heading() },
+        text = stringResource(R.string.home_date_header, shortDate, category),
+        modifier = Modifier.fillMaxWidth().semantics {
+            heading()
+            contentDescription = description
+        },
         style = MaterialTheme.typography.titleMedium,
         color = MaterialTheme.colorScheme.primary
     )
 }
 
 @Composable
-private fun ReleaseEventCard(event: ReleaseEvent, category: ReleaseDateCategory, onClick: () -> Unit) {
+private fun ReleaseEventCard(event: ReleaseEvent, onClick: () -> Unit) {
     val openDescription = stringResource(R.string.home_open_event_details, event.title)
     Card(
         onClick = onClick,
-        modifier = Modifier.fillMaxWidth().semantics { contentDescription = openDescription }
+        modifier = Modifier.fillMaxWidth().testTag("home-release-${event.stableKey}")
+            .semantics { contentDescription = openDescription }
     ) {
         Row(
             modifier = Modifier.padding(BingeeDimensions.elementSpacing),
             horizontalArrangement = Arrangement.spacedBy(BingeeDimensions.contentSpacing)
         ) {
             // The card owns the combined description of this item.
-            MediaPoster(event.title, event.posterUrl, contentDescription = null)
+            if (LocalDensity.current.fontScale <= 1.3f) {
+                MediaPoster(event.title, event.posterUrl, width = 48.dp, height = 72.dp, contentDescription = null)
+            }
             Column(
                 modifier = Modifier.weight(1f),
                 verticalArrangement = Arrangement.spacedBy(BingeeDimensions.elementSpacing)
             ) {
                 Text(event.title, style = MaterialTheme.typography.titleMedium)
                 Text(event.description(), style = MaterialTheme.typography.bodyMedium)
-                Text(
-                    when (category) {
-                        ReleaseDateCategory.RECENT -> stringResource(R.string.home_event_recent)
-                        ReleaseDateCategory.TODAY -> stringResource(R.string.home_event_today)
-                        ReleaseDateCategory.UPCOMING -> stringResource(R.string.home_event_upcoming)
-                    },
-                    style = MaterialTheme.typography.labelLarge
-                )
             }
         }
     }
@@ -692,8 +737,7 @@ private var fullDateFormatterCache: Pair<Locale, DateTimeFormatter>? = null
 @Volatile
 private var mediumDateTimeFormatterCache: Pair<Locale, DateTimeFormatter>? = null
 
-private fun fullDateFormatter(): DateTimeFormatter {
-    val locale = Locale.getDefault()
+private fun fullDateFormatter(locale: Locale): DateTimeFormatter {
     fullDateFormatterCache?.let { (cachedLocale, formatter) ->
         if (cachedLocale == locale) return formatter
     }
@@ -711,8 +755,6 @@ private fun mediumDateTimeFormatter(): DateTimeFormatter {
         .withLocale(locale)
         .also { mediumDateTimeFormatterCache = locale to it }
 }
-
-private fun java.time.LocalDate.localized(): String = fullDateFormatter().format(this)
 
 private fun Instant.localized(): String = mediumDateTimeFormatter().withZone(ZoneId.systemDefault()).format(this)
 

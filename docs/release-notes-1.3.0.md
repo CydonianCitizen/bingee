@@ -1,9 +1,10 @@
 # v1.3.0 — Details and History implementation notes
 
-Status: implementation and verification in progress; milestone open. Code version 1.3.0/code 11.
-No release has been published. The [canonical roadmap](../BINGEE_DEVELOPMENT_ROADMAP_AND_CHECKLIST.md#v130--major-uiux-1-details-as-a-true-personal-tracker-screen)
+Status: agreed scope verified and closed on 2026-10-22. Code version 1.3.0/code 11.
+No release has been published. Earlier dated checkpoints below retain their then-pending gates;
+the [final closure record](../BINGEE_DEVELOPMENT_ROADMAP_AND_CHECKLIST.md#v130-closure-record--2026-10-22) supersedes them. The [canonical roadmap](../BINGEE_DEVELOPMENT_ROADMAP_AND_CHECKLIST.md#v130--major-uiux-1-details-as-a-true-personal-tracker-screen)
 and the [Details](superpowers/plans/2026-10-19-v1.3.0-details.md) and
-[History](superpowers/plans/2026-10-20-history-timeline.md) implementation plans define the remaining gates.
+[History](superpowers/plans/2026-10-20-history-timeline.md) implementation plans record the delivered scope and evidence.
 
 ## Implemented behavior
 
@@ -14,7 +15,7 @@ and the [Details](superpowers/plans/2026-10-19-v1.3.0-details.md) and
 - Rating Save/Remove preserve 1–10 semantics; Cancel restores the saved value without writing. Read/write errors preserve the draft. Membership read errors offer a separate local retry.
 - Cached episode rows remain usable without a fetch timestamp. Narrow/large-font rows omit decorative thumbnails to preserve title space; wider rows retain them. Long next-episode titles are visually limited to two lines without shortening their semantic text. Title refresh and season episode refresh have distinct EN/IT labels.
 
-## Compatibility and remaining checks
+## Compatibility and verification limits
 
 Room 9, Backup v3, v1/v2/v3 restore, dependencies, cache and backup retention are unchanged.
 No new provider, continuation algorithm or whole-list collector is introduced.
@@ -393,6 +394,124 @@ proof. The temporary runner is removed; package inventory and accessibility/font
 The final host gate completes on 2026-10-22: Spotless, lint and standard debug/AndroidTest builds
 pass. Owner acceptance and manual TalkBack remain pending; v1.3.0 is not closed by this increment.
 
+## Approved Home/calendar refinements — 2026-10-22
+
+The owner approved four scoped refinements: Today/Upcoming/Recent presentation, compact release
+rows and date labels, access to all saved events already observed locally, and clearer empty,
+cached-read-error and update text. Home keeps the current one-release-per-Series overview as the
+default. An optional Show all / Show summary control uses complete groups from the same coherent
+Room snapshot and read window (seven previous days and cached future dates); no extra observation,
+provider call, schema or portable preference is added. Read failures retain both views together.
+The presentation mode uses Compose saveable state. Date headings retain the year and full
+accessible date; decorative posters yield text space above font scale 1.3.
+
+After clarification the owner also approved the section reorder on 2026-10-22: calendar,
+Continue Watching, featured Movies, featured Series. Only the existing UI blocks move; continuation
+eligibility, actions and omission when empty are preserved. Widgets, notifications, follow and
+continuation policies, Room 9, Backup v3, dependencies and v1.3.0/code 11 are unchanged.
+Native UI, visual/adaptive and TalkBack checks remain pending; no Android device was connected
+at this Home implementation checkpoint. The later manual Details/History pass does not cover them.
+Neither milestone closure nor commit/push/publication is implied.
+
+Host verification executes all 535 JVM tests without failures/errors/skips, including 20 Home
+ViewModel tests. The Home category-order regression fails before implementation, then passes;
+another test covers complete snapshots, qualified Movie/Series identities, live updates, cached
+read failures and one observation. Spotless, lint (zero errors, 54 warnings), debug and AndroidTest
+builds pass. Two added native
+tests compile for full-view restoration/navigation/live updates and compact cards/full accessible
+dates; the existing date-wording test now checks the actual headings. These native tests have
+not run and do not certify the layout or TalkBack behavior on a phone.
+The same host gate passes again after the approved section reorder; a source-order check fails
+before the move and passes afterward. No Android device is connected at this checkpoint.
+
+## Owner-led manual TalkBack and History acceptance — 2026-10-22
+
+The owner confirms the scoped manual checks on HONOR CMA-LX1 / Android 13 at 360 dp/font 1.0,
+with English fixture UI, real TalkBack bound and touch exploration enabled:
+
+- Movie rating/date editors open; changing and cancelling preserves values, understandable
+  title/actions and useful focus.
+- Series next-episode S1 E2 navigation, episode name/state, season exploration, return without
+  accidental progress writes and Favorite state announcements work as expected.
+- The current compact alternating History exposes only Movies/Series. Dates/titles read in
+  chronological order, cards on both sides are reachable, horizontal two-finger scrolling works,
+  Series groups expand/collapse with understandable state, and Details return retains position.
+  The owner explicitly approves this interaction.
+
+These reports complete the scoped Details M5 manual accessibility and current History acceptance
+checkboxes. They supplement the previous technical tests; no fresh instrumentation or JVM run is
+claimed here. Current isolated debug builds pass, update only the two existing synthetic apps and
+remove INTERNET. The standard debug artifact is rebuilt afterward without installation. Production
+Details/History sources are unchanged. All five original accessibility settings are verified
+restored and package inventory is unchanged; the personal app is preserved. Raw evidence remains
+ignored under `.audit/accessibility-2026-10-22/`.
+
+This is not global accessibility certification or a full device/language matrix. Integration,
+offline/concurrency, native Home verification and final audit/release gates remain open. No
+milestone closure, commit, push, signing or publication is implied.
+
+## Details integration, offline and concurrency — 2026-10-22
+
+The scoped M5 integration item is verified on HONOR CMA-LX1 / Android 13, 360 dp/font 1.0:
+
+- Eleven native regressions pass: two real Room metadata/calendar/progress/date concurrency tests
+  and nine Activity/navigation tests. A Detail episode write survives actual Activity recreation,
+  disappears from Home continuation and the Watching collection, then reappears in both after
+  unwatching. Earlier progress timestamps and the unwatched future episode are preserved.
+- A separate seed and two cold verification phases run in distinct processes (final PIDs 28170,
+  28260, 28415), with explicit force-stop between invocations. Saved Movie date/rating and Series
+  episodes remain readable; a Movie rating change to 9 and a Series episode write through the UI
+  survive the second cold process. The isolated target has no INTERNET permission. Personal radio
+  settings are unchanged; this is app-level offline proof, not real TMDB socket failure/recovery.
+- Concurrent Movie refresh/progress/date writes retain stable identity, membership, Favorite,
+  rating, timestamp and custom date. Concurrent Series refresh/unwatch/date writes do not resurrect
+  removed completion evidence. These cases do not prove every possible scheduler interleaving.
+
+Fixture writes now use `DebugDatabaseEntryPoint` to reach the app's Room singleton. An initial
+second-instance fixture passed alone but failed in sequence because shared observations were not
+invalidated; the final eleven-test sequence passes after this test-only correction. The hook is
+excluded from release; production logic, Room 9, Backup v3, dependencies and version are unchanged.
+
+The final host gate executes all 535 JVM tests without failures/errors/skips. Spotless, lint
+(0 errors, 54 warnings) and debug/AndroidTest builds pass; no lint warning points at the new test
+or debug hook. Standard APK application IDs are restored. Only the two newly created isolated
+packages are removed, package inventory matches baseline, and all eight accessibility/radio
+settings are unchanged. The personal app and its data are preserved. Raw probes, rejected fixture
+attempts and evidence remain ignored under `.audit/integration-2026-10-22/`.
+
+Native Home control/adaptive verification, the unfiltered final Android suite, release/R8 checks,
+global Ponytail audit and milestone closure remain open. No commit, push or publication.
+
+## Native Home, full Android suite and release/R8 — 2026-10-22
+
+Point 4 passes without production or permanent-test changes:
+
+- The complete unfiltered `connectedDebugAndroidTest` executes 415 tests on HONOR CMA-LX1 /
+  Android 13: zero failures, errors or skips. No temporary probe is compiled into this suite.
+- All 15 HomeScreenTest cases pass separately in EN and IT, including saveable all-events mode,
+  live updates/navigation, compact rows/full accessible dates, cached errors, empty/loading,
+  refresh actions and continuation behavior.
+- Eight additional native composition variants pass: 320 dp/IT/font 1.5, 360 dp/IT/font 1.3,
+  411 dp/EN/font 1.0 and 600 dp/EN/font 1.5, each Light/Dark. They exercise calendar/continuation/
+  featured order, summary/full switching, title callbacks, long text, cached-error, empty/loading
+  states. Sixty-four screenshots are collected; eight representative samples are visually
+  inspected across all variants, with no blocked interaction found. These are resized compositions
+  on one phone, not a physical tablet, full Cartesian matrix or manual Home TalkBack certification.
+
+The standard host gate passes Spotless, lint (0 errors, 54 warnings), debug/AndroidTest and
+`assembleRelease`; the unchanged 535 JVM result is reused as UP-TO-DATE, not claimed rerun.
+`minifyReleaseWithR8` actually executes. The frozen unsigned APK is 1.3.0/code 11, application ID
+`com.cydoniancitizen.bingee`, 6,421,094 bytes, with SHA-256 recorded in the ignored artifact manifest.
+The debug fixture entry point is absent from the release mapping. Signature inspection confirms
+the expected unsigned artifact; no signing, release installation or signed/minified smoke is claimed.
+
+Only the newly owned `nativefinal130` and `.test` packages are installed and removed. Final package
+inventory, nine accessibility/radio/font settings and display size/density exactly match baseline;
+the personal app and data are preserved. Standard debug/test APK IDs are restored without probes,
+and the frozen release hash remains unchanged. Raw results, screenshots and the APK stay under
+`.audit/final-native-2026-10-22/`, with the host log beside that folder. No commits or pushes.
+Global Ponytail audit, final documentation alignment and milestone closure remain separate and open.
+
 ## History H1–H6 checkpoint — 2026-10-20
 
 Historical checkpoint: on 2026-10-21 the owner approved replacing the monthly UI with a continuous
@@ -476,3 +595,32 @@ Manual speech/reading-order/gesture validation is still required. Fresh-process 
 concurrency/integration, Home/calendar and final global/release gates remain separate open work.
 This checkpoint does not close M5, v1.3.0 or global v1.3.4 accessibility hardening. No commit,
 push or publication occurred.
+
+
+## Final audit and agreed-scope closure — 2026-10-22
+
+The final global Ponytail audit and Impeccable native synthesis find no new demonstrated blocker
+in the reviewed changed/shared paths. No further production or test change is required in this
+step. Current statuses, owner acceptance/TalkBack evidence, Home section ordering and the
+version-specific checklist are aligned; earlier dated pending gates remain historical records.
+The [canonical closure record](../BINGEE_DEVELOPMENT_ROADMAP_AND_CHECKLIST.md#v130-closure-record--2026-10-22)
+classifies fixed work, pre-existing/deferred limits and justified complexity, and records B1–B7.
+
+Verification relies on the unchanged source snapshot: 535 JVM tests actually passed at the
+integration checkpoint (UP-TO-DATE in the later host gate), 415 unfiltered Android tests passed,
+15 Home component tests per EN/IT locale and eight native Home configurations passed. R8 actually
+ran for the frozen unsigned 1.3.0/code 11 artifact. Final documentation checks validate repository-local
+Markdown paths/headings, whitespace, source preservation and an empty Git index. No extra Android
+or performance run is attributed to this documentation-only step. Evidence remains ignored in
+`.audit/closure-v130/` and the earlier verification directories.
+
+The agreed v1.3.0 scope is closed. Room 9, Backup v3 and restore v1/v2/v3 are unchanged. Existing
+performance, retry, notification crash-interval and migration/index deferrals remain. Manual Home
+TalkBack, full Cartesian UI coverage, real provider failure/recovery and signed
+release runtime smoke are not certified. Global v1.3.4 hardening is not complete. This final step
+does not operate on the phone and preserves all prior app/test work. No commit, push, signing, tag
+or publication is performed.
+
+Owner clarification: manual TalkBack for Details and the current History timeline was already
+completed and accepted; the Home-only manual check was not performed. Tablet verification is
+explicitly excluded from the agreed scope and is not outstanding work or a closure requirement.

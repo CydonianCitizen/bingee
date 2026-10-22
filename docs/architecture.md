@@ -12,7 +12,7 @@ preserves verification limits and deferred work. No release publication is impli
 
 ## Current application surface
 
-- The code targets v1.3.0/code 11; Details and History are in progress, without publication or a closure claim. Details keeps its cinematic hero and places membership, watch state, meaningful dates, continuation and compact rating before the synopsis. Seasons remain lazy and inline; secondary metadata follows them.
+- The agreed v1.3.0/code 11 scope is verified and closed on 2026-10-22 after final Ponytail audit and documentation alignment; publication is separate. Details keeps its cinematic hero and places membership, watch state, meaningful dates, continuation and compact rating before the synopsis. Seasons remain lazy and inline; secondary metadata follows them.
 - Details derives Series wording from existing tracking/coverage facts and production metadata: ongoing titles can be caught up, ended/canceled titles can be watched, and unknown/contradictory production information uses neutral wording. No new tracking state is persisted. The existing single-entry projection carries the actual Series completion timestamp; date updates reject a missing completion record atomically. Room remains v9 and Backup remains v3.
 - Next-episode commands use the canonical Library projection and shared Continue Watching eligibility policy. Independent episode/progress observations must agree before offering navigation or completion editing. Navigation opens only the target season and consumes its scroll command; spoiler preferences apply to summary titles as well as episode rows.
 - For an abandoned Series in the collection, Details promotes Resume tracking to the standard primary filled Material 3 button. Abandon tracking and collection removal remain secondary; the same callback and updating-state guard own the action.
@@ -20,7 +20,7 @@ preserves verification limits and deferred work. No release publication is impli
 - TMDB is the only runtime media provider. No Jikan or cross-provider deduplication runs in the app.
 - Top-level navigation is Home, Search, and Your bingee. The personal destination keeps the internal `profile` route and `PROFILE` identifier; only its label and icon present it as Your bingee / Il tuo bingee, a personal collection rather than an account.
 - Your bingee is the personal dashboard: actionable Watching, collection shortcuts with counts, Favorites, a personal statistics preview and an entry to Your history. It opens Settings, which indexes the Appearance & Language, Notifications, Data & backup, Privacy, and About subpages, and exposes its own visible Up action alongside system Back.
-- Home is Room-first. Continue Watching follows the featured rows; each card shows the last watched and next episode and marks the next one watched through `WatchProgressRepository`, with undo. Notification Center reads cached release events and supports local refresh feedback.
+- Home is Room-first. Continue Watching follows the calendar and precedes the featured Movies and Series rows; each card shows the last watched and next episode and marks the next one watched through `WatchProgressRepository`, with undo. Notification Center reads cached release events and supports local refresh feedback.
 - Two Glance home screen widgets in `feature/widget` render the same Room projections as Home: a 2×2 poster of the most recent series in progress with a next-episode button, and a 4×2 view that adds the next two releases. They reach repositories through a Hilt entry point, never call TMDB, follow the in-app theme choice, and redraw through one application-scoped updater while widget instances exist (ADR 0027). The updater compares displayed content; active Glance sessions retain their own subscriptions. The small widget does not read the calendar.
 - Room v9 owns media metadata, seasons, episodes, library membership, watch progress, ratings, release events, notification state, portable preferences, the explicit serial-state override, canonical genre identity, favorite chronology, background refresh attempts, and the language of cached TMDB text.
 - Backup v3 is the versioned JSON export contract (v1 and v2 remain importable) and uses transactional replace restore.
@@ -29,8 +29,9 @@ preserves verification limits and deferred work. No release publication is impli
 ## Viewing history in v1.3.0
 
 The owner approved a continuous horizontal timeline on 2026-10-21. Its implementation and scoped
-automated/visual checks pass; owner acceptance and manual TalkBack for the new interaction remain
-pending. The previous H1–H6 proof covers the superseded monthly UI. The current
+automated/visual checks pass; the owner accepts the compact alternating interaction and confirms
+manual TalkBack on 2026-10-22, on HONOR / Android 13 at 360 dp/font 1.0 in English.
+The previous H1–H6 proof covers the superseded monthly UI. The current
 contract starts at the oldest retained dated Movie/Episode and advances to newer activity at the
 right. Dated points alternate title/poster content above and below a shared horizontal rail, with
 expandable Series/day groups and regular spacing that does not imply elapsed-time scale. Only
@@ -85,8 +86,9 @@ retaining the filter; the repository also rejects reads crossing those boundarie
 is serialized, and Backup v3 / restore v1/v2/v3 are unchanged.
 
 Implementation and verification status is maintained in the
-[History H1–H6 plan](superpowers/plans/2026-10-20-history-timeline.md); unfinished validation does not
-close the encompassing v1.3.0 milestone.
+[History H1–H6 plan](superpowers/plans/2026-10-20-history-timeline.md). The
+[v1.3.0 closure record](../BINGEE_DEVELOPMENT_ROADMAP_AND_CHECKLIST.md#v130-closure-record--2026-10-22)
+records the final agreed scope and verification limits.
 
 ## Dependency direction
 
@@ -218,7 +220,26 @@ MediaDetailsViewModel -> WatchProgressRepository -> WatchProgressDao
 MediaDetailsViewModel -> RatingRepository -> RatingDao -> media_ratings
 ~~~
 
-Home is a separate Room-first projection:
+Home is a separate Room-first projection. Its default calendar still selects one release per
+qualified Series (today/earliest future, otherwise latest recent), retaining Movies independently.
+Home-only grouping presents Today, Upcoming, then Recent. The same atomic state also retains the
+complete grouped Room snapshot for an optional Show all / Show summary control; this adds no
+observer, provider call or persisted preference. Both modes use the existing calendar read window
+(from seven days before today), rather than an unlimited historical event log. Failed observations
+preserve both grouped views together. The presentation choice uses Compose saveable state.
+
+Release rows use compact artwork beside text, omit repeated category wording and hide decorative
+artwork above font scale 1.3. Date headings show a shorter localized date (retaining the year),
+Today/Tomorrow where applicable, and a full spoken date. Empty and cached-read-error copy describes
+saved data without assuming that the collection is empty. The section order approved on
+2026-10-22 is calendar, Continue Watching, featured Movies, featured Series. Continue Watching
+keeps its existing eligibility, actions and omission when empty.
+Widgets, notifications, follow rules, refresh and persistence are unchanged. Native verification
+on 2026-10-22 passes 15 Home component tests per EN/IT locale, eight controlled width/font/theme
+compositions and the full 415-test Android suite. The selected screenshot samples cover both
+themes and 320/360/411/600 dp; these are phone compositions, not physical tablet certification.
+The owner-led manual TalkBack pass covers Details and current History. Home has automated
+semantics checks, without a manual speech/gesture certification.
 
 ~~~text
 HomeScreen -> HomeViewModel -> ReleaseCalendarRepository -> ReleaseEventDao -> Room Flow
@@ -351,6 +372,9 @@ TV Time review counts, filtering, grouping, sorting and review edits run on the 
 ## Fake strategy
 
 Debug fakes live in app/src/debug; debug-variant JVM tests in app/src/test reuse them. Release compilation excludes this source set. Fixtures use fixed IDs, titles, dates, and immediate results, with configurable failures and no real sleeps. No fixture reads current time, so no clock is currently needed; any future time-dependent fake must accept a Clock.
+`DebugDatabaseEntryPoint` also lives only in debug: real Activity navigation tests seed and clean
+their synthetic records through the app's Room singleton. A second database instance would not
+notify its shared in-process observers; tests do not close the application-owned singleton.
 
 In-memory title search and fake repository observation fallbacks also live in `debug`. The production Library and calendar contracts require explicit implementations: production keeps its dedicated Continue Watching and bounded calendar Room queries, while fakes reuse debug-only helpers for the canonical continuation policy and inclusive calendar upper bound. The shared search normalization and state/sort rules remain in the main model because production uses them too.
 

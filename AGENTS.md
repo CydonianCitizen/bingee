@@ -4,7 +4,24 @@
 
 Questo repository contiene un'app Android open source, local-first, per tenere traccia di film, serie TV e, in una fase successiva, anime.
 
-Stato corrente del codice: v1.3.0 / versionCode 11, Dettagli in corso. History H1–H6 e la prova manuale TalkBack positiva riferita dal proprietario documentano la precedente UI mensile; il 21 ottobre 2026 è stata approvata la correzione a timeline orizzontale continua, implementata e verificata con prove automatiche e visuali nello scope documentato. Accettazione del proprietario e nuova prova manuale TalkBack restano da confermare; le prove precedenti non certificano la nuova interazione. Milestone non chiusa e pubblicazione non eseguita.
+Stato corrente del codice: v1.3.0 / versionCode 11, scope concordato verificato e chiuso il
+22 ottobre 2026 dopo audit globale finale Ponytail e allineamento documentale. History H1–H6 e la prima
+prova TalkBack documentano la precedente UI mensile. La timeline orizzontale continua, compatta
+e alternata approvata il 21 ottobre 2026 ha proprie verifiche automatiche e visuali. Il 22 ottobre
+il proprietario conferma TalkBack su Dettagli e timeline attuale e approva questa interazione,
+su HONOR / Android 13, 360 dp/font 1.0, UI inglese. Integrazione/offline/concorrenza passano nello
+scope documentato: 11 regressioni native, due verifiche in processi distinti dopo seed separato,
+535 JVM e gate host, senza modifiche di produzione. Il successivo punto 4 verifica 415 test Android
+completi senza errori/salti, 15 test Home per lingua EN/IT e otto configurazioni Home controllate
+a 320/360/411/600 dp, chiaro/scuro e font 1.0/1.3/1.5. Release non firmata con R8 effettivamente
+eseguito; 535 JVM invariati riusati, Spotless/lint/debug/test passano. App personale e dati
+preservati; pacchetti temporanei rimossi e inventario, nove impostazioni, dimensioni/densità
+verificati invariati. Le varianti Home sono composizioni sul telefono, non prove su tablet fisico
+o TalkBack manuale Home. L'audit non rileva nuovi blocchi dimostrati; limiti e rinvii restano
+nel record di chiusura della roadmap. L'hardening globale v1.3.4 non è certificato da questa chiusura.
+Il proprietario esclude la verifica su tablet dallo scope concordato: non è un'attività residua
+o un requisito per chiudere v1.3.0. TalkBack manuale Dettagli/History resta completato e accettato.
+Nessuna firma, installazione release, pubblicazione, commit o push eseguiti per questi gate.
 Lo scope concordato di v1.2.5 / versionCode 9 resta verificato e chiuso.
 La manutenzione v1.2.6 è verificata e chiusa nello scope concordato il 19 ottobre 2026, senza
 modifiche di produzione o incremento della versione applicativa. Restano i rinvii documentati in roadmap.

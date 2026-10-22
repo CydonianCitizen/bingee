@@ -28,6 +28,14 @@ TMDB is the only runtime media provider. Animation and anime returned by TMDB us
 
 The agreed v1.2.5 / versionCode 9 scope is complete: proven dead-code cleanup, selected measured optimizations, final verification, the full Android suite and canonical documentation alignment. The [canonical roadmap](BINGEE_DEVELOPMENT_ROADMAP_AND_CHECKLIST.md#v125-checklist) records accepted limits and the owner's deferral of the next global audit, potential over-engineering/dead-code fixes and optimization study to v1.2.6. Completed optimizations are retained; further optimization directions require a benefits/costs decision. This milestone closure does not publish a release. Room schema 9, Backup v3 export with v1/v2/v3 restore, and the experimental documented TV Time JSON ZIP import define the current data boundaries. Portable preferences live in Room; permission and notification enablement remain device-specific.
 
+The agreed v1.3.0 / versionCode 11 scope is verified and closed on 2026-10-22: a compact
+personal Details summary, the accepted horizontal Film/Series History timeline with alternating
+cards, and the approved Home calendar refinements. Home places Continue Watching after the
+calendar and before TMDB discovery. Shared tracking rules, Room 9 and Backup v3 are unchanged.
+The [closure record](BINGEE_DEVELOPMENT_ROADMAP_AND_CHECKLIST.md#v130-closure-record--2026-10-22)
+preserves tested scope, deferred work and publication boundaries. The earlier v1.2.6 maintenance
+scope is also closed; completed optimization decisions remain in force.
+
 ## Brand Commitments
 
 The public brand is written `bingee`, with a lowercase initial, in English and Italian, including launcher labels and the personal dashboard. Technical package/class names, repository URLs and persistence identifiers retain their existing spelling.

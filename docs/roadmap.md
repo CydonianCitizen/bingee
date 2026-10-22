@@ -2,7 +2,23 @@
 
 This document retains earlier delivery summaries. The [canonical development roadmap and checklist](../BINGEE_DEVELOPMENT_ROADMAP_AND_CHECKLIST.md) defines the active implementation order and release gates.
 
-## In progress in `v1.3.0` — Details and History
+## Completed agreed scope in `v1.3.0` — 2026-10-22
+
+Details, current History and the approved Home/calendar addition are verified and closed
+within the documented scope. Final global Ponytail audit finds no new demonstrated blocker;
+canonical docs and version-specific checklists are aligned. Room 9 and Backup v3 are unchanged.
+The [closure record](../BINGEE_DEVELOPMENT_ROADMAP_AND_CHECKLIST.md#v130-closure-record--2026-10-22)
+records 415 Android tests, 535 JVM tests (reused in the final host gate), Home EN/IT checks,
+owner-led Details/History TalkBack and unsigned release/R8 proof. Retained limits include manual
+Home TalkBack, full Cartesian coverage, real provider failure/recovery and signed release runtime
+smoke. Tablet verification is explicitly excluded by the owner, not outstanding closure work.
+Manual Details/current History TalkBack remains completed and accepted. Existing performance/index/cache
+deferrals and v1.3.1–v1.3.4 remain separate.
+No commit, push, signing or publication in this closure task.
+
+### Earlier v1.3.0 checkpoints
+
+The dated records below preserve their original pending gates; the closure record above supersedes them.
 
 The code targets 1.3.0/code 11. Details now places a compact personal summary before the synopsis,
 derives Series relationship wording without changing canonical tracking rules, opens rating editing
@@ -13,17 +29,22 @@ and [M1–M5 plan](superpowers/plans/2026-10-19-v1.3.0-details.md).
 
 The Details checkpoint passes: 508 JVM and 287 isolated Android 13 tests, Spotless, lint, debug and
 unsigned release/R8 builds. Source audit and a fresh-process offline smoke with synthetic data pass.
-Adaptive coverage remains partial after repeated host QEMU crashes; TalkBack and remaining
-navigation/lifecycle combinations still need verification. The milestone remains open. No commit
+Adaptive coverage remained partial at that checkpoint after repeated host QEMU crashes; TalkBack
+was still pending then, and remaining navigation/lifecycle combinations need verification. The milestone remains open. No commit
 or publication is implied; see the notes for the exact coverage and rejected screenshot captures.
 
-The subsequent scoped Home change displays one release per Series: today's/earliest future,
+The default Home calendar summary displays one release per Series: today's/earliest future,
 otherwise the latest recent release. Movies remain visible; persisted events, widgets and
-notifications retain their existing behavior. **Reviewing and agreeing the Home/calendar
-presentation is still open within v1.3.0**, as requested on 2026-10-19; no broader layout has been
-selected. The wider v1.3.1 Home redesign remains separate. The Home checkpoint passes 511 JVM
+notifications retain their existing behavior. On 2026-10-22 the owner approved four refinements:
+Today/Upcoming/Recent order, compact calendar rows and dates, access to all locally observed saved
+events, and clearer empty/cache/update wording. These are implemented; subsequent native checks
+pass with 15 Home tests per EN/IT locale and eight controlled width/font/theme variants. The owner subsequently approved moving Continue
+Watching after the calendar and before the featured Movies and Series rows; this is implemented
+without changing continuation policy or actions.
+The wider v1.3.1 Home redesign remains separate. The earlier Home checkpoint passes 511 JVM
 tests, Spotless, lint (zero errors, 38 existing warnings) and debug build. Android and release/R8
-checks above predate this Home change and have not been repeated for it.
+checks above predate this Home change; the later full 415-test Android and release/R8 checkpoint
+below covers the current source snapshot.
 
 The subsequent M1 derivation-test item is verified, bringing the current full JVM suite to 513
 passing tests; Spotless, lint and debug build pass. Production is unchanged by this test-only
@@ -111,6 +132,45 @@ require the owner's manual check, deferred by the owner. The M5 checkbox remains
 The isolated synthetic app stays ready; its runner is removed and original accessibility
 settings restored. See the [checkpoint and limits](release-notes-1.3.0.md#m5-accessibility-checkpoint--2026-10-21).
 Integration/offline/concurrency, Home/calendar, final gates and milestone closure remain open.
+
+On 2026-10-22 the owner completes the manual Details checks: Movie rating/date editors cancel
+without changing values and leave useful focus; title/actions are understandable. Series S1 E2
+navigation, episode name/state, season exploration, return and Favorite state announcements pass
+by the owner's report. The owner also confirms chronological reading/scrolling of both timeline
+sides, Movies/Series filters, group expansion/collapse and Details return, and explicitly accepts
+the current compact alternating timeline. The scoped M5 accessibility and History acceptance
+checkboxes are complete. These are English-UI manual checks on HONOR / Android 13, 360 dp/font 1.0,
+not global accessibility certification. The two existing isolated apps were updated without
+INTERNET; all five original accessibility settings and package inventory are verified restored/
+unchanged. Production is unchanged by this verification. The subsequent scoped integration
+checkpoint below completes offline/concurrency; native Home verification and final gates remain open.
+
+The subsequent 2026-10-22 Details integration checkpoint passes 11 native regressions on the same
+HONOR Android 13 phone: metadata/progress/date concurrent Room writes, real Activity recreation,
+rating draft/save/back and cached-season retry, plus episode actions reflected in both Home and
+the Watching collection. A separate seed and two force-stopped process launches have distinct PIDs;
+saved Movie date/rating and Series cache remain readable, a rating change to 9 and an episode write
+survive another cold process, and the future episode remains unwatched. The isolated app has no
+INTERNET permission; personal Wi-Fi/mobile/airplane settings are untouched. This proves app-level
+offline behavior, not real TMDB socket failure/recovery. Fixture seeding now uses a debug-only
+entry point to the app's Room singleton so shared observers receive its invalidations. No production
+logic changes. All 535 JVM tests execute and pass; Spotless, lint (0 errors/54 warnings) and debug/
+AndroidTest builds pass. The two newly created packages are removed; package inventory and eight
+accessibility/radio settings match baseline. Native Home and full Android/R8 were still pending
+at this integration checkpoint; the subsequent verification below completes them.
+
+The subsequent 2026-10-22 point 4 checkpoint passes the complete unfiltered
+`connectedDebugAndroidTest`: 415 tests, zero failures/errors/skips on HONOR / Android 13. Home
+also passes all 15 component tests in each of EN/IT and eight controlled native compositions:
+320 dp/IT/font 1.5, 360 dp/IT/font 1.3, 411 dp/EN/font 1.0 and 600 dp/EN/font 1.5, each Light/Dark.
+Mode switching, title callbacks, section order, cached-read error, empty/loading and long copy are
+exercised; eight screenshot samples are inspected from 64 captures. These are phone compositions,
+not a physical tablet, full Cartesian matrix or manual Home TalkBack pass. Standard host checks
+pass with the unchanged 535 JVM result reused. `assembleRelease` actually runs R8 and produces
+the frozen unsigned 1.3.0/code 11 APK; no release installation/signing/smoke is claimed. Only the
+new isolated packages are removed; package inventory, nine settings and display size/density
+match baseline. No production change. Global audit and final documentation/milestone closure
+remain open; commit, push and publication are separate explicit actions.
 
 ## Completed agreed scope in `v1.2.5` — 2026-10-18
 
@@ -214,8 +274,12 @@ dated Movie/Episode first and newer activity toward the right, with regular spac
 Series/day groups. Automatic bounded loading replaces the month/year controls and main page buttons.
 Implementation, automated checks and scoped visual validation are complete: 530 JVM tests, focused
 native/restore/adaptive/offline checks, Spotless, lint and debug/test builds pass as detailed in the
-plan. Owner acceptance and a new manual TalkBack check remain pending. The H1–H6 evidence below
-applies to the earlier monthly UI; v1.3.0 and the postponed Details M5 manual gate remain open.
+plan. On 2026-10-22 the owner confirms the manual TalkBack pass and accepts the current compact
+alternating interaction, including filters, reading order, scrolling, groups and Details return.
+The H1–H6 evidence below applies to the earlier monthly UI. Details M5 manual checks also pass in
+their exercised scope; the subsequent scoped integration/offline/concurrency checkpoint also passes.
+The later native Home/full Android/release-R8 checkpoint also passes in its documented scope;
+global audit and final v1.3.0 closure remain open.
 
 The owner's subsequent refinement keeps only Movies/Series, opens on Movies and alternates
 content above/below a central rail. Existing single-type saved selections and bounded loading remain;

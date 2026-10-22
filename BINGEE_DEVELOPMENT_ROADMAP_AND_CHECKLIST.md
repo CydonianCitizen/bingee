@@ -26,7 +26,75 @@ Historical baseline before this roadmap started:
 
 > Baseline correction (2026-10-04): pre-flight found Room 9 / Backup 3 already present at HEAD `837647f44a83ad9f9eab229877e71c925fb86de8`. The owner authorized continuing after the discrepancy was reported. Modification #1 preserves these existing persistence versions; no schema, migration or backup-format change is made.
 
+## v1.3.0 closure record — 2026-10-22
+
+The agreed **v1.3.0 / versionCode 11 scope is verified and closed**: Details M1–M5,
+the current compact alternating Film/Series History timeline and the approved Home/calendar addition.
+The owner accepted the current timeline and confirmed the scoped manual Details/History TalkBack
+checks on 2026-10-22. Final global Ponytail audit and canonical documentation alignment are complete.
+No new demonstrated source blocker or proven newly dead production path remains in the audited scope.
+Room stays **9**, Backup export **v3**, restore **v1/v2/v3**; no dependency or retention change.
+
+### Final gate results
+
+| Gate | Result and scope |
+| --- | --- |
+| B1 — version | PASS: 1.3.0/code 11, Room 9, Backup v3. |
+| B2 — host | PASS: Spotless, lintDebug (0 errors/54 warnings), debug/AndroidTest and unsigned release builds. All 535 JVM tests actually pass at the integration checkpoint; the subsequent unchanged host gate reuses that UP-TO-DATE result. |
+| B2 — Android | PASS: complete unfiltered connectedDebugAndroidTest, 415 tests, 0 failures/errors/skips, HONOR CMA-LX1 / Android 13/API 33. Includes Room/migrations/restore, Details, History and the new concurrency/navigation regressions. |
+| B3 — UI | PASS within documented representative coverage: Details state/editor matrix and current History checks; Home adds 15 tests per EN/IT locale and 8 native compositions at 320 IT/1.5, 360 IT/1.3, 411 EN/1.0 and 600 EN/1.5, each Light/Dark. Eight of 64 Home screenshot captures inspected. Phone composition overrides are not physical tablet or full Cartesian certification. |
+| B3 — manual accessibility | PASS by owner report: Movie editors/cancel/focus, Series episode navigation/state/return/Favorite, and both current History filters/groups/Details return. HONOR / Android 13, 360 dp/font 1.0, English fixture UI. Manual Home TalkBack remains NOT RUN. |
+| Integration/offline/concurrency | PASS: 11 focused native regressions, real shared Room writes, actual Activity recreation, separate seed plus 2 distinct cold-process verifications; Movie date/rating and Series progress persist and Home/Watching reconcile. Isolated app lacks INTERNET; real provider socket failure/recovery and every interleaving are not certified. |
+| Release/R8 | PASS: R8 actually executes; unsigned APK 6,421,094 bytes, manifest 1.3.0/code 11. SHA-256 `95AD9DE01AD890C06FACB86372DCA64A71BB1DBB1C2EA4885AFF15BA3B38BBB9`, rechecked after output restoration. Signing, signer approval and exact signed/minified runtime smoke are NOT RUN, conditional on explicit request under B2. |
+| B4 — global audit | PASS in reviewed scope: architecture, data/backup, Flow/concurrency, performance boundaries, R8/source retention, tests, privacy/security, Ponytail dead-code/duplication and Impeccable native UI/accessibility/adaptivity/localization synthesis. Deep review prioritizes changed/shared data paths; not every production file was read end to end. No production change required in this final pass. |
+| B5/B6 — docs/Git | PASS: current statuses, Home order and version-specific checklists aligned; repository-local Markdown files/headings validated; diff whitespace and intended dirty work reviewed. Index empty; no secrets, diagnostic build artifacts or reports staged. Prior work preserved. |
+
+The final closure changes documentation only. Temporary audit details, source inventory, link checks
+and source-preservation assertions stay ignored under `.audit/closure-v130/`; earlier native evidence
+stays under `.audit/final-native-2026-10-22/`, integration under `.audit/integration-2026-10-22/`,
+and owner-led accessibility evidence under `.audit/accessibility-2026-10-22/`.
+The final documentation pass performs no phone operation. Earlier isolated test packages were removed;
+personal app/data, package inventory, nine settings and display size/density were preserved.
+
+### Audit classification and retained limits
+
+- **FIXED IN THIS VERSION:** missing-Series-record date writes now fail atomically; stale next-episode
+  commands are guarded and consumed; membership read failures offer retry; rating drafts survive
+  repeated reads/errors. Details hierarchy, truthful dates/refresh scope and long episode rows are
+  verified. Current History replaces the monthly UI with compact alternating Film/Series nodes;
+  Home uses the approved calendar hierarchy, summary/full view and continuation order. Final docs
+  correct stale pending TalkBack/status claims and the former Home ordering. No source fix in point 5.
+- **PRE-EXISTING / DEFERRED:** accepted v1.2.5 frame/performance limits; index evaluation only with
+  the next independently necessary migration; cache/share-retention/URL-compaction proposals;
+  fixed-delay shared-progress retry and notification send/persist crash interval. Lint's 54 warnings
+  concern existing dependency/SDK notices, bundle-language delivery, configuration reading,
+  modifier convention, plural candidates and KTX suggestions; no newly unused resource warning.
+  No speculative SDK/library change. Broader Home work stays v1.3.1, Collection v1.3.2,
+  cross-screen consistency v1.3.3 and global accessibility/adaptive hardening v1.3.4.
+- **JUSTIFIED / LEAVE ALONE:** shared Room projections and qualified identities; transaction-backed
+  writes/restore and transient restore generation; bounded History parent/child windows and exact
+  date-window fallback; inline episode groups, hidden combined filter and existing alternation;
+  existing canonical tracking/continuation policies; debug-only singleton Room fixture entry point.
+  No new layer, dependency, performance optimization or broad cleanup selected.
+
+The owner explicitly excludes tablet verification from the agreed scope; it is not outstanding
+work or a v1.3.0 closure requirement. Existing controlled 600 dp evidence remains valid within its
+documented limits. Manual Details/current History TalkBack is completed and accepted; the Home-only
+manual check was not performed and does not reopen that accepted result or the closed milestone.
+
+Manual Home TalkBack, foldable/windowing coverage, the full Cartesian UI matrix,
+real TMDB failure/recovery, new performance measurements and signed-release runtime smoke remain
+unverified. These limits do not imply completion of the future v1.3.4 hardening milestone.
+The audit is a bounded review, not proof that every possible defect is absent.
+
+**B7 decision: READY TO COMMIT within the agreed scope.** Suggested remaining change scope/message:
+`feat(home): refine calendar and close v1.3.0 verification`. This is a recommendation only.
+The user explicitly requested **no commit or push**; none is executed in this closure task.
+No signing, tag, release installation or publication. v1.3.1 is not started automatically.
+
 ## Current milestone status — 2026-10-19
+
+Historical v1.2.5/v1.2.6 checkpoint; the v1.3.0 closure record above defines the current status.
 
 The agreed **v1.2.5 / versionCode 9 scope is complete**: final checks, the full Android suite and
 documentation alignment are closed. Room remains 9; export remains Backup v3 with v1/v2/v3 restore.
@@ -99,7 +167,7 @@ Pre-existing low-priority debt must not automatically expand the current scope.
 | **v1.2.4** | **8** | Technical / test / release polish | Remove small current technical risks without changing product architecture |
 | **v1.2.5** | **9** | Dead-code cleanup + targeted performance improvements + documentation sync | Lean, resource-efficient baseline before the large UI cycle |
 | **v1.2.6** | **10 (planned)** | Audit and targeted maintenance | Audit current code, address proven dead code/over-engineering and study future optimization tradeoffs |
-| **v1.3.0** | **11** | Major UI/UX #1 | Details and History implementation/verification in progress; milestone open |
+| **v1.3.0** | **11** | Major UI/UX #1 | Details, current History and scoped Home/calendar verified and closed on 2026-10-22; publication separate |
 | **v1.3.1** | **12 (planned)** | Major UI/UX #2 | Reorganize Home around current personal activity |
 | **v1.3.2** | **13 (planned)** | Major UI/UX #3 | Make Collection a coherent personal-management surface |
 | **v1.3.3** | **14 (planned)** | Major UI/UX #4 | Unify Bingee's cross-screen UI language and interaction hierarchy |
@@ -117,9 +185,16 @@ targets code 11, as recorded above.
 Update 2026-10-21: the owner approved a continuous horizontal all-history timeline, oldest retained
 dated Movie/Episode first, regular spacing and expandable Series/day groups. Month/year selection
 and main page buttons are replaced by automatic bounded loading. Implementation and scoped automatic/
-visual verification pass; owner acceptance and a new manual TalkBack check remain pending. The H1–H6
-results below certify the preceding monthly UI only. The amended History plan records fresh evidence,
-while v1.3.0 and the postponed Details M5 manual gate remain open.
+visual verification pass. On 2026-10-22 the owner also confirms the scoped manual TalkBack check
+on the current compact alternating timeline and accepts that interaction. Details M5 manual
+checks pass by the owner's report too: Movie editors/cancellation/focus and Series episode
+navigation/state/return/Favorite. These checks use an HONOR Android 13 phone, 360 dp/font 1.0,
+English fixture UI, in offline isolated apps. All five original accessibility settings and the
+package inventory are verified restored/unchanged. The H1–H6 results below certify the preceding
+monthly UI only; the amended plans record the newer evidence. The subsequent scoped integration/
+offline/concurrency checkpoint passes on 2026-10-22. The subsequent native Home, complete Android
+suite and release/R8 checkpoint also passes; final audit and documentation closure are completed
+in the [2026-10-22 closure record](#v130-closure-record--2026-10-22).
 
 The owner assigned the [History implementation plan](docs/superpowers/plans/2026-10-20-history-timeline.md)
 to v1.3.0/code 11 on 2026-10-20 and authorized H1–H6 implementation. It joins the ongoing Details work:
@@ -128,8 +203,8 @@ UI/navigation, large-history/restore validation and final gates. H1–H6 are del
 with the measurement limits recorded in the plan. The owner reports a positive manual TalkBack
 result for filters, month/year, group expansion, information and Details return. The host suite passes 528 JVM tests; the phone passes a full 388-test native run plus one
 subsequent focused v1/v2/v3 History restore test. Debug/test/release, R8, Spotless and lint pass;
-reports and diagnostic sources stay ignored under `.audit/`. v1.3.0 remains open, including its
-independent Details/Home acceptance gates. v1.3.1–v1.3.4 and their version codes remain unchanged.
+reports and diagnostic sources stay ignored under `.audit/`. At that H1–H6 checkpoint, v1.3.0
+remained open, including its independent Details/Home acceptance gates; final closure is recorded above. v1.3.1–v1.3.4 and their version codes remain unchanged.
 Room 9 and Backup v3 remain unchanged. The earlier prohibition on speculative History architecture
 still applies to unrelated modifications; it does not prohibit this explicitly scoped feature.
 
@@ -640,6 +715,20 @@ swipe did not advance focus; the M5 accessibility checkbox remains open. Origina
 settings are restored; only the isolated synthetic app remains installed for the later check.
 See the [checkpoint and limits](docs/release-notes-1.3.0.md#m5-accessibility-checkpoint--2026-10-21).
 This does not close M5, the Home/calendar review, global/release gates or v1.3.0.
+The subsequent 2026-10-22 owner-led manual pass completes the scoped Details accessibility
+checkbox and current History interaction acceptance. The subsequent integration checkpoint also
+completes the M5 offline/recreation/concurrency/Home-Collection consistency item: 11 native
+regressions and two cold verification phases after a separate seed pass in an isolated app without
+INTERNET. Movie rating writes and Series episode writes survive distinct process restarts;
+metadata/progress/date concurrency preserves personal state. The new debug-only entry point keeps
+fixture writes on the same Room instance observed by the app. All 535 JVM tests execute and pass;
+Spotless, lint (0 errors/54 warnings) and debug/test builds pass. Temporary packages are removed,
+package inventory and eight accessibility/radio settings match the baseline. The subsequent point 4
+passes all 415 unfiltered Android tests, 15 Home tests in each of EN/IT and eight controlled Home
+width/font/theme configurations. Standard host checks pass, reusing unchanged 535 JVM results;
+release 1.3.0/code 11 builds with R8 actually executed and is retained unsigned. Nine phone settings,
+display size/density and package inventory match baseline after isolated-package cleanup. Global
+audit, final documentation and milestone closure remain open; signed release smoke is not claimed.
 
 ## Goal
 
@@ -790,7 +879,7 @@ At minimum:
 
 ## 11. Home release calendar — scoped addition agreed on 2026-10-19
 
-Home now shows at most one release per source-qualified Series across date groups: today's or
+Home's default summary shows at most one release per source-qualified Series across date groups: today's or
 earliest future release, otherwise its latest recent release. Same-day ties prefer an episode,
 then season/episode number and the existing deterministic ordering. A season premiere remains
 a fallback when it is the nearest known release. Movies remain visible independently, including
@@ -798,14 +887,24 @@ when a Movie and Series share a provider ID. Only the Home presentation is filte
 calendar, widgets, notifications, Room schema and backup remain unchanged. The updated host gate
 passes 511 JVM tests, Spotless, lint (zero errors/38 existing warnings) and debug build. Android,
 native smoke and release/R8 evidence in the Details checkpoint predates this Home change; those
-checks have not been repeated for it.
+checks at that earlier checkpoint predate this Home change. The subsequent 2026-10-22 native/
+release checkpoint below covers the current source snapshot.
 
-- [ ] Review and agree the Home/calendar presentation within **v1.3.0**, including section hierarchy
-  and whether/how to access the other releases. No broader design has been selected or implemented.
+- [x] Review and agree the four **v1.3.0** calendar refinements on 2026-10-22: Today/Upcoming/Recent
+  order, compact rows/dates, a saved-events overview/full toggle and accurate empty/cache/update copy.
+  The full view reuses the same Room snapshot/window; default one-release-per-Series rules remain.
+- [x] Approve and implement Continue Watching repositioning on 2026-10-22.
+  Order is calendar, Continue Watching, featured Movies, featured Series; continuation policy is unchanged.
+- [x] Complete scoped native UI/adaptive/automated-semantics verification of current Home/calendar:
+  15 Home tests per EN/IT locale and eight controlled width/font/theme configurations pass on
+  2026-10-22; populated/summary/full/cached-error/empty/loading states and section order are covered.
+  Eight samples from 64 native captures are inspected. Physical tablet and manual Home TalkBack
+  speech/gestures are not certified by these tests.
 
 The wider personal-activity Home redesign below remains planned for v1.3.1; it does not replace
 this explicitly added v1.3.0 review. Verification of the scoped change is recorded in the
-[implementation notes](docs/release-notes-1.3.0.md). The milestone remains open.
+[implementation notes](docs/release-notes-1.3.0.md). The agreed milestone scope is now closed;
+the [closure record](#v130-closure-record--2026-10-22) preserves verification limits.
 
 ---
 
@@ -1354,6 +1453,10 @@ Run a read-only whole-project audit covering all of the following, even if the m
 ---
 
 # B. Release gate checklist for EVERY version
+
+Reusable template: these boxes remain unticked for reuse. A version's actual PASS/FAIL/NOT RUN
+decisions belong to its closure record and version-specific checklist; see the
+[v1.3.0 closure record](#v130-closure-record--2026-10-22).
 
 ## B1. Version
 
@@ -1962,31 +2065,33 @@ start of v1.3 is part of this closure.
 
 # v1.3.0 checklist — Details
 
-- [ ] Bump to v1.3.0 / planned code 11.
-- [ ] Preserve hero/backdrop/poster/collapsing chrome direction.
-- [ ] Design and implement compact personal summary.
-- [ ] Movie summary communicates watched/date/rating/membership appropriately.
-- [ ] Series summary exposes explicit personal relationship state.
-- [ ] Derive “In pari” without unnecessary persistence state.
-- [ ] Reuse canonical continuation policy for next episode.
-- [ ] Add next-actionable-episode context.
-- [ ] Compact rating editing behind explicit intent.
-- [ ] Preserve 1–10 rating persistence/chronology.
-- [ ] Make Movie date behavior explicit and truthful.
-- [ ] Show Series completion date only when meaningful.
-- [ ] Move Abandoned/Resume to title-level personal relationship area.
-- [ ] Improve season scan hierarchy.
-- [ ] Improve episode long-text allocation.
-- [ ] Preserve Specials behavior.
-- [ ] Preserve stale/cache/error states.
-- [ ] Clarify title refresh vs season refresh scope.
-- [ ] Run full Details state matrix.
-- [ ] Review and agree Home/calendar presentation within v1.3.0 (scoped addition #11).
-- [ ] Run mandatory GLOBAL audit after each numbered modification.
-- [ ] Remove any old Details UI paths made dead by redesign before release.
-- [ ] Run final v1.3.0 global audit.
-- [ ] Update canonical docs for new Details IA.
-- [ ] Pass release gate.
+Verified and closed on 2026-10-22; see the [closure record](#v130-closure-record--2026-10-22).
+
+- [x] Bump to v1.3.0 / planned code 11.
+- [x] Preserve hero/backdrop/poster/collapsing chrome direction.
+- [x] Design and implement compact personal summary.
+- [x] Movie summary communicates watched/date/rating/membership appropriately.
+- [x] Series summary exposes explicit personal relationship state.
+- [x] Derive “In pari” without unnecessary persistence state.
+- [x] Reuse canonical continuation policy for next episode.
+- [x] Add next-actionable-episode context.
+- [x] Compact rating editing behind explicit intent.
+- [x] Preserve 1–10 rating persistence/chronology.
+- [x] Make Movie date behavior explicit and truthful.
+- [x] Show Series completion date only when meaningful.
+- [x] Move Abandoned/Resume to title-level personal relationship area.
+- [x] Improve season scan hierarchy.
+- [x] Improve episode long-text allocation.
+- [x] Preserve Specials behavior.
+- [x] Preserve stale/cache/error states.
+- [x] Clarify title refresh vs season refresh scope.
+- [x] Run the documented representative Details state/editor matrix; full Cartesian coverage is not claimed.
+- [x] Review and agree Home/calendar presentation within v1.3.0 (scoped addition #11).
+- [x] Complete GLOBAL audits of the delivered combined snapshots; no uninspected intermediate snapshot is certified.
+- [x] Remove superseded duplicate Details controls and check for newly dead paths; no further proven deletion selected.
+- [x] Run final v1.3.0 global audit.
+- [x] Update canonical docs for new Details IA.
+- [x] Pass the agreed release gate with PASS/FAIL/NOT RUN and conditional signing limits in the closure record.
 
 # v1.3.1 checklist — Home
 

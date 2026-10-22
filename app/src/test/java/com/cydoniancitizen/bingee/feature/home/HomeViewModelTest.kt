@@ -64,6 +64,46 @@ class HomeViewModelTest {
     }
 
     @Test
+    fun calendarPrioritisesTodayThenUpcomingThenRecentWithoutChangingOtherConsumers() =
+        runTest(mainDispatcherRule.dispatcher) {
+            val recent = event("recent", ReleaseSubjectType.MEDIA, ReleaseEventType.MOVIE_RELEASE, today.minusDays(1))
+            val current = event("today", ReleaseSubjectType.MEDIA, ReleaseEventType.MOVIE_RELEASE, today)
+            val future = event("future", ReleaseSubjectType.MEDIA, ReleaseEventType.MOVIE_RELEASE, today.plusDays(1))
+            val vm = viewModel(FakeCalendarRepository(listOf(recent, future, current)), FakeCoordinator(success()))
+            runCurrent()
+            assertEquals(
+                listOf(current, future, recent),
+                (vm.uiState.value.content as HomeContentState.Events).groups.flatMap {
+                    it.events
+                }
+            )
+        }
+
+    @Test
+    fun completeCalendarSnapshotKeepsHiddenEpisodesAndLiveUpdatesThroughReadFailure() =
+        runTest(mainDispatcherRule.dispatcher) {
+            val current = event("current", ReleaseSubjectType.EPISODE, ReleaseEventType.EPISODE_AIRING, today)
+            val next = current.copy(subject = current.subject.copy(externalId = "next"), eventDate = today.plusDays(1))
+            val movie = event("movie", ReleaseSubjectType.MEDIA, ReleaseEventType.MOVIE_RELEASE, today)
+                .copy(mediaRef = current.mediaRef)
+            val repository = FakeCalendarRepository(listOf(next, current, movie))
+            val vm = viewModel(repository, FakeCoordinator(success()))
+            runCurrent()
+            var content = vm.uiState.value.content as HomeContentState.Events
+            assertEquals(setOf(current, movie), content.groups.flatMap { it.events }.toSet())
+            assertEquals(setOf(current, next, movie), content.allGroups.flatMap { it.events }.toSet())
+            repository.events.value = AppResult.Success(listOf(next, movie))
+            runCurrent()
+            content = vm.uiState.value.content as HomeContentState.Events
+            assertEquals(setOf(next, movie), content.allGroups.flatMap { it.events }.toSet())
+            repository.events.value = AppResult.Failure(AppError.LocalStorageFailure)
+            runCurrent()
+            assertEquals(content, vm.uiState.value.content)
+            assertEquals(AppError.LocalStorageFailure, vm.uiState.value.calendarObservationError)
+            assertEquals(1, repository.observationCalls)
+        }
+
+    @Test
     fun calendarShowsOneUpcomingReleasePerSeriesWithoutHidingMoviesOrOtherSeries() =
         runTest(mainDispatcherRule.dispatcher) {
             val seriesRef = ExternalMediaRef(MediaSource.TMDB, "shared-id")
@@ -732,8 +772,10 @@ class HomeViewModelTest {
         val last = MutableStateFlow<AppResult<Instant?>>(AppResult.Success(null))
         var requestedFrom: LocalDate? = null
         var backfillCalls = 0
+        var observationCalls = 0
 
         override fun observeEvents(fromDate: LocalDate): Flow<AppResult<List<ReleaseEvent>>> {
+            observationCalls++
             requestedFrom = fromDate
             return events
         }

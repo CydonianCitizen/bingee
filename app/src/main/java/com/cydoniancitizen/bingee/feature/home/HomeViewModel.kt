@@ -8,6 +8,7 @@ import com.cydoniancitizen.bingee.core.model.ContinueWatchingItem
 import com.cydoniancitizen.bingee.core.model.EpisodePosition
 import com.cydoniancitizen.bingee.core.model.ExternalMediaRef
 import com.cydoniancitizen.bingee.core.model.MediaType
+import com.cydoniancitizen.bingee.core.model.ReleaseDateCategory
 import com.cydoniancitizen.bingee.core.model.ReleaseDateGroup
 import com.cydoniancitizen.bingee.core.model.ReleaseEvent
 import com.cydoniancitizen.bingee.core.model.groupReleaseEvents
@@ -38,7 +39,8 @@ import kotlinx.coroutines.launch
 internal sealed interface HomeContentState {
     data object Loading : HomeContentState
     data object Empty : HomeContentState
-    data class Events(val groups: List<ReleaseDateGroup>) : HomeContentState
+    data class Events(val groups: List<ReleaseDateGroup>, val allGroups: List<ReleaseDateGroup> = groups) :
+        HomeContentState
     data class Error(val error: AppError) : HomeContentState
 }
 
@@ -78,6 +80,15 @@ internal data class HomeUiState(
     val markingEpisodes: Set<ExternalMediaRef> = emptySet(),
     val snackbar: HomeSnackbar? = null
 )
+
+private fun homeReleaseGroups(events: List<ReleaseEvent>, today: LocalDate): List<ReleaseDateGroup> =
+    groupReleaseEvents(events, today).sortedBy {
+        when (it.category) {
+            ReleaseDateCategory.TODAY -> 0
+            ReleaseDateCategory.UPCOMING -> 1
+            ReleaseDateCategory.RECENT -> 2
+        }
+    }
 
 @HiltViewModel
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -238,8 +249,15 @@ internal class HomeViewModel @Inject constructor(
                                     .thenBy { it.episodeNumber ?: Int.MAX_VALUE }
                                     .then(releaseEventComparator)
                             ).filter { it.mediaType != MediaType.SERIES || seenSeries.add(it.mediaRef) }
-                            val groups = groupReleaseEvents(visibleEvents, today)
-                            if (groups.isEmpty()) HomeContentState.Empty else HomeContentState.Events(groups)
+                            val groups = homeReleaseGroups(visibleEvents, today)
+                            if (groups.isEmpty()) {
+                                HomeContentState.Empty
+                            } else {
+                                HomeContentState.Events(
+                                    groups,
+                                    homeReleaseGroups(events.value, today)
+                                )
+                            }
                         }
                         is AppResult.Failure -> {
                             if (previous.content is HomeContentState.Events) {

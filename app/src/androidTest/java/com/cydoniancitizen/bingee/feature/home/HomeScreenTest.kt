@@ -17,8 +17,10 @@ import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.getBoundsInRoot
 import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.junit4.StateRestorationTester
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
+import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
@@ -46,6 +48,8 @@ import com.cydoniancitizen.bingee.testutil.localizedTestContext
 import com.cydoniancitizen.bingee.testutil.scrollListTo
 import java.time.Instant
 import java.time.LocalDate
+import java.time.format.DateTimeFormatter
+import java.time.format.FormatStyle
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicReference
 import org.junit.Assert.assertEquals
@@ -62,6 +66,87 @@ class HomeScreenTest {
     @get:Rule(order = 1)
     val composeRule = createComposeRule()
     private val today = LocalDate.of(2026, 8, 3)
+
+    @Test
+    fun allSavedReleasesModeRestoresAndKeepsLiveDataAndDetailsNavigation() {
+        val first = event("first", ReleaseSubjectType.EPISODE, ReleaseEventType.EPISODE_AIRING, MediaType.SERIES)
+        val later = first.copy(
+            subject = first.subject.copy(externalId = "later"),
+            eventDate = today.plusDays(1),
+            title = "Later saved release"
+        )
+        val group = ReleaseDateGroup(today, ReleaseDateCategory.TODAY, listOf(first))
+        var state by mutableStateOf(
+            HomeUiState(
+                today = today,
+                content = HomeContentState.Events(
+                    listOf(group),
+                    listOf(group, ReleaseDateGroup(later.eventDate, ReleaseDateCategory.UPCOMING, listOf(later)))
+                )
+            )
+        )
+        val opened = AtomicReference<ExternalMediaRef>()
+        val restoration = StateRestorationTester(composeRule)
+        restoration.setContent {
+            BingeeTheme {
+                Surface {
+                    HomeContent(
+                        state,
+                        onRefresh = {},
+                        onRetryLocal = {},
+                        onDismissFeedback = {},
+                        onOpenSettings = {},
+                        onOpenDetails = { ref, _ -> opened.set(ref) }
+                    )
+                }
+            }
+        }
+        composeRule.onNodeWithText(later.title).assertDoesNotExist()
+        composeRule.onNodeWithText(context.getString(R.string.home_show_all)).performClick()
+        composeRule.scrollListTo(hasText(later.title)).performClick()
+        assertEquals(later.mediaRef, opened.get())
+        restoration.emulateSavedInstanceStateRestore()
+        composeRule.scrollListTo(hasText(later.title)).assertIsDisplayed()
+        val changed = later.copy(title = "Updated saved release")
+        composeRule.runOnIdle {
+            state = state.copy(
+                content = HomeContentState.Events(
+                    listOf(group),
+                    listOf(group, ReleaseDateGroup(changed.eventDate, ReleaseDateCategory.UPCOMING, listOf(changed)))
+                )
+            )
+        }
+        composeRule.onNodeWithText(later.title).assertDoesNotExist()
+        composeRule.scrollListTo(hasText(changed.title)).assertIsDisplayed()
+        composeRule.scrollListTo(hasText(context.getString(R.string.home_show_summary))).performClick()
+        composeRule.onNodeWithText(changed.title).assertDoesNotExist()
+        composeRule.scrollListTo(hasText(first.title)).assertIsDisplayed()
+    }
+
+    @Test
+    fun compactCalendarCardKeepsTheFullAccessibleDateWithoutRepeatedCategory() {
+        val movie = event("movie", ReleaseSubjectType.MEDIA, ReleaseEventType.MOVIE_RELEASE, MediaType.MOVIE)
+        setHome(
+            HomeUiState(
+                today = today,
+                content = HomeContentState.Events(
+                    listOf(ReleaseDateGroup(today, ReleaseDateCategory.TODAY, listOf(movie)))
+                )
+            )
+        )
+        val bounds = composeRule.onNodeWithTag("home-release-${movie.stableKey}").getBoundsInRoot()
+        assertTrue((bounds.bottom - bounds.top).value < 144f)
+        val fullDate = DateTimeFormatter.ofLocalizedDate(FormatStyle.FULL)
+            .withLocale(context.resources.configuration.locales[0]).format(today)
+        composeRule.onNodeWithContentDescription(
+            context.getString(
+                R.string.home_date_header,
+                fullDate,
+                context.getString(R.string.home_date_today)
+            )
+        ).assertIsDisplayed()
+        composeRule.onNodeWithText(movie.title).assertIsDisplayed()
+    }
 
     @Test
     fun localReadErrorsKeepSavedContentAndRetryUntilAllReadsRecover() {
@@ -451,9 +536,17 @@ class HomeScreenTest {
         )
         setHome(HomeUiState(content = HomeContentState.Events(groups), today = today))
 
-        composeRule.scrollListTo(hasText(context.getString(R.string.home_event_recent))).assertIsDisplayed()
-        composeRule.scrollListTo(hasText(context.getString(R.string.home_event_today))).assertIsDisplayed()
-        composeRule.scrollListTo(hasText(context.getString(R.string.home_event_upcoming))).assertIsDisplayed()
+        val categoryLabels = listOf(R.string.home_date_recent, R.string.home_date_today, R.string.home_date_tomorrow)
+        val formatter = DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM)
+            .withLocale(context.resources.configuration.locales[0])
+        groups.zip(categoryLabels).forEach { (group, category) ->
+            val heading = context.getString(
+                R.string.home_date_header,
+                formatter.format(group.date),
+                context.getString(category)
+            )
+            composeRule.scrollListTo(hasText(heading)).assertIsDisplayed()
+        }
     }
 
     @Test
