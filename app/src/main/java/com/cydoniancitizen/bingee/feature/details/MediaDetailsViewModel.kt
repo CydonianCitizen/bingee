@@ -139,7 +139,8 @@ internal data class MediaDetailsUiState(
     val movieProgress: MovieProgressState = MovieProgressState.NotApplicable,
     val series: SeriesDetailUiState = SeriesDetailUiState(),
     val progressError: AppError? = null,
-    val rating: DetailRatingState = DetailRatingState.Loading
+    val rating: DetailRatingState = DetailRatingState.Loading,
+    val zoneId: java.time.ZoneId = java.time.ZoneId.systemDefault()
 )
 
 @HiltViewModel
@@ -153,7 +154,11 @@ internal class MediaDetailsViewModel @Inject constructor(
     private val dateSource: CalendarDateSource,
     private val spoilerPreferences: SpoilerPreferences
 ) : ViewModel() {
-    private val mutableUiState = MutableStateFlow(MediaDetailsUiState(today = dateSource.currentDate()))
+    private val mutableUiState = MutableStateFlow(
+        dateSource.currentContext().let {
+            MediaDetailsUiState(today = it.today, zoneId = it.zoneId)
+        }
+    )
     val uiState: StateFlow<MediaDetailsUiState> = mutableUiState.asStateFlow()
 
     private val routeArgs: DetailRouteArgs? = DetailRoute.parse(
@@ -169,8 +174,8 @@ internal class MediaDetailsViewModel @Inject constructor(
 
     init {
         viewModelScope.launch {
-            dateSource.observeDate().collect { today ->
-                mutableUiState.update { it.copy(today = today) }
+            dateSource.observeContext().collect { context ->
+                mutableUiState.update { it.copy(today = context.today, zoneId = context.zoneId) }
             }
         }
         val args = routeArgs
@@ -306,6 +311,31 @@ internal class MediaDetailsViewModel @Inject constructor(
                         pendingEpisodes = it.series.pendingEpisodes - ref,
                         previousEpisodesPrompt = prompt ?: it.series.previousEpisodesPrompt
                     ),
+                    progressError = (result as? AppResult.Failure)?.error
+                )
+            }
+        }
+    }
+
+    fun setEpisodeWatchedDate(episode: TrackedEpisode, date: LocalDate) {
+        val expected = (episode.watchState as? EpisodeWatchState.Watched)?.watchedAt ?: return
+        val ref = episode.episode.externalRef
+        val state = mutableUiState.value
+        if (episode.episode.seriesRef != routeReference || ref in state.series.pendingEpisodes) return
+        val saved = (state.series.content as? SeriesContentState.Ready)?.seasons
+            ?.asSequence()?.flatMap { it.episodes.asSequence() }?.firstOrNull { it.episode.externalRef == ref }
+        if (saved?.watchState != episode.watchState) {
+            mutableUiState.update { it.copy(progressError = AppError.InvalidInput) }
+            return
+        }
+        mutableUiState.update {
+            it.copy(series = it.series.copy(pendingEpisodes = it.series.pendingEpisodes + ref), progressError = null)
+        }
+        viewModelScope.launch {
+            val result = progressRepository.setEpisodeWatchedDate(ref, date, expected)
+            mutableUiState.update {
+                it.copy(
+                    series = it.series.copy(pendingEpisodes = it.series.pendingEpisodes - ref),
                     progressError = (result as? AppResult.Failure)?.error
                 )
             }

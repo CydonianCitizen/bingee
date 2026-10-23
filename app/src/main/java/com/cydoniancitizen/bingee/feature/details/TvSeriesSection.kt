@@ -29,6 +29,7 @@ import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TriStateCheckbox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -73,7 +74,8 @@ internal fun LazyListScope.tvSeriesItems(
     onToggleEpisode: (TrackedEpisode) -> Unit,
     onToggleSeason: (CachedSeason) -> Unit,
     onOpenSettings: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onOpenEpisode: (TrackedEpisode) -> Unit = {}
 ) {
     val content = state.content
     if (content == SeriesContentState.NotApplicable) return
@@ -139,6 +141,9 @@ internal fun LazyListScope.tvSeriesItems(
                                 pending = episode.episode.externalRef in state.pendingEpisodes,
                                 onToggle = { onToggleEpisode(episode) }
                             )
+                            TextButton(onClick = { onOpenEpisode(episode) }) {
+                                Text(stringResource(R.string.episode_details_open, episode.episode.episodeNumber))
+                            }
                         }
                     }
                 }

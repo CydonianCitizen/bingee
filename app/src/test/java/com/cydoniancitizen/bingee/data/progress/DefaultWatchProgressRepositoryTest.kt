@@ -33,6 +33,46 @@ class DefaultWatchProgressRepositoryTest {
     private val clock = Clock.fixed(now, ZoneOffset.UTC)
     private val dateSource = TestCalendarDateSource(LocalDate.of(2026, 8, 3))
 
+    @Test fun episodeDateEditsExistingTimestampWithoutChangingWatchMembership() = runTest {
+        dateSource.changeZone(java.time.ZoneId.of("Europe/Rome"))
+        val dao = FakeProgressDao().apply { episodeAt = now }
+        val repository = DefaultWatchProgressRepository(dao, clock, dateSource)
+        assertEquals(
+            AppResult.Success(Unit),
+            repository.setEpisodeWatchedDate(ref("101"), LocalDate.of(2026, 3, 28), now)
+        )
+        assertEquals(Instant.parse("2026-03-28T13:00:00Z"), dao.episodeAt)
+        assertEquals(0, dao.writeCount)
+        assertEquals(1, dao.episodeUpdates)
+    }
+
+    @Test fun episodeDateRejectsFutureBeforeAirStaleAndUnwatchedWrites() = runTest {
+        val dao = FakeProgressDao().apply { episodeAt = now }
+        val repository = DefaultWatchProgressRepository(dao, clock, dateSource)
+        listOf(LocalDate.of(2026, 8, 4), LocalDate.of(2026, 1, 1)).forEach { date ->
+            assertEquals(
+                AppResult.Failure(AppError.InvalidInput),
+                repository.setEpisodeWatchedDate(ref("101"), date, now)
+            )
+        }
+        assertEquals(now, dao.episodeAt)
+        assertEquals(
+            AppResult.Failure(AppError.InvalidInput),
+            repository.setEpisodeWatchedDate(ref("101"), LocalDate.of(2026, 8, 2), now.minusSeconds(1))
+        )
+        dao.episodeAt = null
+        assertEquals(
+            AppResult.Failure(AppError.InvalidInput),
+            repository.setEpisodeWatchedDate(ref("101"), LocalDate.of(2026, 8, 2), now)
+        )
+        assertEquals(null, dao.episodeAt)
+        assertEquals(0, dao.episodeUpdates)
+        assertEquals(
+            AppResult.Failure(AppError.InvalidInput),
+            repository.setEpisodeWatchedDate(ref("bad"), LocalDate.of(2026, 8, 2), now)
+        )
+    }
+
     @Test
     fun movieObservationAndWritesUseLocalClockAndMapTypeFailures() = runTest {
         val dao = FakeProgressDao()
@@ -113,6 +153,15 @@ class DefaultWatchProgressRepositoryTest {
         var lastDate: LocalDate? = null
         var lastInstant: Instant? = null
         var writeCount = 0
+        var episodeAt: Instant? = null
+        var episodeUpdates = 0
+
+        override suspend fun updateEpisodeWatchedAt(localEpisodeId: Long, expected: Instant, edited: Instant): Int {
+            if (episodeAt != expected) return 0
+            episodeAt = edited
+            episodeUpdates++
+            return 1
+        }
 
         override fun observeMovieProgress(source: MediaSource, externalId: String): Flow<MovieProgressRow?> = movie
 
@@ -168,7 +217,11 @@ class DefaultWatchProgressRepositoryTest {
             return outcome
         }
 
-        override suspend fun getEpisode(source: MediaSource, externalId: String): EpisodeEntity? = null
+        override suspend fun getEpisode(source: MediaSource, externalId: String): EpisodeEntity? = EpisodeEntity(
+            localEpisodeId = 1, localSeasonId = 1, source = source, externalId = externalId, episodeNumber = 1,
+            title = "Episode", overview = null, airDate = LocalDate.of(2026, 2, 1), runtimeMinutes = 45,
+            stillUrl = null, metadataUpdatedAt = Instant.EPOCH
+        )
         override suspend fun getSeason(source: MediaSource, externalId: String): SeasonEntity? = null
         override suspend fun getMedia(source: MediaSource, mediaType: MediaType, externalId: String): MediaEntity? =
             null

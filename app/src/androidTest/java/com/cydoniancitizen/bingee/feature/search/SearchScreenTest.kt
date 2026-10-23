@@ -44,6 +44,13 @@ class SearchScreenTest {
     val composeRule = createComposeRule()
 
     @Test
+    fun searchTitleUsesTheShortLocalizedLabel() {
+        setSearchState(state = { SearchUiState() })
+        val expected = if (context.resources.configuration.locales[0].language == "it") "Cerca" else "Search"
+        composeRule.onNodeWithText(expected).assertIsDisplayed()
+    }
+
+    @Test
     fun queryInputClearAndCategoryActionsAreExplicit() {
         val query = AtomicReference("")
         val cleared = AtomicBoolean(false)

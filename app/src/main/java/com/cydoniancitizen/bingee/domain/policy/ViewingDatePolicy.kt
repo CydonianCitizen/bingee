@@ -10,6 +10,12 @@ object ViewingDatePolicy {
 
     fun effectiveEpisodeDate(watchedAt: Instant, zoneId: ZoneId): LocalDate = watchedAt.atZone(zoneId).toLocalDate()
 
+    /** Keep local time/precision; DST gaps shift forward by the gap, skipped dates are rejected. */
+    fun withEpisodeDate(watchedAt: Instant, date: LocalDate, zoneId: ZoneId): Instant? {
+        val edited = watchedAt.atZone(zoneId).with(date)
+        return edited.takeIf { it.toLocalDate() == date }?.toInstant()
+    }
+
     fun dayWindow(day: LocalDate, zoneId: ZoneId): DayWindow = DayWindow(
         day.atStartOfDay(zoneId).toInstant(),
         day.plusDays(1).atStartOfDay(zoneId).toInstant()

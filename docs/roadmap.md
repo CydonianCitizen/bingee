@@ -2,7 +2,24 @@
 
 This document retains earlier delivery summaries. The [canonical development roadmap and checklist](../BINGEE_DEVELOPMENT_ROADMAP_AND_CHECKLIST.md) defines the active implementation order and release gates.
 
-## Completed agreed scope in `v1.3.0` — 2026-10-22
+## Current v1.3.0 extension — 2026-10-22
+
+After the earlier closure below, the owner requested planning of Episode Details with an editable
+viewing date, focused Home/title/button refinements, History inside Collection, and four visible
+genres followed by “See more”. The added M6–M8 scope precedes a fresh final global Ponytail audit
+for over-engineering/dead code. **The extended milestone is open.** The owner subsequently authorized
+M6 implementation using the existing database where possible; M6 is now verified within the
+[documented scope](../BINGEE_DEVELOPMENT_ROADMAP_AND_CHECKLIST.md#m6--episode-details-and-editable-viewing-date),
+with Room/backup unchanged. The owner authorized M7 on 2026-10-23 without commits; its
+[UI changes and scoped checks](../BINGEE_DEVELOPMENT_ROADMAP_AND_CHECKLIST.md#m7--focused-home-your-bingee-and-search-layoutcopy)
+are verified. The renewed global audit/release gates remain M8.
+The heatmap is a costed proposal only, pending selection. See the
+[canonical added scope](../BINGEE_DEVELOPMENT_ROADMAP_AND_CHECKLIST.md#12-additional-episode-and-ui-milestones--2026-10-22)
+and [milestone plan](superpowers/plans/2026-10-19-v1.3.0-details.md#m6m8--estensione-pianificata-dopo-la-precedente-chiusura).
+Earlier test/audit results certify their original scope, not these additions. Version/code, Room,
+backup and v1.3.1–v1.3.4 assignments remain unchanged by M6/M7.
+
+## Previously completed agreed scope in `v1.3.0` — 2026-10-22
 
 Details, current History and the approved Home/calendar addition are verified and closed
 within the documented scope. Final global Ponytail audit finds no new demonstrated blocker;

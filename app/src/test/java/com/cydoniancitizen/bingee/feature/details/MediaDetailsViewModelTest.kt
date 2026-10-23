@@ -56,6 +56,45 @@ class MediaDetailsViewModelTest {
     private val ref = ExternalMediaRef(MediaSource.TMDB, "550")
 
     @Test
+    fun episodeDateEditRejectsUnwatchedAndForeignEpisodesAndReportsWriteFailure() =
+        runTest(mainDispatcherRule.dispatcher) {
+            val progress = FakeWatchProgressRepository()
+            val season = cachedSeason()
+            val original = Instant.parse("2026-08-03T12:00:00Z")
+            val watched = season.episodes.first().copy(watchState = EpisodeWatchState.Watched(original))
+            val series = FakeSeriesRepository(listOf(season.copy(episodes = listOf(watched))))
+            val model = viewModel(args(MediaType.SERIES), series = series, progress = progress)
+            runCurrent()
+            model.setEpisodeWatchedDate(season.episodes.first(), LocalDate.of(2026, 8, 2))
+            model.setEpisodeWatchedDate(
+                watched.copy(episode = watched.episode.copy(seriesRef = ExternalMediaRef(MediaSource.TMDB, "999"))),
+                LocalDate.of(2026, 8, 2)
+            )
+            runCurrent()
+            assertTrue(progress.actions.isEmpty())
+
+            progress.dateResult = AppResult.Failure(AppError.LocalStorageFailure)
+            model.setEpisodeWatchedDate(watched, LocalDate.of(2026, 8, 2))
+            model.setEpisodeWatchedDate(watched, LocalDate.of(2026, 8, 1))
+            runCurrent()
+            assertEquals(listOf("episode-date:2026-08-02:$original"), progress.actions)
+            assertEquals(AppError.LocalStorageFailure, model.uiState.value.progressError)
+            assertTrue(model.uiState.value.series.pendingEpisodes.isEmpty())
+            assertEquals(
+                original,
+                (
+                    (model.uiState.value.series.content as SeriesContentState.Ready)
+                        .seasons.first().episodes.first().watchState as EpisodeWatchState.Watched
+                    ).watchedAt
+            )
+            model.setEpisodeWatchedDate(
+                watched.copy(watchState = EpisodeWatchState.Watched(original.minusSeconds(1))),
+                LocalDate.of(2026, 8, 2)
+            )
+            assertEquals(AppError.InvalidInput, model.uiState.value.progressError)
+        }
+
+    @Test
     fun malformedRouteFailsSafelyWithoutRefresh() = runTest(mainDispatcherRule.dispatcher) {
         val remote = FakeDetailsRepository()
         val malformed = viewModel(SavedStateHandle(), remote)
@@ -718,6 +757,15 @@ class MediaDetailsViewModelTest {
     }
 
     private class FakeWatchProgressRepository : WatchProgressRepository {
+        var dateResult: AppResult<Unit> = AppResult.Success(Unit)
+        override suspend fun setEpisodeWatchedDate(
+            episodeRef: ExternalMediaRef,
+            watchedDate: LocalDate,
+            expectedWatchedAt: Instant
+        ): AppResult<Unit> {
+            actions += "episode-date:$watchedDate:$expectedWatchedAt"
+            return dateResult
+        }
         private val movie = MutableStateFlow<AppResult<MovieWatchState>>(
             AppResult.Success(MovieWatchState.Unwatched)
         )

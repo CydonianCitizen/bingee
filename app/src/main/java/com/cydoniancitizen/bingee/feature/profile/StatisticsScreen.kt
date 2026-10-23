@@ -46,6 +46,7 @@ import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
@@ -53,6 +54,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -220,6 +222,7 @@ internal fun StatisticsContent(
         relativeGenreNormalization(radarGenres.map(GenreStatistic::titleCount))
     }
     var selectedRating by remember { mutableStateOf<Int?>(null) }
+    var genresExpanded by rememberSaveable(tasteStatistics.scope) { mutableStateOf(false) }
     val ratingStatistics = statistics.personalRatingStatistics
     // Remembered: selecting a rating or scrolling must not re-run normalization and filtering.
     val effectiveSelectedRating = remember(selectedRating, ratingStatistics) {
@@ -282,7 +285,18 @@ internal fun StatisticsContent(
                     modifier = Modifier.semantics { heading() }
                 )
                 if (tasteStatistics.rankedGenres.isNotEmpty()) {
-                    GenreRanking(tasteStatistics.rankedGenres)
+                    val genres = tasteStatistics.rankedGenres
+                    (if (genresExpanded) genres else genres.take(4)).forEach { genre ->
+                        GenreRankingRow(genre = genre)
+                    }
+                    if (!genresExpanded && genres.size > 4) {
+                        TextButton(
+                            onClick = { genresExpanded = true },
+                            modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
+                        ) {
+                            Text(stringResource(R.string.statistics_genres_show_more), textAlign = TextAlign.Center)
+                        }
+                    }
                 }
             }
         }
@@ -1231,15 +1245,6 @@ private fun radarPoint(center: Offset, radius: Float, index: Int, axisCount: Int
 }
 
 private fun radarAngle(index: Int, axisCount: Int): Float = (-PI / 2.0 + index * (2.0 * PI / axisCount)).toFloat()
-
-@Composable
-private fun GenreRanking(rankedGenres: List<GenreStatistic>, modifier: Modifier = Modifier) {
-    Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(BingeeDimensions.elementSpacing)) {
-        rankedGenres.forEach { genre ->
-            GenreRankingRow(genre = genre)
-        }
-    }
-}
 
 @Composable
 private fun GenreRankingRow(genre: GenreStatistic, modifier: Modifier = Modifier) {

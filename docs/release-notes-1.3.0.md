@@ -1,10 +1,43 @@
 # v1.3.0 — Details and History implementation notes
 
-Status: agreed scope verified and closed on 2026-10-22. Code version 1.3.0/code 11.
+Status: previous agreed scope verified and closed on 2026-10-22. The owner subsequently reopened
+v1.3.0 for M6–M8; M6 and M7 are verified in their documented scopes; final M8 remains planned. Code version 1.3.0/code 11.
 No release has been published. Earlier dated checkpoints below retain their then-pending gates;
 the [final closure record](../BINGEE_DEVELOPMENT_ROADMAP_AND_CHECKLIST.md#v130-closure-record--2026-10-22) supersedes them. The [canonical roadmap](../BINGEE_DEVELOPMENT_ROADMAP_AND_CHECKLIST.md#v130--major-uiux-1-details-as-a-true-personal-tracker-screen)
 and the [Details](superpowers/plans/2026-10-19-v1.3.0-details.md) and
 [History](superpowers/plans/2026-10-20-history-timeline.md) implementation plans record the delivered scope and evidence.
+
+## M6 — Episode Details and editable viewing date
+
+The episode list retains its checkbox and adds a dedicated Details action. The new cached page
+shows episode metadata, respects the spoiler preference and offers watched/unwatched and viewing
+date editing. It reuses the parent Details ViewModel, existing date dialog and Room observations.
+Date correction changes only the existing `watched_at`, with a timestamp comparison to reject
+stale writes; unwatch is never undone by an old editor. Local time/precision are retained in the
+current device zone. Series completion dates, counts, Room 9 and Backup v3 remain unchanged.
+The shared date dialog also retains its unsaved choice/date across recreation.
+
+The [canonical M6 record](../BINGEE_DEVELOPMENT_ROADMAP_AND_CHECKLIST.md#m6--episode-details-and-editable-viewing-date)
+documents tests, native compositions and limits. Its 99 distinct Android cases are scoped
+regressions, not a new complete-app suite. The new page has no manual TalkBack certification;
+the earlier owner-accepted Details/History checks retain their original scope. The renewed final
+global audit/release gates remain M8. No commit, signing, publication or personal-app installation.
+
+## M7 — Home, Your bingee, Search and genre presentation
+
+Home moves its saved-refresh timestamp below discovery. Your bingee aligns its title with
+Settings using Home's naturally sized header; History spans both Collection columns using the same tile component as the other sections,
+with its icon and label centred together as one group and no count. Empty shelves use centred outlined Search buttons. The Search page title becomes
+Search/Cerca, retaining TMDB attribution. The extended Statistics ranking initially shows four
+genres and expands on See more only when needed; expansion survives recreation and resets on
+media-scope changes. Ranking identities/counts, radar, podium and persistence are unchanged.
+
+The [canonical M7 record](../BINGEE_DEVELOPMENT_ROADMAP_AND_CHECKLIST.md#m7--focused-home-your-bingee-and-search-layoutcopy)
+records 59 distinct native production cases per EN/IT locale, representative theme/width/font
+compositions, 540 JVM tests, Spotless, lint, debug/AndroidTest builds and scoped Ponytail review.
+No complete-app Android rerun, manual TalkBack or final release/R8 claim is made here. Room 9,
+Backup v3 and version/code remain unchanged; no commit or publication. Global final audit and
+renewed closure remain M8.
 
 ## Implemented behavior
 

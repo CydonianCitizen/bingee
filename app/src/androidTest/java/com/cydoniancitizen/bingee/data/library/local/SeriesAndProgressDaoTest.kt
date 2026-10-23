@@ -14,6 +14,9 @@ import java.time.Clock
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneOffset
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import org.junit.After
@@ -51,6 +54,102 @@ class SeriesAndProgressDaoTest {
 
     @After
     fun closeDatabase() = database.close()
+
+    @Test
+    fun episodeDateEditPreservesCompletionOtherProgressAndRefreshedMetadata() = runBlocking {
+        seriesDao.storeSeasonEpisodes(
+            MediaSource.TMDB,
+            "100",
+            season("11", 1),
+            listOf(episode("101", 1, airDate = today.minusDays(10)), episode("102", 2, airDate = null)),
+            now
+        )
+        progressDao.markEpisodeWatched(MediaSource.TMDB, "101", today, now)
+        progressDao.markEpisodeWatched(MediaSource.TMDB, "102", today, now.plusSeconds(1))
+        val before = database.portableSnapshotDao().readSnapshot()
+        assertEquals(
+            ProgressWriteOutcome.SUCCESS,
+            progressDao.setEpisodeWatchedDate(MediaSource.TMDB, "101", today.minusDays(1), now, today, ZoneOffset.UTC)
+        )
+        val after = database.portableSnapshotDao().readSnapshot()
+        assertEquals(before.seriesProgress, after.seriesProgress)
+        assertEquals(before.episodeProgress.size, after.episodeProgress.size)
+        val firstId = storedSeason("11").episodes.first().episode.localEpisodeId
+        assertEquals(
+            before.episodeProgress.map {
+                if (it.localEpisodeId ==
+                    firstId
+                ) {
+                    it.copy(watchedAt = now.minusSeconds(86400))
+                } else {
+                    it
+                }
+            },
+            after.episodeProgress
+        )
+        seriesDao.storeSeasonEpisodes(
+            MediaSource.TMDB,
+            "100",
+            season("11", 1),
+            listOf(episode("101", 1, title = "Refreshed", airDate = today.minusDays(10))),
+            now.plusSeconds(2)
+        )
+        assertEquals(after.episodeProgress, database.portableSnapshotDao().readSnapshot().episodeProgress)
+    }
+
+    @Test
+    fun episodeDateEditRejectsInvalidDatesAndDoesNotRecreateUnwatchedProgress() = runBlocking {
+        storeRegularEpisodes()
+        progressDao.markEpisodeWatched(MediaSource.TMDB, "101", today, now)
+        val before = database.portableSnapshotDao().readSnapshot().episodeProgress
+        listOf(today.plusDays(1), today.minusDays(1)).forEach { date ->
+            assertEquals(
+                ProgressWriteOutcome.INCOMPLETE,
+                progressDao.setEpisodeWatchedDate(MediaSource.TMDB, "101", date, now, today, ZoneOffset.UTC)
+            )
+        }
+        assertEquals(before, database.portableSnapshotDao().readSnapshot().episodeProgress)
+        progressDao.markEpisodeUnwatched(MediaSource.TMDB, "101")
+        assertEquals(
+            ProgressWriteOutcome.INCOMPLETE,
+            progressDao.setEpisodeWatchedDate(MediaSource.TMDB, "101", today, now, today, ZoneOffset.UTC)
+        )
+        assertTrue(database.portableSnapshotDao().readSnapshot().episodeProgress.isEmpty())
+        progressDao.markEpisodeWatched(MediaSource.TMDB, "101", today, now.plusSeconds(1))
+        assertEquals(
+            ProgressWriteOutcome.INCOMPLETE,
+            progressDao.setEpisodeWatchedDate(MediaSource.TMDB, "101", today, now, today, ZoneOffset.UTC)
+        )
+        assertEquals(
+            now.plusSeconds(1),
+            database.portableSnapshotDao().readSnapshot().episodeProgress.single().watchedAt
+        )
+    }
+
+    @Test
+    fun concurrentEpisodeDateEditCannotUndoUnwatch() = runBlocking {
+        seriesDao.storeSeasonEpisodes(
+            MediaSource.TMDB,
+            "100",
+            season("11", 1),
+            listOf(episode("101", 1, airDate = today.minusDays(10))),
+            now
+        )
+        progressDao.markEpisodeWatched(MediaSource.TMDB, "101", today, now)
+        val start = CompletableDeferred<Unit>()
+        val edit = async(Dispatchers.Default) {
+            start.await()
+            progressDao.setEpisodeWatchedDate(MediaSource.TMDB, "101", today.minusDays(1), now, today, ZoneOffset.UTC)
+        }
+        val unwatch = async(Dispatchers.Default) {
+            start.await()
+            progressDao.markEpisodeUnwatched(MediaSource.TMDB, "101")
+        }
+        start.complete(Unit)
+        assertTrue(edit.await() in setOf(ProgressWriteOutcome.SUCCESS, ProgressWriteOutcome.INCOMPLETE))
+        assertEquals(ProgressWriteOutcome.SUCCESS, unwatch.await())
+        assertTrue(database.portableSnapshotDao().readSnapshot().episodeProgress.isEmpty())
+    }
 
     @Test
     fun emptySeasonEvidenceNeedsAResponseAndIsInvalidatedByNewMetadata() = runBlocking {

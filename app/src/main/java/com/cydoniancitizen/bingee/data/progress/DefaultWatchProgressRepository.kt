@@ -13,6 +13,8 @@ import com.cydoniancitizen.bingee.data.toPersistenceError
 import com.cydoniancitizen.bingee.domain.calendar.CalendarDateSource
 import com.cydoniancitizen.bingee.domain.repository.WatchProgressRepository
 import java.time.Clock
+import java.time.Instant
+import java.time.LocalDate
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlinx.coroutines.CancellationException
@@ -56,6 +58,22 @@ internal class DefaultWatchProgressRepository @Inject constructor(
 
     override suspend fun markEpisodeUnwatched(episodeRef: ExternalMediaRef): AppResult<Unit> =
         episodeRef.write { dao.markEpisodeUnwatched(it.source, it.externalId) }
+
+    override suspend fun setEpisodeWatchedDate(
+        episodeRef: ExternalMediaRef,
+        watchedDate: LocalDate,
+        expectedWatchedAt: Instant
+    ): AppResult<Unit> = episodeRef.write {
+        val context = dateSource.currentContext()
+        dao.setEpisodeWatchedDate(
+            it.source,
+            it.externalId,
+            watchedDate,
+            expectedWatchedAt,
+            context.today,
+            context.zoneId
+        )
+    }
 
     override suspend fun markPreviousEpisodesWatched(episodeRef: ExternalMediaRef): AppResult<Unit> = episodeRef.write {
         dao.markPreviousEpisodesWatched(

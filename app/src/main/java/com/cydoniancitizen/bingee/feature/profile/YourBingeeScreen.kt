@@ -8,7 +8,6 @@ import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -21,27 +20,25 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.LargeTopAppBar
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.res.vectorResource
@@ -71,7 +68,6 @@ import com.cydoniancitizen.bingee.domain.model.ViewingDurationLabels
 import com.cydoniancitizen.bingee.domain.model.WatchedStatistics
 import com.cydoniancitizen.bingee.domain.model.formatViewingDuration
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 internal fun YourBingeeContent(
     state: ProfileUiState,
@@ -85,30 +81,28 @@ internal fun YourBingeeContent(
     modifier: Modifier = Modifier,
     onOpenHistory: () -> Unit = {}
 ) {
-    val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
     Scaffold(
-        modifier = modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
+        modifier = modifier,
         containerColor = MaterialTheme.colorScheme.background,
         topBar = {
-            LargeTopAppBar(
-                title = {
-                    Text(
-                        text = stringResource(R.string.profile_title_dashboard),
-                        modifier = Modifier.semantics { heading() }
+            // The app shell already applies the status bar inset to the nav host.
+            // Match Home's title row; natural height also accommodates scaled, wrapping text.
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(BingeeDimensions.screenPadding),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = stringResource(R.string.profile_title_dashboard),
+                    modifier = Modifier.weight(1f).semantics { heading() },
+                    style = MaterialTheme.typography.headlineMedium
+                )
+                IconButton(onClick = onOpenSettings) {
+                    Icon(
+                        imageVector = Icons.Default.Settings,
+                        contentDescription = stringResource(R.string.nav_settings)
                     )
-                },
-                actions = {
-                    IconButton(onClick = onOpenSettings) {
-                        Icon(
-                            imageVector = Icons.Default.Settings,
-                            contentDescription = stringResource(R.string.nav_settings)
-                        )
-                    }
-                },
-                // The app shell already applies the status bar inset to the nav host.
-                windowInsets = WindowInsets(0, 0, 0, 0),
-                scrollBehavior = scrollBehavior
-            )
+                }
+            }
         }
     ) { innerPadding ->
         when {
@@ -136,9 +130,6 @@ internal fun YourBingeeContent(
                 verticalArrangement = Arrangement.spacedBy(32.dp)
             ) {
                 item {
-                    TextButton(onClick = onOpenHistory) { Text(stringResource(R.string.history_title)) }
-                }
-                item {
                     WatchingSection(
                         items = state.watching,
                         onOpenDetails = onOpenDetails,
@@ -149,7 +140,8 @@ internal fun YourBingeeContent(
                 item {
                     CollectionSection(
                         counts = state.collectionCounts,
-                        onOpenCollection = onOpenCollection
+                        onOpenCollection = onOpenCollection,
+                        onOpenHistory = onOpenHistory
                     )
                 }
                 item {
@@ -425,7 +417,11 @@ private fun WatchingSection(
 }
 
 @Composable
-private fun CollectionSection(counts: ProfileCollectionCounts, onOpenCollection: (ProfileCollectionShortcut) -> Unit) {
+private fun CollectionSection(
+    counts: ProfileCollectionCounts,
+    onOpenCollection: (ProfileCollectionShortcut) -> Unit,
+    onOpenHistory: () -> Unit
+) {
     SectionHeader(title = stringResource(R.string.profile_collection_title))
     Spacer(Modifier.height(12.dp))
     val rowModifier = Modifier.fillMaxWidth()
@@ -464,6 +460,14 @@ private fun CollectionSection(counts: ProfileCollectionCounts, onOpenCollection:
                 onClick = { onOpenCollection(ProfileCollectionShortcut.ABANDONED) }
             )
         }
+        CollectionShortcut(
+            modifier = rowModifier,
+            icon = Icons.AutoMirrored.Filled.List,
+            label = stringResource(R.string.history_title),
+            count = null,
+            onClick = onOpenHistory,
+            centerContent = true
+        )
     }
 }
 
@@ -653,12 +657,12 @@ private fun CollectionShortcut(
     modifier: Modifier,
     icon: androidx.compose.ui.graphics.vector.ImageVector,
     label: String,
-    count: Int,
+    count: Int?,
     onClick: () -> Unit,
-    iconTint: androidx.compose.ui.graphics.Color = MaterialTheme.colorScheme.onSurfaceVariant
+    iconTint: androidx.compose.ui.graphics.Color = MaterialTheme.colorScheme.onSurfaceVariant,
+    centerContent: Boolean = false
 ) {
-    val text = stringResource(R.string.profile_collection_shortcut, label, count)
-    val separatedCount = stringResource(R.string.profile_collection_shortcut_count, count)
+    val text = if (count != null) stringResource(R.string.profile_collection_shortcut, label, count) else label
     Row(
         modifier = modifier
             // Italian labels at a large font scale need a second line; the tile grows instead of clipping.
@@ -672,27 +676,33 @@ private fun CollectionShortcut(
             }
             .padding(horizontal = 12.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(8.dp)
+        horizontalArrangement = Arrangement.spacedBy(
+            8.dp,
+            if (centerContent) Alignment.CenterHorizontally else Alignment.Start
+        )
     ) {
         Icon(icon, contentDescription = null, tint = iconTint, modifier = Modifier.size(18.dp))
         // Label and count share one line whenever they fit; the count drops below only when a long
         // Italian label at a large font scale would otherwise be clipped.
         FlowRow(
-            modifier = Modifier.weight(1f),
+            modifier = if (centerContent) Modifier else Modifier.weight(1f),
             horizontalArrangement = Arrangement.spacedBy(6.dp)
         ) {
             Text(
                 text = label,
+                textAlign = if (centerContent) TextAlign.Center else TextAlign.Start,
                 style = MaterialTheme.typography.labelLarge,
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis
             )
-            Text(
-                text = separatedCount,
-                style = MaterialTheme.typography.labelLarge,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 1
-            )
+            if (count != null) {
+                Text(
+                    text = stringResource(R.string.profile_collection_shortcut_count, count),
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1
+                )
+            }
         }
     }
 }
@@ -710,8 +720,8 @@ private fun InlineEmptyState(title: String, body: String? = null, actionLabel: S
         body?.let {
             Text(it, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
-        TextButton(onClick = onAction, contentPadding = PaddingValues(0.dp)) {
-            Text(actionLabel)
+        OutlinedButton(onClick = onAction, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
+            Text(actionLabel, textAlign = TextAlign.Center)
         }
     }
 }

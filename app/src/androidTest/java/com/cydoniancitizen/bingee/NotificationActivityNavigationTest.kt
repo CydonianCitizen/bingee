@@ -67,6 +67,84 @@ class NotificationActivityNavigationTest {
     }
 
     @Test
+    fun episodeDetailsDateSurvivesRecreationAndBackReturnsToSeason() = withCachedTitles { database ->
+        val today = LocalDate.now()
+        val original = Instant.now().minusSeconds(7 * 86400)
+        val openEpisode = context.getString(R.string.episode_details_open, 1)
+        val editDate = context.getString(R.string.watched_date_edit)
+        val zone = java.time.ZoneId.systemDefault()
+        runBlocking {
+            database.seriesDao().storeSeasonEpisodes(
+                MediaSource.TMDB,
+                "990001",
+                SeasonEntity(
+                    localMediaId = 0,
+                    source = MediaSource.TMDB,
+                    externalId = "991161",
+                    seasonNumber = 1,
+                    name = "Episode navigation season",
+                    overview = null,
+                    posterUrl = null,
+                    airDate = null,
+                    episodeCount = 1,
+                    metadataUpdatedAt = original,
+                    episodesFetchedAt = null
+                ),
+                listOf(
+                    EpisodeEntity(
+                        localSeasonId = 0,
+                        source = MediaSource.TMDB,
+                        externalId = "991171",
+                        episodeNumber = 1,
+                        title = "Episode navigation title",
+                        overview = "Offline episode synopsis",
+                        airDate = today.minusDays(20),
+                        runtimeMinutes = 45,
+                        stillUrl = null,
+                        metadataUpdatedAt = original
+                    )
+                ),
+                original
+            )
+            database.watchProgressDao().markEpisodeWatched(MediaSource.TMDB, "991171", today, original)
+        }
+        fun saved() = runBlocking {
+            database.seriesDao().observeSeriesSeasons(MediaSource.TMDB, "990001").first()
+                .single { it.season.externalId == "991161" }.episodes.single().progress?.watchedAt
+        }
+        ActivityScenario.launch<MainActivity>(Intent(context, MainActivity::class.java)).use { scenario ->
+            deliver(scenario, MediaType.SERIES, 990001)
+            assertTitle("Navigation series")
+            composeRule.scrollListTo(hasText("Episode navigation season")).performClick()
+            composeRule.scrollListTo(hasText(openEpisode)).performClick()
+            composeRule.onNodeWithText(context.getString(R.string.episode_details_title)).assertIsDisplayed()
+            composeRule.onNodeWithText("Episode navigation title").assertIsDisplayed()
+            composeRule.onNodeWithText(editDate).performScrollTo().performClick()
+            composeRule.onNodeWithText(context.getString(R.string.watched_date_today)).performClick()
+            composeRule.onNodeWithText(context.getString(R.string.action_save)).performClick()
+            composeRule.waitUntil(5_000) { saved()?.atZone(zone)?.toLocalDate() == today }
+            composeRule.waitForIdle()
+            val edited = saved()
+            var previous: MainActivity? = null
+            scenario.onActivity {
+                previous = it
+                it.recreate()
+            }
+            composeRule.waitUntil(10_000) {
+                var recreated = false
+                scenario.onActivity { recreated = previous !== it }
+                recreated
+            }
+            composeRule.onNodeWithText(context.getString(R.string.episode_details_title)).assertIsDisplayed()
+            composeRule.onNodeWithText("Episode navigation title").assertIsDisplayed()
+            assertEquals(edited, saved())
+            scenario.onActivity { it.onBackPressedDispatcher.onBackPressed() }
+            assertTitle("Navigation series")
+            composeRule.scrollListTo(hasText(openEpisode)).assertIsDisplayed()
+        }
+    }
+
+    @Test
     fun coldStartNavigatesOnceAndBackReturnsToHome() {
         val scenario = ActivityScenario.launch<MainActivity>(
             NotificationDetailIntent.intent(

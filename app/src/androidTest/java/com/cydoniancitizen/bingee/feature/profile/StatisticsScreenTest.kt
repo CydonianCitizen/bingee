@@ -40,6 +40,7 @@ import androidx.compose.ui.test.isHeading
 import androidx.compose.ui.test.isPopup
 import androidx.compose.ui.test.isSelectable
 import androidx.compose.ui.test.isSelected
+import androidx.compose.ui.test.junit4.StateRestorationTester
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
@@ -399,7 +400,7 @@ class StatisticsScreenTest {
     )
 
     @Test
-    fun tasteAndCompleteGenreRankingAreVisible() {
+    fun genreRankingStartsWithFourAndRestoresExpansion() {
         val genres = listOf(
             GenreStatistic(MediaSource.TMDB, 18, "Drama", 18),
             GenreStatistic(MediaSource.TMDB, 35, "Comedy", 10),
@@ -410,7 +411,8 @@ class StatisticsScreenTest {
             GenreStatistic(MediaSource.TMDB, 80, "Crime", 1)
         )
 
-        composeRule.setContent {
+        val restoration = StateRestorationTester(composeRule)
+        restoration.setContent {
             BingeeTheme {
                 StatisticsContent(
                     tasteStatistics = TasteStatistics(rankedGenres = genres),
@@ -421,16 +423,62 @@ class StatisticsScreenTest {
 
         composeRule.onNodeWithText(context.getString(R.string.statistics_taste)).assertIsDisplayed()
         composeRule.onNodeWithText(context.getString(R.string.statistics_genres)).performScrollTo().assertIsDisplayed()
+        composeRule.onNodeWithText("Crime").assertDoesNotExist()
+        composeRule.onNodeWithText("Horror").assertDoesNotExist()
+        composeRule.onNodeWithText("Science Fiction").performScrollTo().assertIsDisplayed()
+        composeRule.onNodeWithText(
+            context.getString(R.string.statistics_genres_show_more)
+        ).performScrollTo().performClick()
         composeRule.onNodeWithText("Crime").performScrollTo().assertIsDisplayed()
+        restoration.emulateSavedInstanceStateRestore()
+        composeRule.scrollListTo(hasText("Crime")).assertIsDisplayed()
+        composeRule.onNodeWithText(context.getString(R.string.statistics_genres_show_more)).assertDoesNotExist()
+        composeRule.scrollListTo(hasText("Drama"))
         composeRule.onNodeWithContentDescription(
             context.resources.getQuantityString(R.plurals.statistics_genre_row_description, 18, "Drama", 18)
         ).assertIsDisplayed()
-        composeRule.onNodeWithContentDescription(
-            context.getString(
-                R.string.statistics_radar_description,
-                "Drama, Comedy, Thriller, Science Fiction, Horror, Romance"
+        composeRule.scrollListTo(
+            hasContentDescription(
+                context.getString(
+                    R.string.statistics_radar_description,
+                    "Drama, Comedy, Thriller, Science Fiction, Horror, Romance"
+                )
             )
         ).assertIsDisplayed()
+    }
+
+    @Test
+    fun genreExpansionResetsWhenMediaScopeChanges() {
+        composeRule.setContent {
+            var scope by remember { mutableStateOf(StatisticsMediaScope.ALL) }
+            BingeeTheme {
+                StatisticsContent(
+                    tasteStatistics = TasteStatistics(scope = scope, rankedGenres = radarGenres()),
+                    onScopeChanged = { scope = it }
+                )
+            }
+        }
+        val more = hasText(context.getString(R.string.statistics_genres_show_more))
+        composeRule.scrollListTo(more).performClick()
+        composeRule.scrollListTo(hasText(context.getString(R.string.statistics_filter_movies))).performClick()
+        composeRule.scrollListTo(more).assertIsDisplayed()
+        composeRule.scrollListTo(hasText(context.getString(R.string.statistics_filter_all))).performClick()
+        composeRule.scrollListTo(more).assertIsDisplayed()
+    }
+
+    @Test
+    fun fourOrFewerGenresNeedNoExpansion() {
+        var genres by mutableStateOf(radarGenres().take(4))
+        composeRule.setContent {
+            BingeeTheme {
+                StatisticsContent(tasteStatistics = TasteStatistics(rankedGenres = genres), onScopeChanged = {})
+            }
+        }
+        composeRule.scrollListTo(hasText(context.getString(R.string.statistics_genres))).assertIsDisplayed()
+        composeRule.onNodeWithText(context.getString(R.string.statistics_genres_show_more)).assertDoesNotExist()
+        composeRule.runOnIdle { genres = emptyList() }
+        composeRule.scrollListTo(hasText(context.getString(R.string.statistics_genres))).assertIsDisplayed()
+        composeRule.onNodeWithText(context.getString(R.string.statistics_genres_show_more)).assertDoesNotExist()
     }
 
     @Test

@@ -8,8 +8,12 @@ import androidx.room.Query
 import androidx.room.Transaction
 import com.cydoniancitizen.bingee.core.model.MediaSource
 import com.cydoniancitizen.bingee.core.model.MediaType
+import com.cydoniancitizen.bingee.core.model.isValid
+import com.cydoniancitizen.bingee.core.model.validateWatchedDate
+import com.cydoniancitizen.bingee.domain.policy.ViewingDatePolicy
 import java.time.Instant
 import java.time.LocalDate
+import java.time.ZoneId
 import kotlinx.coroutines.flow.Flow
 
 internal enum class ProgressWriteOutcome {
@@ -209,6 +213,35 @@ internal abstract class WatchProgressDao {
             ?.takeIf { it.seasonNumber > 0 }
             ?.let { deleteSeriesProgress(it.localMediaId) }
         return ProgressWriteOutcome.SUCCESS
+    }
+
+    @Query(
+        """
+        UPDATE episode_watch_progress SET watched_at = :edited
+        WHERE local_episode_id = :localEpisodeId AND watched_at = :expected
+        """
+    )
+    protected abstract suspend fun updateEpisodeWatchedAt(localEpisodeId: Long, expected: Instant, edited: Instant): Int
+
+    @Transaction
+    open suspend fun setEpisodeWatchedDate(
+        source: MediaSource,
+        externalId: String,
+        watchedDate: LocalDate,
+        expectedWatchedAt: Instant,
+        today: LocalDate,
+        zoneId: ZoneId
+    ): ProgressWriteOutcome {
+        val episode = getEpisode(source, externalId) ?: return ProgressWriteOutcome.NOT_FOUND
+        if (!validateWatchedDate(watchedDate, episode.airDate, today).isValid()) return ProgressWriteOutcome.INCOMPLETE
+        val edited = ViewingDatePolicy.withEpisodeDate(expectedWatchedAt, watchedDate, zoneId)
+            ?: return ProgressWriteOutcome.INCOMPLETE
+        // Date correction does not change coverage or the separately recorded Series completion date.
+        return if (updateEpisodeWatchedAt(episode.localEpisodeId, expectedWatchedAt, edited) == 1) {
+            ProgressWriteOutcome.SUCCESS
+        } else {
+            ProgressWriteOutcome.INCOMPLETE
+        }
     }
 
     @Transaction

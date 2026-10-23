@@ -285,6 +285,34 @@ class HomeScreenTest {
     }
 
     @Test
+    fun savedRefreshTimestampFollowsDiscoveryContent() {
+        setHome(
+            HomeUiState(
+                content = HomeContentState.Empty,
+                today = today,
+                lastSuccessfulRefreshAt = Instant.parse("2026-08-03T12:00:00Z"),
+                featuredSeries = listOf(
+                    MediaSearchResult(
+                        externalRef = ExternalMediaRef(MediaSource.TMDB, "100"),
+                        mediaType = MediaType.SERIES,
+                        title = "Featured series",
+                        posterUrl = null,
+                        releaseDate = null
+                    )
+                )
+            )
+        )
+        val footer = composeRule.scrollListTo(
+            hasText(context.getString(R.string.home_last_updated, "").trim(), substring = true)
+        )
+        footer.assertIsDisplayed()
+        assertTrue(
+            footer.getBoundsInRoot().top >=
+                composeRule.onNodeWithText("Featured series").getBoundsInRoot().bottom
+        )
+    }
+
+    @Test
     fun emptyLoadingAndLastUpdateStatesAreVisible() {
         var state by mutableStateOf(HomeUiState(content = HomeContentState.Loading, today = today))
         setHomeState({ state })

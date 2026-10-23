@@ -51,7 +51,8 @@
     <string name="search_configuration_required_title">Configurazione TMDB richiesta</string>
     <string name="search_configuration_required_body">La ricerca remota richiede una credenziale TMDB valida.</string>
     <string name="search_open_settings">Apri Impostazioni</string>
-    <string name="search_title">Cerca su TMDB</string>
+    <string name="search_title">Cerca</string>
+    <string name="statistics_genres_show_more">Vedi altro</string>
     <string name="search_checking_configuration">Verifica configurazione TMDB</string>
     <string name="search_query_label">Titolo</string>
     <string name="search_query_placeholder">Inserisci titolo film o serie TV</string>
@@ -403,6 +404,10 @@
     <string name="detail_episode_future">Non ancora trasmesso</string>
     <string name="detail_episode_watched_state">Visto</string>
     <string name="detail_episode_unwatched_state">Non visto</string>
+    <string name="episode_details_title">Dettagli episodio</string>
+    <string name="episode_details_open">Dettagli episodio %1$d</string>
+    <string name="detail_mark_episode_watched">Segna episodio come visto</string>
+    <string name="detail_mark_episode_unwatched">Segna episodio come non visto</string>
     <string name="tmdb_logo_description">Logo di The Movie Database</string>
     <string name="tmdb_attribution">Questo prodotto usa l\'API TMDB, ma non è approvato né certificato da TMDB.</string>
     <string name="privacy_summary">bingee usa i metadati TMDB. La tua credenziale è cifrata localmente, non viene mai inviata a un backend bingee ed è esclusa dai backup dati bingee.</string>

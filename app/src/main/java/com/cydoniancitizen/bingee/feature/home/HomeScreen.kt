@@ -180,14 +180,6 @@ internal fun HomeContent(
                     }
                 }
             }
-            state.lastSuccessfulRefreshAt?.let {
-                homeSectionItem(key = "lastUpdated") {
-                    Text(
-                        stringResource(R.string.home_last_updated, it.localized()),
-                        style = MaterialTheme.typography.labelMedium
-                    )
-                }
-            }
             // An empty item would still take a gap in the list, so Idle adds none.
             if (state.refresh != HomeRefreshState.Idle) {
                 homeSectionItem(key = "refresh") {
@@ -357,6 +349,14 @@ internal fun HomeContent(
                 onAddToWatchlist = onAddToWatchlist,
                 onOpenDetails = onOpenDetails
             )
+            state.lastSuccessfulRefreshAt?.let {
+                homeSectionItem(key = "lastUpdated") {
+                    Text(
+                        stringResource(R.string.home_last_updated, it.localized()),
+                        style = MaterialTheme.typography.labelMedium
+                    )
+                }
+            }
         }
         SnackbarHost(snackbarHostState, modifier = Modifier.align(Alignment.BottomCenter))
     }

@@ -24,6 +24,7 @@ import com.cydoniancitizen.bingee.core.model.ExternalMediaRef
 import com.cydoniancitizen.bingee.core.model.MediaType
 import com.cydoniancitizen.bingee.core.model.tmdbIdOrNull
 import com.cydoniancitizen.bingee.data.settings.ProfileCollection
+import com.cydoniancitizen.bingee.feature.details.EpisodeDetailsScreen
 import com.cydoniancitizen.bingee.feature.details.MediaDetailsScreen
 import com.cydoniancitizen.bingee.feature.history.HistoryScreen
 import com.cydoniancitizen.bingee.feature.home.HomeScreen
@@ -210,8 +211,36 @@ fun BingeeNavHost(
             } else {
                 MediaDetailsScreen(
                     onBack = navController::popBackStack,
-                    onOpenSettings = onOpenSettings
+                    onOpenSettings = onOpenSettings,
+                    onOpenEpisode = { episode ->
+                        val episodeId = episode.episode.externalRef.tmdbIdOrNull()
+                        if (episodeId != null) navController.navigate(DetailRoute.episode(args.tmdbId, episodeId))
+                    }
                 )
+            }
+        }
+        composable(
+            route = DetailRoute.EPISODE_TEMPLATE,
+            arguments = listOf(
+                navArgument(DetailRoute.TMDB_ID_ARG) { type = NavType.StringType },
+                navArgument(DetailRoute.EPISODE_ID_ARG) { type = NavType.StringType }
+            )
+        ) { entry ->
+            val seriesId = entry.arguments?.getString(DetailRoute.TMDB_ID_ARG)?.toLongOrNull()?.takeIf { it > 0 }
+            val episodeId = entry.arguments?.getString(DetailRoute.EPISODE_ID_ARG)?.toLongOrNull()?.takeIf { it > 0 }
+            val parent = remember(entry) {
+                seriesId?.let {
+                    try {
+                        navController.getBackStackEntry(DetailRoute.create(MediaType.SERIES, it))
+                    } catch (_: IllegalArgumentException) {
+                        null
+                    }
+                }
+            }
+            if (parent == null || episodeId == null) {
+                InvalidDetailRoute(onBack = navController::popBackStack)
+            } else {
+                EpisodeDetailsScreen(episodeId.toString(), navController::popBackStack, hiltViewModel(parent))
             }
         }
     }

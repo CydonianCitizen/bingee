@@ -1,8 +1,21 @@
 package com.cydoniancitizen.bingee.feature.profile
 
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.SemanticsActions
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.test.DeviceConfigurationOverride
+import androidx.compose.ui.test.FontScale
+import androidx.compose.ui.test.ForcedSize
+import androidx.compose.ui.test.SemanticsMatcher
+import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertContentDescriptionEquals
 import androidx.compose.ui.test.assertCountEquals
+import androidx.compose.ui.test.assertHeightIsAtLeast
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.getBoundsInRoot
 import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.StateRestorationTester
@@ -13,6 +26,11 @@ import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.test.performSemanticsAction
+import androidx.compose.ui.text.TextLayoutResult
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.DpSize
+import androidx.compose.ui.unit.dp
 import com.cydoniancitizen.bingee.R
 import com.cydoniancitizen.bingee.core.designsystem.theme.BingeeTheme
 import com.cydoniancitizen.bingee.core.model.ContinueWatchingItem
@@ -22,6 +40,7 @@ import com.cydoniancitizen.bingee.core.model.LibraryEntry
 import com.cydoniancitizen.bingee.core.model.MediaSource
 import com.cydoniancitizen.bingee.core.model.MediaType
 import com.cydoniancitizen.bingee.core.model.SeriesProgress
+import com.cydoniancitizen.bingee.core.result.AppError
 import com.cydoniancitizen.bingee.domain.model.GenreStatistic
 import com.cydoniancitizen.bingee.domain.model.WatchedStatistics
 import com.cydoniancitizen.bingee.testutil.TestLocaleRule
@@ -44,6 +63,99 @@ class YourBingeeScreenTest {
 
     @get:Rule(order = 1)
     val composeRule = createComposeRule()
+
+    @Test
+    fun narrowLargeFontButtonsAndTitleRemainReadableInLightTheme() = assertNarrowLayout(false)
+
+    @Test
+    fun narrowLargeFontButtonsAndTitleRemainReadableInDarkTheme() = assertNarrowLayout(true)
+
+    private fun assertNarrowLayout(dark: Boolean) {
+        composeRule.setContent {
+            DeviceConfigurationOverride(DeviceConfigurationOverride.ForcedSize(DpSize(320.dp, 720.dp))) {
+                DeviceConfigurationOverride(DeviceConfigurationOverride.FontScale(1.5f)) {
+                    BingeeTheme(darkTheme = dark) {
+                        YourBingeeContent(
+                            state = ProfileUiState(today = LocalDate.of(2026, 8, 18), isLoading = false),
+                            onOpenSettings = {},
+                            onOpenDetails = { _, _ -> },
+                            onOpenCollection = {},
+                            onNavigateToSearch = {},
+                            onOpenStatistics = {},
+                            onRetryStatistics = {},
+                            onRetry = {}
+                        )
+                    }
+                }
+            }
+        }
+        fun assertReadable(label: Int) {
+            val text = context.getString(label)
+            if (label == R.string.profile_empty_action_search) {
+                composeRule.onNodeWithText(context.getString(R.string.profile_watching_empty_title)).performScrollTo()
+            } else {
+                composeRule.scrollListTo(hasText(text))
+            }
+            val layouts = mutableListOf<TextLayoutResult>()
+            val labelNode = composeRule.onAllNodesWithText(text, useUnmergedTree = true).onFirst()
+            labelNode.performSemanticsAction(SemanticsActions.GetTextLayoutResult) { it(layouts) }
+            val layout = layouts.single()
+            // Centred text can use a wider paragraph than its intrinsic label bounds.
+            val lineWidth = (0 until layout.lineCount).maxOf { layout.getLineRight(it) - layout.getLineLeft(it) }
+            assertEquals(
+                "$text: size=${layout.size}, lineWidth=$lineWidth, height=${layout.didOverflowHeight}",
+                false,
+                layout.didOverflowHeight || lineWidth > layout.size.width + 1f
+            )
+            assertEquals(TextAlign.Center, layout.layoutInput.style.textAlign)
+            val labelBounds = labelNode.getBoundsInRoot()
+            val buttonBounds = composeRule.onAllNodesWithText(text).onFirst().getBoundsInRoot()
+            val leadingIconAndGap = if (label == R.string.history_title) 18.dp + 8.dp else 0.dp
+            assertTrue(
+                kotlin.math.abs(
+                    (
+                        labelBounds.left + labelBounds.right - buttonBounds.left - buttonBounds.right -
+                            leadingIconAndGap
+                        ).value
+                ) < 2f
+            )
+        }
+        val titleLayout = mutableListOf<TextLayoutResult>()
+        composeRule.onNodeWithText(context.getString(R.string.profile_title_dashboard))
+            .performSemanticsAction(SemanticsActions.GetTextLayoutResult) { it(titleLayout) }
+        assertEquals(false, titleLayout.single().hasVisualOverflow)
+        assertReadable(R.string.profile_empty_action_search)
+        assertReadable(R.string.history_title)
+    }
+
+    @Test
+    fun loadingAndLocalErrorKeepSettingsAndRetryReachable() {
+        var state by mutableStateOf(ProfileUiState(today = LocalDate.of(2026, 8, 18)))
+        val retried = AtomicBoolean(false)
+        val settings = AtomicBoolean(false)
+        composeRule.setContent {
+            BingeeTheme {
+                YourBingeeContent(
+                    state = state,
+                    onOpenSettings = { settings.set(true) },
+                    onOpenDetails = { _, _ -> },
+                    onOpenCollection = {},
+                    onNavigateToSearch = {},
+                    onOpenStatistics = {},
+                    onRetryStatistics = {},
+                    onRetry = { retried.set(true) }
+                )
+            }
+        }
+        composeRule.onNodeWithText(context.getString(R.string.library_loading)).assertIsDisplayed()
+        composeRule.onNodeWithContentDescription(context.getString(R.string.nav_settings)).performClick()
+        assertTrue(settings.get())
+        composeRule.runOnIdle { state = state.copy(isLoading = false, loadError = AppError.LocalStorageFailure) }
+        composeRule.onNodeWithText(context.getString(R.string.library_error_title)).assertIsDisplayed()
+        composeRule.onNodeWithText(context.getString(R.string.action_retry)).performClick()
+        assertTrue(retried.get())
+        composeRule.onNodeWithText(context.getString(R.string.history_title)).assertDoesNotExist()
+    }
 
     @Test
     fun statisticsPreviewShowsMetricsPodiumAndExistingStatisticsAction() {
@@ -266,6 +378,7 @@ class YourBingeeScreenTest {
     fun shellActionsReachSettingsSearchAndTheRoutedCollectionShortcut() {
         val settingsOpened = AtomicBoolean(false)
         val searchOpened = AtomicBoolean(false)
+        val historyOpened = AtomicBoolean(false)
         val collection = AtomicReference<ProfileCollectionShortcut>()
         composeRule.setContent {
             BingeeTheme {
@@ -282,13 +395,18 @@ class YourBingeeScreenTest {
                     onNavigateToSearch = { searchOpened.set(true) },
                     onOpenStatistics = {},
                     onRetryStatistics = {},
-                    onRetry = {}
+                    onRetry = {},
+                    onOpenHistory = { historyOpened.set(true) }
                 )
             }
         }
 
         composeRule.onNodeWithContentDescription(context.getString(R.string.nav_settings)).performClick()
         assertTrue(settingsOpened.get())
+        val title = composeRule.onNodeWithText(context.getString(R.string.profile_title_dashboard)).getBoundsInRoot()
+        val settings = composeRule.onNodeWithContentDescription(context.getString(R.string.nav_settings))
+            .getBoundsInRoot()
+        assertTrue(kotlin.math.abs((title.top + title.bottom - settings.top - settings.bottom).value) < 2f)
 
         // The shortcut carries which collection to open, so the route argument is the assertion.
         composeRule.scrollListTo(
@@ -302,9 +420,52 @@ class YourBingeeScreenTest {
         ).performClick()
         assertEquals(ProfileCollectionShortcut.WATCH_LATER, collection.get())
 
+        val history = composeRule.scrollListTo(hasText(context.getString(R.string.history_title)))
+        history.assert(SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.Button))
+            .assertHeightIsAtLeast(48.dp)
+        val historyBounds = history.getBoundsInRoot()
+        val watchLater = composeRule.onNodeWithContentDescription(
+            context.getString(
+                R.string.profile_collection_shortcut,
+                context.getString(R.string.profile_collection_watch_later),
+                0
+            )
+        ).getBoundsInRoot()
+        val abandoned = composeRule.onNodeWithContentDescription(
+            context.getString(
+                R.string.profile_collection_shortcut,
+                context.getString(R.string.profile_collection_abandoned),
+                0
+            )
+        ).getBoundsInRoot()
+        assertEquals(abandoned.right.value, historyBounds.right.value, 1f)
+        assertEquals(watchLater.left.value, historyBounds.left.value, 1f)
+        assertTrue(historyBounds.top >= abandoned.bottom)
+        val historyText = composeRule.onNodeWithText(
+            context.getString(R.string.history_title),
+            useUnmergedTree = true
+        ).getBoundsInRoot()
+        assertEquals(
+            (historyBounds.left + historyBounds.right + 18.dp + 8.dp).value,
+            (historyText.left + historyText.right).value,
+            2f
+        )
+        history.assertContentDescriptionEquals(context.getString(R.string.history_title))
+        assertTrue(
+            history.getBoundsInRoot().top >=
+                composeRule.onNodeWithText(
+                    context.getString(R.string.profile_collection_title)
+                ).getBoundsInRoot().bottom
+        )
+        history.performClick()
+        assertTrue(historyOpened.get())
+
         // Watching and Favorites share the CTA label; Watching is the first section in the list.
         composeRule.onNodeWithText(context.getString(R.string.profile_watching_empty_title)).performScrollTo()
-        composeRule.onAllNodesWithText(context.getString(R.string.profile_empty_action_search)).onFirst().performClick()
+        composeRule.onAllNodesWithText(context.getString(R.string.profile_empty_action_search)).onFirst()
+            .assert(SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.Button))
+            .assertHeightIsAtLeast(48.dp)
+            .performClick()
         assertTrue(searchOpened.get())
     }
 

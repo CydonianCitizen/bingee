@@ -620,6 +620,11 @@ class HomeViewModelTest {
         private val result: AppResult<Unit> = AppResult.Success(Unit),
         private val gate: CompletableDeferred<Unit>? = null
     ) : WatchProgressRepository {
+        override suspend fun setEpisodeWatchedDate(
+            episodeRef: ExternalMediaRef,
+            watchedDate: java.time.LocalDate,
+            expectedWatchedAt: java.time.Instant
+        ): AppResult<Unit> = error("Home does not edit episode dates")
         val watched = mutableListOf<ExternalMediaRef>()
         val unwatched = mutableListOf<ExternalMediaRef>()
 

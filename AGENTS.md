@@ -4,7 +4,26 @@
 
 Questo repository contiene un'app Android open source, local-first, per tenere traccia di film, serie TV e, in una fase successiva, anime.
 
-Stato corrente del codice: v1.3.0 / versionCode 11, scope concordato verificato e chiuso il
+Estensione successiva richiesta il 22 ottobre 2026: aggiungere alla v1.3.0 le milestone M6–M8
+per dettaglio episodio/data modificabile e ritocchi Home/Il tuo bingee/Cerca, prima di un nuovo
+audit globale finale Ponytail su over-engineering e dead code. Il proprietario autorizza successivamente
+l'implementazione della sola M6, riusando se possibile il database; M6 è verificata nello scope
+documentato (540 JVM, 99 casi Android distinti, EN/IT e composizioni native). Il 23 ottobre
+il proprietario autorizza anche M7: modifiche Home/Il tuo bingee/Cerca, pulsanti e generi
+implementate e verificate con 59 casi Android distinti per lingua EN/IT, composizioni native
+e gate host. Il proprietario precisa poi che Storia deve essere una quinta tessera uguale alle altre
+sezioni della Raccolta, poi la richiede a larghezza intera sotto entrambe le colonne:
+riusato il componente esistente, con icona e testo centrati insieme come gruppo e senza contatore inventato.
+M8 e il nuovo audit globale finale restano pianificati. Il proprietario autorizza poi un commit
+locale del lavoro M6/M7 prima delle successive modifiche ai dettagli di film e serie.
+Heatmap proposta da valutare, non approvata. Il nuovo layout M7 non ha una prova TalkBack manuale.
+Room 9 e backup v3 restano invariati: la data episodio corregge il solo `watched_at`, confrontando
+il timestamp atteso; ora/precisione preservate nel fuso corrente, data indipendente di completamento
+serie conservata. TalkBack manuale della nuova pagina non eseguito; prove precedenti non lo certificano.
+La roadmap canonica sezione 12 e il piano Dettagli definiscono criteri e sequenza. Il precedente
+record di chiusura e i risultati sotto restano prove dello scope precedente, non delle nuove aggiunte.
+
+Stato corrente del codice: v1.3.0 / versionCode 11, precedente scope concordato verificato e chiuso il
 22 ottobre 2026 dopo audit globale finale Ponytail e allineamento documentale. History H1–H6 e la prima
 prova TalkBack documentano la precedente UI mensile. La timeline orizzontale continua, compatta
 e alternata approvata il 21 ottobre 2026 ha proprie verifiche automatiche e visuali. Il 22 ottobre

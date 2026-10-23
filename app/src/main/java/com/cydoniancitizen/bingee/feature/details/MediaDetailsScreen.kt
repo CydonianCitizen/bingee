@@ -44,8 +44,10 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.State
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -96,7 +98,8 @@ internal fun MediaDetailsScreen(
     onBack: () -> Unit,
     onOpenSettings: () -> Unit,
     modifier: Modifier = Modifier,
-    viewModel: MediaDetailsViewModel = hiltViewModel()
+    viewModel: MediaDetailsViewModel = hiltViewModel(),
+    onOpenEpisode: (com.cydoniancitizen.bingee.core.model.TrackedEpisode) -> Unit = {}
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     MediaDetailsContent(
@@ -123,6 +126,7 @@ internal fun MediaDetailsScreen(
         onDismissLibraryError = viewModel::dismissLibraryError,
         onDismissProgressError = viewModel::dismissProgressError,
         onOpenSettings = onOpenSettings,
+        onOpenEpisode = onOpenEpisode,
         modifier = modifier
     )
 }
@@ -152,7 +156,8 @@ internal fun MediaDetailsContent(
     onRemoveRating: () -> Unit = {},
     onDismissRatingError: () -> Unit = {},
     onDismissProgressError: () -> Unit = {},
-    onRetryMembership: () -> Unit = {}
+    onRetryMembership: () -> Unit = {},
+    onOpenEpisode: (com.cydoniancitizen.bingee.core.model.TrackedEpisode) -> Unit = {}
 ) {
     val listState = rememberLazyListState()
     val snackbarHostState = remember { SnackbarHostState() }
@@ -238,6 +243,7 @@ internal fun MediaDetailsContent(
                 onToggleSeasonExpanded = onToggleSeasonExpanded,
                 onRetrySeason = onRetrySeason,
                 onToggleEpisode = onToggleEpisode,
+                onOpenEpisode = onOpenEpisode,
                 onToggleSeasonWatched = onToggleSeasonWatched,
                 onSelectRating = onSelectRating,
                 onSaveRating = onSaveRating,
@@ -373,6 +379,7 @@ private fun DetailBody(
     onToggleSeasonExpanded: (com.cydoniancitizen.bingee.core.model.CachedSeason) -> Unit,
     onRetrySeason: (com.cydoniancitizen.bingee.core.model.CachedSeason) -> Unit,
     onToggleEpisode: (com.cydoniancitizen.bingee.core.model.TrackedEpisode) -> Unit,
+    onOpenEpisode: (com.cydoniancitizen.bingee.core.model.TrackedEpisode) -> Unit,
     onToggleSeasonWatched: (com.cydoniancitizen.bingee.core.model.CachedSeason) -> Unit,
     onSelectRating: (Int) -> Unit,
     onSaveRating: () -> Unit,
@@ -458,7 +465,8 @@ private fun DetailBody(
                 onToggleEpisode,
                 onToggleSeasonWatched,
                 onOpenSettings,
-                sectionModifier
+                sectionModifier,
+                onOpenEpisode = onOpenEpisode
             )
         }
         detailSectionItem(key = "chips") {
@@ -593,11 +601,13 @@ internal fun WatchedDateDialog(
     mediaType: MediaType = MediaType.MOVIE,
     onConfirm: (LocalDate) -> Unit,
     onDismiss: () -> Unit,
-    isFinalCompletion: Boolean = true
+    isFinalCompletion: Boolean = true,
+    initialChoice: WatchedDateChoice = WatchedDateChoice.TODAY
 ) {
-    var selectedChoice by remember { mutableStateOf(WatchedDateChoice.TODAY) }
-    var customDate by remember { mutableStateOf(currentDate ?: today) }
-    var showCustomDatePicker by remember { mutableStateOf(false) }
+    var selectedChoice by rememberSaveable { mutableStateOf(initialChoice) }
+    var customDateEpochDay by rememberSaveable { mutableLongStateOf((currentDate ?: today).toEpochDay()) }
+    val customDate = LocalDate.ofEpochDay(customDateEpochDay)
+    var showCustomDatePicker by rememberSaveable { mutableStateOf(false) }
     var validationError by remember { mutableStateOf<String?>(null) }
     val locale = LocalConfiguration.current.locales[0]
 
@@ -711,9 +721,9 @@ internal fun WatchedDateDialog(
             confirmButton = {
                 TextButton(onClick = {
                     datePickerState.selectedDateMillis?.let { millis ->
-                        customDate = java.time.Instant.ofEpochMilli(millis)
+                        customDateEpochDay = java.time.Instant.ofEpochMilli(millis)
                             .atZone(java.time.ZoneOffset.UTC)
-                            .toLocalDate()
+                            .toLocalDate().toEpochDay()
                     }
                     showCustomDatePicker = false
                 }) {
@@ -733,7 +743,7 @@ internal fun WatchedDateDialog(
 
 /** Offered after an episode is marked watched while earlier ones may still be unwatched. */
 @Composable
-private fun PreviousEpisodesDialog(onConfirm: () -> Unit, onDismiss: () -> Unit) {
+internal fun PreviousEpisodesDialog(onConfirm: () -> Unit, onDismiss: () -> Unit) {
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(stringResource(R.string.detail_mark_previous_title)) },

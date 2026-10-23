@@ -332,6 +332,65 @@ class BackupDataStoreTest {
     }
 
     @Test
+    fun editedEpisodeDateMovesHistoryAndStatisticsAndSurvivesEveryBackupVersion() = runBlocking {
+        val original = roundTripPlan().document
+        val data = original.data.copy(
+            episodes = original.data.episodes.map {
+                if (it.externalRef.externalId == "20001") {
+                    it.copy(seasonRef = BackupRef(MediaSource.TMDB, "10002"), episodeNumber = 2)
+                } else {
+                    it
+                }
+            }
+        )
+        store.restore((validate(original.copy(data = data)) as BackupValidationResult.Success).plan)
+        assertEquals(
+            com.cydoniancitizen.bingee.data.library.local.ProgressWriteOutcome.SUCCESS,
+            database.watchProgressDao().setEpisodeWatchedDate(
+                MediaSource.TMDB,
+                "20001",
+                LocalDate.of(2026, 6, 18),
+                Instant.parse("2026-07-01T08:00:00Z"),
+                validationDate,
+                ZoneOffset.UTC
+            )
+        )
+        val exported = exportedDocument(store.createPortableBackup(exportedAt))
+        assertEquals(Instant.parse("2026-06-18T08:00:00Z"), exported.data.episodeProgress.single().watchedAt)
+        for (version in 1..3) {
+            store.restore(
+                (
+                    validate(exportedDocument(BackupJsonCodec.encode(exported.copy(schemaVersion = version))))
+                        as BackupValidationResult.Success
+                    ).plan
+            )
+            val repository = DefaultLibraryRepository(
+                database.libraryDao(),
+                database.watchProgressDao(),
+                database.ratingDao(),
+                Clock.fixed(exportedAt, ZoneOffset.UTC),
+                TestCalendarDateSource(validationDate),
+                Dispatchers.Default,
+                database,
+                restoreGeneration
+            )
+            val viewing = (repository.observePersonalViewing().first() as AppResult.Success).value
+            val statistics = calculateWatchedStatistics(viewing, ZoneOffset.UTC, validationDate, 2026)
+            assertEquals(42L, statistics.monthlyViewing.months[5].seriesMinutes)
+            assertEquals(0L, statistics.monthlyViewing.months[6].seriesMinutes)
+            val history = (
+                repository.observeHistory(
+                    HistorySnapshotQuery(
+                        HistoryPageQuery(YearMonth.of(2026, 6), HistoryContext(validationDate, ZoneOffset.UTC)),
+                        restoreGeneration = restoreGeneration.changes.value.generation
+                    )
+                ).first() as AppResult.Success
+                ).value
+            assertEquals(LocalDate.of(2026, 6, 18), history.page.items.single().day)
+        }
+    }
+
+    @Test
     fun exportBridgesLegacySettingsBeforeFirstReadAndRestorePreventsLegacyOverwrite() = runBlocking {
         val context = ApplicationProvider.getApplicationContext<Context>()
         val themeKey = stringPreferencesKey("app_theme")

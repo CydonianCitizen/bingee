@@ -1317,7 +1317,8 @@ class MediaDetailsScreenTest {
         val node = row.fetchSemanticsNode()
         val density = node.layoutInfo.density
         val listWidth = composeRule.onNode(hasScrollAction()).fetchSemanticsNode().boundsInRoot.width
-        assertEquals(width.toFloat(), listWidth / density.density, 1f)
+        // Density division can put a valid one-dp difference just above 1f.
+        assertEquals(width.toFloat(), listWidth / density.density, 1.001f)
         assertEquals(font, density.fontScale, 0.001f)
         val text = composeRule.onNodeWithText(label, useUnmergedTree = true).fetchSemanticsNode()
         val textInset = (text.boundsInRoot.left - node.boundsInRoot.left) / density.density

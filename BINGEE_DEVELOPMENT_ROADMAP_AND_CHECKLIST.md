@@ -26,7 +26,24 @@ Historical baseline before this roadmap started:
 
 > Baseline correction (2026-10-04): pre-flight found Room 9 / Backup 3 already present at HEAD `837647f44a83ad9f9eab229877e71c925fb86de8`. The owner authorized continuing after the discrepancy was reported. Modification #1 preserves these existing persistence versions; no schema, migration or backup-format change is made.
 
+## Current v1.3.0 extension — 2026-10-22
+
+After the closure recorded below, the owner requested an additional v1.3.0 planning batch:
+Episode Details/date editing and focused Home/Your bingee/Search refinements. **The extended
+milestone is open.** The initial request authorized documentation only; the owner subsequently
+authorized implementing M6, now verified in its documented scope. M7/M8 remain planned. Deliver the
+new items before a fresh final global Ponytail audit covering over-engineering and dead code.
+The earlier audit and test results remain evidence for their original snapshot, not for this extension.
+See [the added scope and acceptance criteria](#12-additional-episode-and-ui-milestones--2026-10-22)
+and M6–M8 in the [implementation plan](docs/superpowers/plans/2026-10-19-v1.3.0-details.md).
+The heatmap is an estimate/proposal only, pending the owner's choice. Version 1.3.0/code 11 and
+later milestone assignments remain unchanged. M6 reuses Room 9 and Backup v3; its completed checks
+do not certify the remaining extension.
+
 ## v1.3.0 closure record — 2026-10-22
+
+Historical closure of the previously agreed scope, superseded for current milestone status by
+the extension above. Its completed checks and accepted scope limits are preserved.
 
 The agreed **v1.3.0 / versionCode 11 scope is verified and closed**: Details M1–M5,
 the current compact alternating Film/Series History timeline and the approved Home/calendar addition.
@@ -167,7 +184,7 @@ Pre-existing low-priority debt must not automatically expand the current scope.
 | **v1.2.4** | **8** | Technical / test / release polish | Remove small current technical risks without changing product architecture |
 | **v1.2.5** | **9** | Dead-code cleanup + targeted performance improvements + documentation sync | Lean, resource-efficient baseline before the large UI cycle |
 | **v1.2.6** | **10 (planned)** | Audit and targeted maintenance | Audit current code, address proven dead code/over-engineering and study future optimization tradeoffs |
-| **v1.3.0** | **11** | Major UI/UX #1 | Details, current History and scoped Home/calendar verified and closed on 2026-10-22; publication separate |
+| **v1.3.0** | **11** | Major UI/UX #1 | Previous scope and M6 Episode Details/date editing verified; M7 UI refinements planned, then fresh final global audit |
 | **v1.3.1** | **12 (planned)** | Major UI/UX #2 | Reorganize Home around current personal activity |
 | **v1.3.2** | **13 (planned)** | Major UI/UX #3 | Make Collection a coherent personal-management surface |
 | **v1.3.3** | **14 (planned)** | Major UI/UX #4 | Unify Bingee's cross-screen UI language and interaction hierarchy |
@@ -904,7 +921,175 @@ release checkpoint below covers the current source snapshot.
 The wider personal-activity Home redesign below remains planned for v1.3.1; it does not replace
 this explicitly added v1.3.0 review. Verification of the scoped change is recorded in the
 [implementation notes](docs/release-notes-1.3.0.md). The agreed milestone scope is now closed;
-the [closure record](#v130-closure-record--2026-10-22) preserves verification limits.
+the [closure record](#v130-closure-record--2026-10-22) preserves verification limits. The subsequent
+extension below reopens the milestone for new scope without undoing those completed checks.
+
+## 12. Additional episode and UI milestones — 2026-10-22
+
+Initially planning only; the owner subsequently authorized M6 implementation with the existing
+database where possible, then authorized M7 on 2026-10-23 without commits. M6 and M7 are verified
+within their scopes below. M1–M5, History and the calendar work retain their recorded results. M6–M8 below precede the new final global audit/closure; do not mark them implemented
+from the earlier 535 JVM/415 Android results. Broader v1.3.1–v1.3.4 work stays separate.
+
+### M6 — Episode Details and editable viewing date
+
+- [x] Add a dedicated Episode Details page reachable from the existing episode list; retain
+  existing watched/unwatched actions and the return path to the parent Series/season.
+- [x] Display the saved episode viewing date and allow editing it for a watched episode.
+  Date-editor cancellation leaves the saved value unchanged; rejected/failed writes retain it
+  and provide useful feedback. Do not implicitly mark an unwatched/future episode as watched.
+- [x] Reuse `episode_watch_progress.watched_at` (`Instant`), already included in Backup v3,
+  without a schema change or separate episode `watchedDate`. Define time-of-day/time-zone handling
+  and verify History order/grouping, statistics, continuation and Series completion reconciliation.
+  Preserve unrelated progress, offline use and restore v1/v2/v3. The implemented policy is below.
+- [x] Cover persistence, cancellation, validation, failed/concurrent writes, refresh, restore and
+  History/statistics updates with proportionate regression tests. If a distinct original timestamp
+  must be retained, surface that structural decision before changing schema/backup.
+
+**M6 completion — 2026-10-22:** Episode Details shares the parent Details ViewModel and local
+observations. Date edits compare the saved timestamp inside a Room transaction, preserving local
+time/precision in the current device zone; DST gaps shift forward, skipped local dates are rejected.
+No separate original timestamp is retained. Watched counts and the independent Series completion
+date stay unchanged. Room 9, Backup v3, restore v1/v2/v3, dependencies and version/code are unchanged.
+
+All 540 JVM tests pass; unchanged results are reused in the final gate. There are **99 distinct
+passing Android cases** across the scoped runs on an isolated Android 13 Pixel 4 AVD: the 98-case
+batch passes 97 initially, its existing adaptive-width case passes after a 0.001 dp float-tolerance
+correction, and an added real concurrent date/unwatch case passes. This is not the full app suite.
+Coverage includes Room/refresh, stale/failed writes, v1/v2/v3 date round-trips, History/statistics,
+existing Details and real Episode navigation/date save/Activity recreation/parent return.
+All four Episode component cases pass separately in EN and IT. Eight controlled page compositions
+(EN/IT, Light/Dark, 360 dp/font 1.0 and 320 dp/font 1.5) pass; 16 native captures are produced and
+four inspected. The popup still uses the AVD's physical window/font settings, so this does not
+certify the same narrow/large-font matrix for dialog windows or a physical device. The shared
+date dialog also now preserves its draft across recreation, proven RED/GREEN. The focused
+Ponytail review's one P2 finding is fixed; no new layer, duplicate dataset or schema change.
+Spotless, JVM, lint (0 errors/55 warnings), debug and AndroidTest builds pass. An unsigned R8 build
+also passes during M6; it precedes the final primitive-state warning fix, so exact final-release
+artifact verification remains M8. Temporary evidence stays under ignored `.audit/m6/`.
+The initial Android 17 Espresso incompatibility and headless QEMU crash are recorded as failed
+infrastructure attempts, not passes. Manual TalkBack for this new page, full-app Android and final
+global audit/release gates are not claimed by M6. M7/M8 remain open; no commit or publication.
+
+### M7 — Focused Home, Your bingee and Search layout/copy
+
+- [x] Home: move “Dati salvati · ultimo aggiornamento riuscito: …” to the bottom of the Home
+  content, preserving its accurate saved-data/refresh meaning.
+- [x] Align “Il tuo bingee” with “Calendario uscite” and the Search title: title and Settings
+  button belong on the same top-bar level. Preserve title readability at larger font sizes.
+- [x] Rename the visible “Cerca su TMDB” page title to “Cerca”, with equivalent EN copy.
+  TMDB remains the runtime provider and its required attribution remains available.
+- [x] Render “Esplora in Cerca” as an actual button with its label centred inside the control.
+  The owner subsequently specifies “La tua storia” as a fifth tile matching the other Collection
+  sections in style, spanning both columns beneath them with icon and label centred together, preserving navigation, accessible names
+  and adequate touch targets.
+- [x] Move the “La tua storia” button into “La tua raccolta”; remove the separate top-level
+  History shortcut in Your bingee so the same action is not duplicated.
+- [x] Compact the extended “I tuoi generi” list to the first four ranked genres, with “Vedi altro”
+  when additional genres exist. Make the remaining genres reachable without changing ranking,
+  counts or provider-qualified identities. Four or fewer genres need no redundant expansion action.
+- [x] Verify EN/IT, Light/Dark, representative narrow widths/font scaling, empty/loading/error
+  states, button semantics and navigation using the existing native Compose UI. No broad redesign,
+  new dependency or persistence change is selected for these presentation changes.
+
+**M7 verification — 2026-10-23.** Home's saved-refresh timestamp follows discovery content.
+Your bingee uses the same natural-height title row and typography as Home, with Settings centred
+alongside it. At this initial checkpoint, History used a full-width outlined button inside
+Collection; the owner correction below supersedes that treatment. Empty-shelf Search actions
+retain their centred outlined button treatment. Search/Cerca replaces the provider in the page
+title; TMDB attribution is retained. Statistics shows four ranked genres initially and a
+“See more” action only when needed. Expansion survives recreation and resets when the media
+scope changes; the radar, Profile podium and source-qualified ranking/counts are unchanged.
+
+On an isolated Android 13 emulator, **59 distinct production UI/navigation cases pass in each
+EN/IT locale** (EN results combined from the initial batch and targeted confirmations; IT runs
+as one batch). Two temporary composition probes per locale also pass: Light/360 dp/font 1.0
+and Dark/320 dp/font 1.5, capturing Profile, Collection, Search, Home and genres. Representative
+native captures are inspected; permanent Profile tests also cover 320 dp/font 1.5 in both themes,
+centred labels, readable text, loading/error recovery and Settings. The four initial behavior
+tests fail against the preceding APK and pass after the change. A lazy-list assertion needed
+explicit scrolling; centred-text checks account for Compose's reconstructed semantics paragraph
+using line widths and actual label/button bounds, without loosening clipping checks.
+
+Spotless, **540 JVM tests**, lint (**0 errors/55 warnings**), debug and AndroidTest builds pass.
+Scoped independent Ponytail review finds no concrete production bug, over-engineering or dead
+code. Room 9, Backup v3, dependencies and version/code are unchanged. Standard APKs are rebuilt
+without probes; temporary evidence is under ignored `.audit/m7/`. No commit or personal-app
+installation. These are scoped regressions/compositions, not a complete-app Android run, physical
+tablet test, manual TalkBack certification or release/R8 verification. Those final global/release
+gates remain M8; tablet testing remains excluded by the owner.
+
+**Owner correction after M7 — 2026-10-23.** At this checkpoint, History became a fifth half-width tile in the
+Collection grid, using the same `CollectionShortcut` component, background, shape, typography
+and icon spacing as Watch later, Watched, Favorites and Abandoned. It opens the existing History
+route; no count is invented or queried. The other four counts retain their existing semantics.
+The updated regression checks grid width/alignment, accessible label, callback and narrow/large-font
+readability: 13 Profile cases pass per EN/IT locale, plus the native History navigation case in EN.
+Host gates pass; the initial 59-case runs and 20 captures above precede this correction.
+No schema, dependency, version or backup change, and no commit.
+
+**Subsequent width refinement — 2026-10-23.** The owner requests the special History tile
+to span both Collection columns. The shared tile component now fills the row; the other four
+tiles, icon, colours, typography and History navigation remain unchanged. The regression checks
+both outer edges and placement below the two-column rows. Three focused cases pass per EN/IT
+locale, including 320 dp/font 1.5 in both themes; native appearance is inspected and host gates
+pass. The preceding half-width evidence retains that earlier scope. No commit.
+
+**Label alignment refinement — 2026-10-23.** The owner requests History text centred
+on the full-width tile. The icon keeps its leading position; an equal trailing space balances
+it so the label is centred on the whole tile. The four counted shortcuts retain their alignment.
+Updated native assertions verify actual label/tile centres and centred text alignment in EN/IT,
+including 320 dp/font 1.5 in both themes; the native appearance and host gates pass.
+No commit or manual TalkBack repetition.
+
+**Group alignment correction — 2026-10-23.** The owner clarifies that icon and label must
+be centred together. History now centres their naturally sized group within the full-width
+tile; the earlier trailing balance space is removed. Other counted shortcuts keep their layout.
+Three focused native cases pass per EN/IT locale, including narrow/large-font themes and the
+History callback; a native capture is inspected. Spotless, focused Profile ViewModel JVM tests,
+lint and standard debug/AndroidTest builds pass. No commit or manual TalkBack claim.
+
+**Local checkpoint authorization — 2026-10-23.** The owner requests a commit of the verified
+M6/M7 work before further Movie/Series Details changes. Earlier no-commit verification records
+retain their original scope; this checkpoint does not complete M8 or publish a release.
+
+### Optional proposal — viewing heatmap, not approved for implementation
+
+The owner asked for the cost of replacing the monthly viewing histogram. Working assumption for
+the estimate: a daily heatmap for a selected year, activity colour based on viewing minutes,
+with a legend and selected-day summary; retain Movie/Series totals and incomplete-runtime meaning.
+This presentation and metric are proposals, not confirmed requirements. A monthly-colour grid
+would have a different, smaller scope.
+
+Existing `PersonalViewingEntry` data contains effective Movie dates and Episode timestamps/runtime;
+`calculateMonthlyViewing` currently reduces it into 12 buckets. A daily view needs a bounded
+365/366-day aggregation and new Compose presentation, not a new persistent history table.
+Reuse `ViewingDatePolicy` and the existing Room-backed source; do not retain a second full history.
+
+Preliminary engineering estimate, not a quote or measured delivery promise: **8–16 hours** for
+aggregation, a basic daily/year view, selection/legend and focused tests; **16–24 hours total**
+including representative EN/IT, theme, font, TalkBack and integration checks. The final global
+audit/release gates and a more elaborate design are additional work. Monetary cost depends on
+the chosen rate; no external service or new library is required by this proposed approach.
+Expected persistent-data overhead is zero if cells are derived in memory; RAM/render work rises
+from 12 buckets to roughly 366 cells, bounded to the selected year. Actual device cost is unmeasured.
+Check leap years, time-zone/date edits, unknown runtime, empty/future days, narrow layouts and
+accessible day navigation. No performance or storage-saving claim is made.
+
+- [ ] Owner selects or declines the heatmap and, if selected, agrees the metric/layout before
+  it becomes implementation scope. Leaving this proposal undecided does not block M6–M8 closure.
+
+### M8 — Verification, final global audit and renewed closure
+
+- [ ] After authorized implementation, run the relevant regression/Room/UI checks and host
+  formatting, JVM, lint and debug gates; refresh the Android/R8 evidence required by the roadmap.
+- [ ] Run a fresh final whole-project Ponytail audit after M6/M7 (and the heatmap only if selected),
+  explicitly examining over-engineering, dead code, duplicate UI/routes/resources and data/date
+  regressions. Classify findings against scope; fix only demonstrated issues and preserve justified
+  complexity and previously accepted deferrals. Temporary reports belong under ignored `.audit/`.
+- [ ] Align canonical docs and record actual PASS/FAIL/NOT RUN results and retained limits before
+  closing the extended v1.3.0. Physical-tablet verification remains excluded by the owner.
+  No commit, push, signing or publication without an explicit request.
 
 ---
 

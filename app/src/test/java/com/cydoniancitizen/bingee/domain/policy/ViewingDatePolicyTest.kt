@@ -10,6 +10,38 @@ import org.junit.Test
 class ViewingDatePolicyTest {
     private val rome = ZoneId.of("Europe/Rome")
 
+    @Test fun episodeDateEditPreservesLocalTimeAndNanosecondsAcrossDst() {
+        assertEquals(
+            Instant.parse("2026-03-28T12:15:30.123456789Z"),
+            ViewingDatePolicy.withEpisodeDate(
+                Instant.parse("2026-08-03T11:15:30.123456789Z"),
+                LocalDate.of(2026, 3, 28),
+                rome
+            )
+        )
+        assertEquals(
+            Instant.parse("2026-03-29T01:30:00Z"),
+            ViewingDatePolicy.withEpisodeDate(
+                Instant.parse("2026-03-28T01:30:00Z"),
+                LocalDate.of(2026, 3, 29),
+                rome
+            )
+        )
+    }
+
+    @Test fun episodeDateEditRejectsSkippedCalendarDayAndKeepsOverlapOffset() {
+        assertEquals(
+            null,
+            ViewingDatePolicy.withEpisodeDate(
+                Instant.parse("2011-12-29T22:00:00Z"),
+                LocalDate.of(2011, 12, 30),
+                ZoneId.of("Pacific/Apia")
+            )
+        )
+        val overlap = Instant.parse("2026-10-25T01:30:00Z")
+        assertEquals(overlap, ViewingDatePolicy.withEpisodeDate(overlap, LocalDate.of(2026, 10, 25), rome))
+    }
+
     @Test fun manualDateDoesNotChangeWithZone() {
         val date = LocalDate.of(2024, 2, 29)
         val instant = Instant.parse("2026-01-01T00:30:00Z")
