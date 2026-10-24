@@ -383,21 +383,31 @@ class DefaultLibraryRepositoryTest {
         progress.markEpisodeWatched(MediaSource.TMDB, "400-episode-3", today(), now.minusSeconds(10))
         progress.markEpisodeWatched(MediaSource.TMDB, "400-episode-1", today(), now)
 
-        repository.observeContinueWatching().first().let { result ->
-            val item = (result as AppResult.Success).value.single()
-            assertEquals(EpisodePosition(1, 1), item.lastWatchedEpisode)
-            assertEquals(EpisodePosition(1, 2), item.nextEpisode)
-            assertEquals(ExternalMediaRef(MediaSource.TMDB, "400-episode-2"), item.nextEpisodeRef)
-        }
+        val updates = repository.observeContinueWatching().produceIn(this)
+        try {
+            // A shared flow can replay an earlier snapshot; the count identifies each completed write.
+            updates.nextMatching { result ->
+                result is AppResult.Success && result.value.singleOrNull()?.progress?.watchedEpisodes == 2
+            }.let { result ->
+                val item = (result as AppResult.Success).value.single()
+                assertEquals(EpisodePosition(1, 1), item.lastWatchedEpisode)
+                assertEquals(EpisodePosition(1, 2), item.nextEpisode)
+                assertEquals(ExternalMediaRef(MediaSource.TMDB, "400-episode-2"), item.nextEpisodeRef)
+            }
 
-        // Same instant as episode 1, as a bulk mark would write: position breaks the tie.
-        progress.markEpisodeWatched(MediaSource.TMDB, "400-episode-2", today(), now)
+            // Same instant as episode 1, as a bulk mark would write: position breaks the tie.
+            progress.markEpisodeWatched(MediaSource.TMDB, "400-episode-2", today(), now)
 
-        repository.observeContinueWatching().first().let { result ->
-            val item = (result as AppResult.Success).value.single()
-            assertEquals(EpisodePosition(1, 2), item.lastWatchedEpisode)
-            assertEquals(EpisodePosition(1, 4), item.nextEpisode)
-            assertEquals(ExternalMediaRef(MediaSource.TMDB, "400-episode-4"), item.nextEpisodeRef)
+            updates.nextMatching { result ->
+                result is AppResult.Success && result.value.singleOrNull()?.progress?.watchedEpisodes == 3
+            }.let { result ->
+                val item = (result as AppResult.Success).value.single()
+                assertEquals(EpisodePosition(1, 2), item.lastWatchedEpisode)
+                assertEquals(EpisodePosition(1, 4), item.nextEpisode)
+                assertEquals(ExternalMediaRef(MediaSource.TMDB, "400-episode-4"), item.nextEpisodeRef)
+            }
+        } finally {
+            updates.cancel()
         }
     }
 
