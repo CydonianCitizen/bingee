@@ -1,11 +1,98 @@
-# v1.3.0 — Details and History implementation notes
+# v1.3.0 — Release notes and verification
 
-Status: previous agreed scope verified and closed on 2026-10-22. The owner subsequently reopened
-v1.3.0 for M6–M8; M6 and M7 are verified in their documented scopes; final M8 remains planned. Code version 1.3.0/code 11.
-No release has been published. Earlier dated checkpoints below retain their then-pending gates;
-the [final closure record](../BINGEE_DEVELOPMENT_ROADMAP_AND_CHECKLIST.md#v130-closure-record--2026-10-22) supersedes them. The [canonical roadmap](../BINGEE_DEVELOPMENT_ROADMAP_AND_CHECKLIST.md#v130--major-uiux-1-details-as-a-true-personal-tracker-screen)
+Release text prepared on 2026-10-24 for **1.3.0 / versionCode 11**. The implementation includes
+M6/M7, the subsequent Details refinements and the device-local text-size slider, committed in
+`ae735f0` and `a5271bd`. A signed APK is present and verified below. Publication has not been
+performed. The extended milestone's final M8 global audit and renewed closure remain open;
+the 2026-10-22 closure certifies only its original snapshot. The owner subsequently adds automatic
+update notices to v1.3.0. **The signed APK and SHA256 below predate that addition and are a historical
+artifact record, not the candidate for the extended release. Rebuild, sign and reverify before publication.**
+
+## Release title
+
+bingee v1.3.0 — Details, History & Text Size
+
+## Release notes
+
+- Refined Movie and TV Series Details with a clearer personal summary, prominent action buttons,
+  date editing beside the saved date, and a larger centred personal rating.
+- Dedicated Episode Details with spoiler-aware metadata, watched/unwatched controls and editable
+  viewing dates using the existing local data.
+- A continuous horizontal viewing-history timeline with expandable Series/day groups, reachable
+  from a full-width History tile in Your collection.
+- Cleaner Home, Your bingee and Search layouts, centred Search buttons, four initial ranked
+  genres with a See more action, and a Home calendar summary with one relevant release per Series.
+- A text-size slider in Settings, Appearance & Language: 80–150% relative to the system setting,
+  applied to app screens and saved when the slider is released. This preference stays on the current device.
+- Existing libraries and Backup v3 remain compatible, with restore support for v1/v2/v3.
+- Checks official GitHub releases at each app opening/foreground return and shows a dismissible
+  notice only when a newer stable version exists. Offline, errors and current versions remain silent.
+
+## Signed APK — 2026-10-24
+
+| Field | Verified value |
+| --- | --- |
+| Asset | `bingee-v1.3.0.apk` |
+| Local file | `app/release/bingee-v1.3.0.apk` (ignored build artifact) |
+| Application ID | `com.cydoniancitizen.bingee` |
+| Version | `1.3.0` / code `11` |
+| Minimum / target SDK | `33` (Android 13) / `36` |
+| Size | `6,438,026` bytes |
+| Signature | APK Signature Scheme v2 verified; one signer |
+| SHA256 | `6CEABCB5341510A2E00076C218732776DDED1E455EE8658C5F9E0C41E0A6B6A7` |
+
+The digest identifies these exact signed bytes. It is distinct from the earlier unsigned APK
+hash in the historical closure record. Read-only checks verify the signature, manifest version
+and the packaged Episode Details, personal-score and text-size resources. The existing APK was
+not rebuilt, re-signed or installed. These checks do not certify an exact source-to-binary match,
+R8 runtime behaviour or a signed-artifact smoke test. Temporary verification output stays in
+ignored `.audit/release-prep-v130/`.
+
+To reproduce the checksum from the repository root:
+
+```powershell
+Get-FileHash -LiteralPath app/release/bingee-v1.3.0.apk -Algorithm SHA256
+```
+
+## Current verification and remaining gates
+
+The automatic-update checkpoint passes all **547 JVM tests**, Spotless, lint (0 errors/55 existing
+warnings), debug and AndroidTest builds. On HONOR CMA-LX1 / Android 13, 9 Popup/About/Privacy cases
+pass per EN/IT locale and 6 real-Activity navigation/recreation cases pass: 24 executions across
+15 distinct Android cases. The six new JVM cases cover automatic lifecycle/silent outcomes;
+positive native popup checks use fake results, and Activity checks use a temporary fake
+current-release service in an isolated package. A stale Search test selector is corrected to
+require heading semantics. Focused Ponytail review finds no new demonstrated production blocker.
+These checks do not certify live GitHub responses, native positive-update Activity recreation,
+manual TalkBack, a new whole-app Android/R8 run or a rebuilt signed APK. The
+[canonical checkpoint](../BINGEE_DEVELOPMENT_ROADMAP_AND_CHECKLIST.md#automatic-app-update-notice--authorized-2026-10-24)
+records the scoped evidence and excluded test/screenshot artifacts.
+
+A subsequent owner-requested live debug proof on 2026-10-24 verifies the real GitHub path on
+HONOR / Android 13. Production sources are unchanged; an isolated “bingee Update test” package
+declared as 1.2.4 detects the actual `bingee-v1.2.5` release on cold launch and foreground return.
+Later and the exact release link work. A 1.2.5 variant stays silent and its manual check confirms
+it is up to date; a real offline 1.2.4 launch stays silent and usable. Wi-Fi/mobile-data settings
+are restored and the personal package is preserved. The older test variant remains installed
+with its popup visible for the owner. Evidence is in ignored `.audit/app-update-live/`.
+These focused live checks add no new suite count and do not replace M8, TalkBack/configuration
+recreation or the still-required signed release rebuild and runtime verification.
+
+The preceding source checkpoint passes all **541 JVM tests**, Spotless, lint (0 errors and 55 existing
+warnings), debug and AndroidTest builds. Details refinements pass 17 distinct native cases per
+EN/IT locale; text-size work adds 8 Android cases in EN and 5 Settings UI cases in IT, including
+real Activity recreation/relaunch and Home text scaling. These focused checks complement M6/M7
+and do not replace the earlier full 415-case Android suite with a new complete-app run.
+
+The fresh final whole-project Ponytail audit and renewed M8 closure remain open. Manual TalkBack
+for the new Episode/Settings/Home layouts and the exact signed-APK runtime smoke are not claimed.
+The earlier owner-accepted Details/History TalkBack retains its original scope; physical tablet
+verification remains explicitly excluded. The monthly viewing heatmap remains an unapproved proposal.
+
+See the [current canonical scope](../BINGEE_DEVELOPMENT_ROADMAP_AND_CHECKLIST.md#12-additional-episode-and-ui-milestones--2026-10-22),
+the [historical closure record](../BINGEE_DEVELOPMENT_ROADMAP_AND_CHECKLIST.md#v130-closure-record--2026-10-22)
 and the [Details](superpowers/plans/2026-10-19-v1.3.0-details.md) and
-[History](superpowers/plans/2026-10-20-history-timeline.md) implementation plans record the delivered scope and evidence.
+[History](superpowers/plans/2026-10-20-history-timeline.md) plans for the dated engineering checkpoints below.
 
 ## M6 — Episode Details and editable viewing date
 
@@ -21,7 +108,7 @@ The [canonical M6 record](../BINGEE_DEVELOPMENT_ROADMAP_AND_CHECKLIST.md#m6--epi
 documents tests, native compositions and limits. Its 99 distinct Android cases are scoped
 regressions, not a new complete-app suite. The new page has no manual TalkBack certification;
 the earlier owner-accepted Details/History checks retain their original scope. The renewed final
-global audit/release gates remain M8. No commit, signing, publication or personal-app installation.
+global audit/release gates remain M8. No commit, signing, publication or personal-app installation was performed at that M6 checkpoint.
 
 ## M7 — Home, Your bingee, Search and genre presentation
 
@@ -36,7 +123,7 @@ The [canonical M7 record](../BINGEE_DEVELOPMENT_ROADMAP_AND_CHECKLIST.md#m7--foc
 records 59 distinct native production cases per EN/IT locale, representative theme/width/font
 compositions, 540 JVM tests, Spotless, lint, debug/AndroidTest builds and scoped Ponytail review.
 No complete-app Android rerun, manual TalkBack or final release/R8 claim is made here. Room 9,
-Backup v3 and version/code remain unchanged; no commit or publication. Global final audit and
+Backup v3 and version/code remain unchanged; no commit or publication occurred at that M7 checkpoint. Global final audit and
 renewed closure remain M8.
 
 ## Implemented behavior

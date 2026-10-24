@@ -510,13 +510,15 @@
     <string name="settings_nav_about">About bingee</string>
     <string name="settings_nav_about_desc">Version details, open source information, and updates</string>
     <string name="privacy_title">Privacy</string>
-    <string name="privacy_body">bingee does not require an account. Personal tracking data is stored locally on your device. TMDB provides movie and TV metadata.</string>
+    <string name="privacy_body">bingee does not require an account. Personal tracking data is stored locally on your device. TMDB provides movie and TV metadata. On opening the app, bingee checks GitHub for updates without sending your credential or tracking data.</string>
     <string name="about_app_description">Track your favorite movies and TV series offline and on your own terms.</string>
     <string name="about_version_label">Version %1$s</string>
     <string name="update_check_action">Check for updates</string>
     <string name="update_checking">Checking for updates…</string>
     <string name="update_up_to_date">bingee is up to date</string>
     <string name="update_available">Update available</string>
+    <string name="update_available_message">bingee %1$s is available. Open the release page to download the update.</string>
+    <string name="update_later">Later</string>
     <string name="update_current_version">Installed version: %1$s</string>
     <string name="update_latest_version">Latest version: %1$s</string>
     <string name="update_view_release">View release</string>

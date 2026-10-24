@@ -2,12 +2,14 @@ package com.cydoniancitizen.bingee
 
 import android.app.LocaleManager
 import android.app.UiModeManager
+import android.content.ActivityNotFoundException
 import android.content.Intent
 import android.os.Bundle
 import android.os.LocaleList
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.viewModels
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
@@ -16,9 +18,12 @@ import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.core.net.toUri
 import androidx.core.view.WindowInsetsControllerCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.lifecycleScope
+import com.cydoniancitizen.bingee.app.AppUpdateDialog
+import com.cydoniancitizen.bingee.app.AppUpdateViewModel
 import com.cydoniancitizen.bingee.app.BingeeApp
 import com.cydoniancitizen.bingee.core.designsystem.theme.BingeeTheme
 import com.cydoniancitizen.bingee.core.navigation.AppShortcut
@@ -35,6 +40,8 @@ import kotlinx.coroutines.launch
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
+    private val appUpdateViewModel: AppUpdateViewModel by viewModels()
+
     @Inject
     lateinit var appearancePreferences: AppearancePreferences
 
@@ -87,9 +94,32 @@ class MainActivity : ComponentActivity() {
                             setIntent(Intent(this, MainActivity::class.java))
                         }
                     )
+                    val availableUpdate by appUpdateViewModel.availableUpdate.collectAsStateWithLifecycle()
+                    AppUpdateDialog(
+                        update = availableUpdate,
+                        onDismiss = appUpdateViewModel::dismissUpdate,
+                        onViewRelease = { url ->
+                            try {
+                                startActivity(Intent(Intent.ACTION_VIEW, url.toUri()))
+                            } catch (_: ActivityNotFoundException) {
+                                // The app remains usable if no browser is installed.
+                            }
+                        }
+                    )
                 }
             }
         }
+    }
+
+    override fun onStart() {
+        super.onStart()
+        appUpdateViewModel.onAppOpened()
+    }
+
+    override fun onStop() {
+        // A retained ViewModel keeps the same check/dialog through rotation, theme and locale changes.
+        if (!isChangingConfigurations) appUpdateViewModel.onAppClosed()
+        super.onStop()
     }
 
     /**

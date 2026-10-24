@@ -12,8 +12,27 @@ M6 implementation using the existing database where possible; M6 is now verified
 [documented scope](../BINGEE_DEVELOPMENT_ROADMAP_AND_CHECKLIST.md#m6--episode-details-and-editable-viewing-date),
 with Room/backup unchanged. The owner authorized M7 on 2026-10-23 without commits; its
 [UI changes and scoped checks](../BINGEE_DEVELOPMENT_ROADMAP_AND_CHECKLIST.md#m7--focused-home-your-bingee-and-search-layoutcopy)
-are verified. The owner subsequently authorizes the Movie/Series Details button/rating refinements and a device-local Settings text-size slider; their scoped checks are recorded in the canonical added scope. The renewed global audit/release gates remain M8.
-The heatmap is a costed proposal only, pending selection. See the
+are verified. The subsequently authorized Movie/Series Details button/rating refinements and
+device-local Settings text-size slider are also verified. Local commits `ae735f0` and `a5271bd`
+record this work; earlier no-commit statements describe their respective checkpoints. On
+2026-10-24 the owner requests release preparation: [title, notes and existing signed-APK SHA256](release-notes-1.3.0.md)
+are recorded. That source checkpoint includes all 541 JVM tests and focused native checks. The renewed
+M8 global audit/release gates remain open; publication and exact signed-APK runtime smoke have
+not been performed.
+On 2026-10-24 the owner also requires automatic update checks at every app opening/foreground
+return, reusing the official GitHub release checker. Only a newer stable release shows a
+dismissible popup; errors/offline/current versions are silent and local rendering remains independent.
+The new checkpoint passes 547 JVM tests, host gates and 24 scoped Android executions (15 distinct
+cases, including EN/IT popup checks and real-Activity navigation/recreation with a fake service).
+Focused Ponytail review is complete; positive-update lifecycle is covered at the ViewModel boundary,
+not certified as a full native end-to-end/live-GitHub flow at that checkpoint. A subsequent
+owner-requested live debug proof on 2026-10-24 passes on the isolated HONOR package: current code
+declared as 1.2.4 detects the actual GitHub 1.2.5 release; dismissal, background return, official
+release link, matching-version silence/manual success, real offline silence and network restoration
+are verified. The older test app is left visible for the owner; personal app/data are preserved.
+This addition belongs to v1.3.0 before M8.
+The existing signed APK predates it and must be rebuilt
+and reverified before publication. The heatmap is a costed proposal only, pending selection. See the
 [canonical added scope](../BINGEE_DEVELOPMENT_ROADMAP_AND_CHECKLIST.md#12-additional-episode-and-ui-milestones--2026-10-22)
 and [milestone plan](superpowers/plans/2026-10-19-v1.3.0-details.md#m6m8--estensione-pianificata-dopo-la-precedente-chiusura).
 Earlier test/audit results certify their original scope, not these additions. Version/code, Room,

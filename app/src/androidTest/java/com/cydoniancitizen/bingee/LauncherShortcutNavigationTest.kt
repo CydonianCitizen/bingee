@@ -1,6 +1,8 @@
 package com.cydoniancitizen.bingee
 
 import android.content.Intent
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.hasContentDescription
@@ -49,7 +51,10 @@ class LauncherShortcutNavigationTest {
     fun searchShortcutOpensSearchAndBackReturnsToHome() {
         val scenario = ActivityScenario.launch<MainActivity>(shortcut("search"))
         try {
-            composeRule.onNodeWithText(context.getString(R.string.search_title)).assertIsDisplayed()
+            composeRule.onNode(
+                hasText(context.getString(R.string.search_title)) and
+                    SemanticsMatcher.keyIsDefined(SemanticsProperties.Heading)
+            ).assertIsDisplayed()
             scenario.onActivity { it.onBackPressedDispatcher.onBackPressed() }
             composeRule.onNodeWithText(context.getString(R.string.home_title)).assertIsDisplayed()
         } finally {

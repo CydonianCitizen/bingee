@@ -1,8 +1,15 @@
-# Privacy notes (v1.2.5 development)
+# Privacy notes
 
 bingee is local-first and currently has no bingee account, proprietary backend, analytics, or crash-reporting service.
 
-TMDB is the only runtime media provider. The About screen can query GitHub only when the user manually checks for an update; this request does not include the TMDB credential or personal tracking data.
+TMDB is the only runtime media provider. On each app opening, including a return from the background,
+bingee queries the public GitHub latest-release endpoint for CydonianCitizen/Bingee over HTTPS.
+The About screen also offers a manual check. These requests send no TMDB credential, library,
+history, rating or other personal tracking data; GitHub receives normal connection metadata such
+as the IP address. Automatic checks stop when the app leaves the foreground and time out after
+10 seconds. Only a newer stable release triggers an in-app dialog; current versions, offline,
+errors and invalid responses remain silent. Release information is held in memory, not added to
+Room, preferences or backups. Opening the release page in a browser requires tapping its button.
 
 ## TMDB credential
 

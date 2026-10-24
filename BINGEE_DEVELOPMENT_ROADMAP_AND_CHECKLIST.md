@@ -31,14 +31,32 @@ Historical baseline before this roadmap started:
 After the closure recorded below, the owner requested an additional v1.3.0 planning batch:
 Episode Details/date editing and focused Home/Your bingee/Search refinements. **The extended
 milestone is open.** The initial request authorized documentation only; the owner subsequently
-authorized implementing M6, now verified in its documented scope. M7/M8 remain planned. Deliver the
-new items before a fresh final global Ponytail audit covering over-engineering and dead code.
+authorized M6 and M7, now verified in their documented scopes, followed by the verified Movie/Series
+Details refinements and device-local Settings text-size slider. These changes are committed in
+`ae735f0` and `a5271bd`. M8 remains open for the fresh final whole-project Ponytail audit covering
+over-engineering and dead code and renewed release gates.
 The earlier audit and test results remain evidence for their original snapshot, not for this extension.
 See [the added scope and acceptance criteria](#12-additional-episode-and-ui-milestones--2026-10-22)
 and M6–M8 in the [implementation plan](docs/superpowers/plans/2026-10-19-v1.3.0-details.md).
 The heatmap is an estimate/proposal only, pending the owner's choice. Version 1.3.0/code 11 and
-later milestone assignments remain unchanged. M6 reuses Room 9 and Backup v3; its completed checks
-do not certify the remaining extension.
+later milestone assignments remain unchanged. Room 9 and Backup v3 are preserved; the completed
+scoped checks do not certify M8. Release documentation and the existing signed APK are prepared
+as recorded below; preparation does not close the extended milestone.
+
+### Release preparation — 2026-10-24
+
+The owner requests release documentation, a release title/body and SHA256 of the existing
+`app/release/bingee-v1.3.0.apk`. Read-only verification confirms package
+`com.cydoniancitizen.bingee`, version 1.3.0/code 11, minimum SDK 33, target SDK 36 and a valid
+APK Signature Scheme v2 signature (one signer). The asset is **6,438,026 bytes**, with SHA256
+`6CEABCB5341510A2E00076C218732776DDED1E455EE8658C5F9E0C41E0A6B6A7`.
+The packaged resources include Episode Details, personal-score and text-size entries. The APK is
+an ignored build artifact; it was not rebuilt, re-signed or installed for this preparation.
+These checks do not certify exact source-to-binary equivalence, R8 runtime or signed-APK smoke.
+The [release title, notes and verification record](docs/release-notes-1.3.0.md) distinguish these
+checks from the historical unsigned artifact below. Latest source verification is 541 JVM tests,
+Spotless, lint (0 errors/55 existing warnings), debug/AndroidTest builds and the focused native
+checks recorded in section 12. M8 remains open; no publication, tag, push or new commit is performed.
 
 ## v1.3.0 closure record — 2026-10-22
 
@@ -184,7 +202,7 @@ Pre-existing low-priority debt must not automatically expand the current scope.
 | **v1.2.4** | **8** | Technical / test / release polish | Remove small current technical risks without changing product architecture |
 | **v1.2.5** | **9** | Dead-code cleanup + targeted performance improvements + documentation sync | Lean, resource-efficient baseline before the large UI cycle |
 | **v1.2.6** | **10 (planned)** | Audit and targeted maintenance | Audit current code, address proven dead code/over-engineering and study future optimization tradeoffs |
-| **v1.3.0** | **11** | Major UI/UX #1 | Previous scope and M6 Episode Details/date editing verified; M7 UI refinements planned, then fresh final global audit |
+| **v1.3.0** | **11** | Major UI/UX #1 | M6/M7, Details refinements and text size verified; release documentation/signed APK recorded, fresh M8 global audit open |
 | **v1.3.1** | **12 (planned)** | Major UI/UX #2 | Reorganize Home around current personal activity |
 | **v1.3.2** | **13 (planned)** | Major UI/UX #3 | Make Collection a coherent personal-management surface |
 | **v1.3.3** | **14 (planned)** | Major UI/UX #4 | Unify Bingee's cross-screen UI language and interaction hierarchy |
@@ -1095,7 +1113,8 @@ Temporary evidence stays under ignored `.audit/font-size/`.
 
 **Local checkpoint authorization — 2026-10-24.** The owner requests a commit of the verified
 Movie/Series Details refinements and Settings text-size slider. Earlier no-commit records describe
-their verification checkpoints. This authorization does not close M8 or authorize publication.
+their verification checkpoints. The requested checkpoint is committed as `a5271bd`; M6/M7 were
+previously committed as `ae735f0`. Neither commit closes M8 or authorizes publication.
 
 ### Optional proposal — viewing heatmap, not approved for implementation
 
@@ -1123,11 +1142,58 @@ accessible day navigation. No performance or storage-saving claim is made.
 - [ ] Owner selects or declines the heatmap and, if selected, agrees the metric/layout before
   it becomes implementation scope. Leaving this proposal undecided does not block M6–M8 closure.
 
+### Automatic app update notice — authorized 2026-10-24
+
+The owner explicitly keeps v1.3.0 open and adds a check on each opening, including returns from
+the background. Reuse the existing public GitHub latest-stable-release service and semantic
+version comparison; no TMDB credential or personal tracking data is sent. Render local content
+independently. Only a strictly newer stable release shows a dismissible Material dialog with its
+version, View release and Later. Current/older releases, offline, invalid responses, rate limits
+and other errors produce no automatic popup or snackbar. Cancel on ordinary backgrounding,
+bound the check to 10 seconds and retain request/dialog/dismissal across configuration changes.
+About keeps its manual checker. No automatic downloads, new dependency, Room or backup changes.
+
+- [x] Verify the new automatic-check lifecycle, silent outcomes, EN/IT dialog/actions and host gates.
+- [ ] Include this addition in M8's fresh global audit and rebuild/reverify the release artifact;
+  the previously recorded signed APK/SHA256 predates it.
+
+Verification checkpoint, 2026-10-24: all 547 JVM tests pass (6 new automatic-check cases),
+Spotless, lint (0 errors/55 existing warnings), debug and AndroidTest builds pass. HONOR CMA-LX1 /
+Android 13 runs 9 focused Popup/About/Privacy cases per EN/IT locale, plus 6 real-Activity
+shortcut/navigation/recreation cases: 24 passing executions, 15 distinct Android cases. The
+navigation test now selects the Search heading rather than confusing it with the identically
+labelled bottom-navigation item. Tests use fake results, never live provider APIs. Positive
+notice/actions and large-text/dark composition are verified natively; automatic positive,
+silent/error/timeout, cancellation, duplicate opening/configuration, dismissal and reopen rules
+are verified at the ViewModel boundary. Real-Activity navigation/recreation uses a temporary
+isolated package whose only source substitution is a fake current-release service. An initial
+permission-denied network fixture and one ambiguous pre-existing test selector failed; their
+corrected reruns pass. Only large-text/dark captures are accepted visual evidence; standard
+captures repeated a stale surface and are excluded. Focused Ponytail maintenance finds no new
+demonstrated production blocker; it does not replace M8's global audit. No manual TalkBack,
+live-GitHub check, new R8/release build, signing or publication is claimed. Evidence remains in
+ignored `.audit/app-update/`.
+
+Subsequent owner-requested live proof, 2026-10-24: the unmodified production sources are built
+as `com.cydoniancitizen.bingee.updatelive`, labelled “bingee Update test”, declaring 1.2.4 and
+then 1.2.5 through an ignored Gradle init script. The actual public GitHub endpoint reports
+`bingee-v1.2.5`. On HONOR / Android 13, the older declared version shows the correct notice on
+cold launch and a confirmed background/foreground return; Later dismisses it and View release
+opens the exact official release URL in Chrome. The matching declared version stays silent for
+longer than the check timeout; its manual check confirms “bingee is up to date”. A real offline
+cold launch of the older variant stays usable and silent; original Wi-Fi/mobile-data states are
+restored, and a final online cold launch shows the notice again. No fake service or missing-INTERNET
+fixture is used. Personal-package metadata, original package inventory apart from the intentional
+test app, font/size/density and the production 1.3.0/code 11 build remain unchanged. The older test
+variant is intentionally left installed with its popup visible for the owner. Raw evidence is in
+ignored `.audit/app-update-live/`; this is a focused live debug check, not M8 closure, a new suite,
+TalkBack/configuration-recreation certification or signed-release/R8 proof. No commit/publication.
+
 ### M8 — Verification, final global audit and renewed closure
 
 - [ ] After authorized implementation, run the relevant regression/Room/UI checks and host
   formatting, JVM, lint and debug gates; refresh the Android/R8 evidence required by the roadmap.
-- [ ] Run a fresh final whole-project Ponytail audit after M6/M7 and the authorized Details/font-size refinements (and the heatmap only if selected),
+- [ ] Run a fresh final whole-project Ponytail audit after M6/M7, the authorized Details/font-size refinements and automatic update notice (and the heatmap only if selected),
   explicitly examining over-engineering, dead code, duplicate UI/routes/resources and data/date
   regressions. Classify findings against scope; fix only demonstrated issues and preserve justified
   complexity and previously accepted deferrals. Temporary reports belong under ignored `.audit/`.

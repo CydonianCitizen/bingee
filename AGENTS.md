@@ -15,7 +15,29 @@ e gate host. Il proprietario precisa poi che Storia deve essere una quinta tesse
 sezioni della Raccolta, poi la richiede a larghezza intera sotto entrambe le colonne:
 riusato il componente esistente, con icona e testo centrati insieme come gruppo e senza contatore inventato.
 M8 e il nuovo audit globale finale restano pianificati. Il proprietario autorizza poi un commit
-locale del lavoro M6/M7 prima delle successive modifiche ai dettagli di film e serie.
+locale del lavoro M6/M7, eseguito come `ae735f0`, prima delle successive modifiche ai dettagli
+di film e serie. I successivi pulsanti/data/voto e lo slider del testo nelle impostazioni
+(80–150% rispetto al sistema, preferenza locale DataStore esclusa dal backup) sono verificati:
+541 JVM, gate host e prove native mirate EN/IT; commit richiesto ed eseguito come `a5271bd`.
+Il 24 ottobre il proprietario richiede la preparazione della documentazione release e delle note,
+con SHA256 dell'APK firmata esistente: [record release](docs/release-notes-1.3.0.md).
+Firma v2 e metadati verificati senza ricostruzione o installazione; M8 resta aperta.
+Nessuna pubblicazione o nuovo commit documentale eseguiti per questa preparazione.
+Il 24 ottobre il proprietario mantiene aperta v1.3.0 e autorizza il controllo automatico delle
+release GitHub a ogni apertura/ritorno in primo piano, con popup solo per una versione stabile
+più recente e silenzio per offline/errori/versione corrente. Riutilizzare il checker esistente,
+senza bloccare i dati locali o introdurre download automatici. L’APK firmato/SHA256 già registrato
+precede questa aggiunta: va ricostruito e riverificato per la release estesa; M8 resta aperta.
+Il nuovo controllo passa 547 JVM, gate host e 24 esecuzioni Android (15 casi distinti: popup/
+Informazioni/Privacy EN/IT e navigazione/ricreazione Activity con servizio finto, pacchetto isolato).
+Audit Ponytail mirato completato; lifecycle con aggiornamento disponibile coperto al confine
+ViewModel, senza certificare un percorso nativo completo con GitHub reale o TalkBack manuale.
+La successiva prova reale richiesta dal proprietario il 24 ottobre usa sorgenti invariati e
+il pacchetto isolato «bingee Update test»: versione dichiarata 1.2.4 contro GitHub 1.2.5, popup
+su avvio/ritorno, chiusura e link ufficiale verificati; variante 1.2.5 silenziosa con conferma
+manuale online, avvio realmente offline silenzioso e rete ripristinata. App personale preservata;
+variante di prova 1.2.4 lasciata installata con popup visibile. Prova debug mirata, non chiusura
+M8, nuova suite, TalkBack o certificazione release firmata. Evidenze in `.audit/app-update-live/`.
 Heatmap proposta da valutare, non approvata. Il nuovo layout M7 non ha una prova TalkBack manuale.
 Room 9 e backup v3 restano invariati: la data episodio corregge il solo `watched_at`, confrontando
 il timestamp atteso; ora/precisione preservate nel fuso corrente, data indipendente di completamento

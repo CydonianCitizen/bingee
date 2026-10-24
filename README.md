@@ -9,11 +9,21 @@ The previously agreed bingee `1.3.0`/code 11 scope was verified and closed on 20
 The owner subsequently reopened v1.3.0 for a focused extension. M6 is verified: open Episode
 Details from the episode list, mark watched/unwatched, and edit the saved viewing date offline.
 Edits reuse the existing timestamp and follow the current device time zone; Room 9 and Backup v3
-are unchanged. M7 now moves the refresh timestamp to the Home footer, aligns the dashboard
-title, shortens Search/Cerca, centres Search buttons, adds History as a Collection tile and shows
-four initial ranked genres with See more. Scoped EN/IT/native and host checks pass; the renewed
-global audit/release gates remain M8. See the
-[M6 scope and verification limits](BINGEE_DEVELOPMENT_ROADMAP_AND_CHECKLIST.md#m6--episode-details-and-editable-viewing-date).
+are unchanged. M7 moves the refresh timestamp to the Home footer, aligns the dashboard title,
+shortens Search/Cerca, centres Search buttons, adds a full-width History Collection tile and shows
+four initial ranked genres with See more. Further Details refinements make personal actions,
+date editing and rating clearer. Settings adds a device-local text-size slider, 80–150% relative
+to the system setting. These changes are committed in `ae735f0` and `a5271bd`; the latest source
+checkpoint passes 541 JVM tests, scoped EN/IT/native checks and host gates. Release text and the
+existing signed APK's SHA256 are recorded in the [v1.3.0 release notes](docs/release-notes-1.3.0.md)
+on 2026-10-24. A subsequent owner request adds automatic checks against the official GitHub
+releases on each app opening/foreground return, with a dismissible popup only for a newer stable
+version and silent failures. The recorded signed APK predates this addition and needs rebuilding
+before release. The automatic-update checkpoint passes 547 JVM tests, host gates and 24 scoped
+Android executions across 15 distinct cases, including EN/IT popup checks and Activity navigation
+with a fake current-release service. The renewed M8 global audit/release gates remain open; no publication or exact
+signed-APK runtime smoke is claimed. See the
+[added scope and verification limits](BINGEE_DEVELOPMENT_ROADMAP_AND_CHECKLIST.md#12-additional-episode-and-ui-milestones--2026-10-22).
 
 Your bingee → Your collection → Your history shows a continuous horizontal timeline of retained
 watched Movies or Episodes, oldest first, with dated points alternating above/below the rail and
