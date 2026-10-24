@@ -4,6 +4,7 @@ import com.cydoniancitizen.bingee.core.result.AppError
 import com.cydoniancitizen.bingee.data.settings.AppLanguage
 import com.cydoniancitizen.bingee.data.settings.AppTheme
 import com.cydoniancitizen.bingee.data.settings.AppearancePreferences
+import com.cydoniancitizen.bingee.data.settings.FontSizePreferences
 import com.cydoniancitizen.bingee.data.settings.SpoilerPreferences
 import com.cydoniancitizen.bingee.data.settings.toTmdbLanguageTag
 import com.cydoniancitizen.bingee.testutil.MainDispatcherRule
@@ -29,7 +30,7 @@ class AppearanceLanguageViewModelTest {
     fun loadsAndSavesLanguageAndTheme() = runTest(mainDispatcherRule.dispatcher) {
         val preferences = FakeAppearancePreferences(AppTheme.DARK, AppLanguage.ITALIAN)
         val spoilers = FakeSpoilerPreferences()
-        val viewModel = AppearanceLanguageViewModel(preferences, spoilers)
+        val viewModel = AppearanceLanguageViewModel(preferences, spoilers, FakeFontSizePreferences())
         advanceUntilIdle()
 
         assertEquals(AppTheme.DARK, viewModel.uiState.value.theme)
@@ -55,7 +56,7 @@ class AppearanceLanguageViewModelTest {
         val failure = IOException("synthetic write failure")
         val preferences = FakeAppearancePreferences(AppTheme.DARK, AppLanguage.ITALIAN).apply { this.failure = failure }
         val spoilers = FakeSpoilerPreferences().apply { this.failure = failure }
-        val viewModel = AppearanceLanguageViewModel(preferences, spoilers)
+        val viewModel = AppearanceLanguageViewModel(preferences, spoilers, FakeFontSizePreferences())
         advanceUntilIdle()
         val stored = viewModel.uiState.value
 
@@ -88,7 +89,7 @@ class AppearanceLanguageViewModelTest {
         val preferences = FakeAppearancePreferences(AppTheme.DARK, AppLanguage.ITALIAN).apply {
             failure = CancellationException("left the screen")
         }
-        val viewModel = AppearanceLanguageViewModel(preferences, FakeSpoilerPreferences())
+        val viewModel = AppearanceLanguageViewModel(preferences, FakeSpoilerPreferences(), FakeFontSizePreferences())
         advanceUntilIdle()
 
         viewModel.setTheme(AppTheme.LIGHT)
@@ -101,6 +102,43 @@ class AppearanceLanguageViewModelTest {
     @Test
     fun legacySystemLanguageMapsToEnglishWithoutWriteSideEffect() {
         assertEquals(AppLanguage.ENGLISH, AppLanguage.fromPreferenceValue("SYSTEM"))
+    }
+
+    @Test
+    fun fontSizeEmissionsAndWriteFailureKeepTheStoredValueUntilRetry() = runTest(mainDispatcherRule.dispatcher) {
+        val fonts = FakeFontSizePreferences()
+        val viewModel = AppearanceLanguageViewModel(
+            FakeAppearancePreferences(AppTheme.DARK, AppLanguage.ITALIAN),
+            FakeSpoilerPreferences(),
+            fonts
+        )
+        advanceUntilIdle()
+        assertEquals(100, viewModel.uiState.value.fontScalePercent)
+        fonts.percent.value = 120
+        advanceUntilIdle()
+        assertEquals(120, viewModel.uiState.value.fontScalePercent)
+        fonts.failure = IOException("synthetic write failure")
+        viewModel.setFontScalePercent(150)
+        advanceUntilIdle()
+        assertEquals(120, viewModel.uiState.value.fontScalePercent)
+        assertEquals(AppError.LocalStorageFailure, viewModel.uiState.value.error)
+        fonts.failure = null
+        viewModel.setFontScalePercent(80)
+        advanceUntilIdle()
+        assertEquals(80, viewModel.uiState.value.fontScalePercent)
+        assertNull(viewModel.uiState.value.error)
+        assertEquals(AppTheme.DARK, viewModel.uiState.value.theme)
+        assertEquals(AppLanguage.ITALIAN, viewModel.uiState.value.language)
+    }
+
+    private class FakeFontSizePreferences : FontSizePreferences {
+        val percent = MutableStateFlow(100)
+        var failure: Exception? = null
+        override fun observeScalePercent(): Flow<Int> = percent
+        override suspend fun setScalePercent(percent: Int) {
+            failure?.let { throw it }
+            this.percent.value = percent
+        }
     }
 
     private class FakeSpoilerPreferences : SpoilerPreferences {

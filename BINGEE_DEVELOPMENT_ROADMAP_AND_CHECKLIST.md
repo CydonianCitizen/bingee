@@ -1053,6 +1053,50 @@ lint and standard debug/AndroidTest builds pass. No commit or manual TalkBack cl
 M6/M7 work before further Movie/Series Details changes. Earlier no-commit verification records
 retain their original scope; this checkpoint does not complete M8 or publish a release.
 
+**Movie/Series Details refinement — 2026-10-23.** After the local checkpoint, the owner requests
+centred, clearly filled non-yellow removal/watch/clear-date buttons, a compact “Edit” button with
+a Material pencil beside the date, and a larger centred `x/10` personal score. These changes reuse
+Material secondary-container colours and the existing callbacks/pending guards; add-to-library
+retains the primary colour. Date validation, progress, rating persistence, Room 9 and Backup v3
+remain unchanged. The date action retains its contextual accessibility description; Episode Details
+and Profile rating copy keep their existing presentation. This is a scoped refinement before M8,
+not completion of the final global audit or authorization for another commit. The preceding
+M6/M7 checkpoint is commit `ae735f0`.
+
+Scoped verification: 35 JVM tests pass (Details ViewModel and personal-state derivation).
+Seventeen distinct Android cases pass per EN/IT locale, covering button roles, centred labels,
+pending guards, date edit/cancel/save/clear, rating drafts, native accessibility and real activity
+recreation. Details content is checked at 360 dp/font 1.0/dark in EN and 320 dp/font 1.5/light in IT;
+native accessibility/navigation use the emulator's window configuration. Two new date-geometry
+assertions initially measured a partially clipped row; scrolling it into the viewport fixes the
+test measurement without changing production UI. Native screenshots are inspected. Spotless,
+lint (0 errors, 55 existing warnings) and standard debug/AndroidTest builds pass. Manual TalkBack
+is not repeated; M8 remains open. Temporary evidence stays in ignored `.audit/details-ui/`.
+
+**Settings text-size slider — 2026-10-24.** The owner authorizes a text-size slider without commits.
+Implementation choice: Appearance & Language, 80–150% in 10-point steps; 100% follows the current
+system font size. A drag changes only its draft percentage; release saves once and applies the
+stored value across the app. The percentage is local to the device in the existing DataStore,
+independent of portable preferences: no Room 9 or Backup v3 change. Invalid numeric stored values
+fall back to 100%; failed writes retain the observed value and show the existing storage error.
+System font changes still participate in the resulting scale; display density, icons and touch
+target dimensions are not scaled by this preference. Widgets and system-owned dialogs continue
+to use system text sizing. This addition precedes the still-open M8 global audit.
+
+Scoped verification: all 541 JVM tests pass, including font-preference observation, failed-write
+rollback and retry. Eight native Android cases pass in EN (five Settings UI, two DataStore and one
+real Activity flow); the five Settings UI cases also pass in IT. They cover 80/100/150%, saving only
+on release, unchanged display density, composition with system font scale 1.3, invalid stored/written
+values, independent preference keys, Activity recreation/relaunch and the changed Home text scale.
+Native light/dark captures are inspected; a separate real-app IT capture after changing language and dragging to 150% confirms intact text where the instrumentation capture had glyph artifacts. Spotless, lint (0 errors, 55 existing warnings), standard
+debug and AndroidTest builds pass; 185 Markdown links resolve. This is focused phone/emulator proof,
+not a full new Android matrix or manual TalkBack run. M8 remains open; no commit is made.
+Temporary evidence stays under ignored `.audit/font-size/`.
+
+**Local checkpoint authorization — 2026-10-24.** The owner requests a commit of the verified
+Movie/Series Details refinements and Settings text-size slider. Earlier no-commit records describe
+their verification checkpoints. This authorization does not close M8 or authorize publication.
+
 ### Optional proposal — viewing heatmap, not approved for implementation
 
 The owner asked for the cost of replacing the monthly viewing histogram. Working assumption for
@@ -1083,7 +1127,7 @@ accessible day navigation. No performance or storage-saving claim is made.
 
 - [ ] After authorized implementation, run the relevant regression/Room/UI checks and host
   formatting, JVM, lint and debug gates; refresh the Android/R8 evidence required by the roadmap.
-- [ ] Run a fresh final whole-project Ponytail audit after M6/M7 (and the heatmap only if selected),
+- [ ] Run a fresh final whole-project Ponytail audit after M6/M7 and the authorized Details/font-size refinements (and the heatmap only if selected),
   explicitly examining over-engineering, dead code, duplicate UI/routes/resources and data/date
   regressions. Classify findings against scope; fix only demonstrated issues and preserve justified
   complexity and previously accepted deferrals. Temporary reports belong under ignored `.audit/`.

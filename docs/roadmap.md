@@ -12,7 +12,7 @@ M6 implementation using the existing database where possible; M6 is now verified
 [documented scope](../BINGEE_DEVELOPMENT_ROADMAP_AND_CHECKLIST.md#m6--episode-details-and-editable-viewing-date),
 with Room/backup unchanged. The owner authorized M7 on 2026-10-23 without commits; its
 [UI changes and scoped checks](../BINGEE_DEVELOPMENT_ROADMAP_AND_CHECKLIST.md#m7--focused-home-your-bingee-and-search-layoutcopy)
-are verified. The renewed global audit/release gates remain M8.
+are verified. The owner subsequently authorizes the Movie/Series Details button/rating refinements and a device-local Settings text-size slider; their scoped checks are recorded in the canonical added scope. The renewed global audit/release gates remain M8.
 The heatmap is a costed proposal only, pending selection. See the
 [canonical added scope](../BINGEE_DEVELOPMENT_ROADMAP_AND_CHECKLIST.md#12-additional-episode-and-ui-milestones--2026-10-22)
 and [milestone plan](superpowers/plans/2026-10-19-v1.3.0-details.md#m6m8--estensione-pianificata-dopo-la-precedente-chiusura).

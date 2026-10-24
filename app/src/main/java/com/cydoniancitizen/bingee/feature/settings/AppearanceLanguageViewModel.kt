@@ -6,6 +6,7 @@ import com.cydoniancitizen.bingee.core.result.AppError
 import com.cydoniancitizen.bingee.data.settings.AppLanguage
 import com.cydoniancitizen.bingee.data.settings.AppTheme
 import com.cydoniancitizen.bingee.data.settings.AppearancePreferences
+import com.cydoniancitizen.bingee.data.settings.FontSizePreferences
 import com.cydoniancitizen.bingee.data.settings.SpoilerPreferences
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
@@ -20,18 +21,25 @@ internal data class AppearanceLanguageUiState(
     val theme: AppTheme = AppTheme.SYSTEM_DEFAULT,
     val language: AppLanguage = AppLanguage.ENGLISH,
     val hideSpoilers: Boolean = false,
+    val fontScalePercent: Int = FontSizePreferences.DEFAULT_PERCENT,
     val error: AppError? = null
 )
 
 @HiltViewModel
 internal class AppearanceLanguageViewModel @Inject constructor(
     private val appearancePreferences: AppearancePreferences,
-    private val spoilerPreferences: SpoilerPreferences
+    private val spoilerPreferences: SpoilerPreferences,
+    private val fontSizePreferences: FontSizePreferences
 ) : ViewModel() {
     private val mutableUiState = MutableStateFlow(AppearanceLanguageUiState())
     val uiState: StateFlow<AppearanceLanguageUiState> = mutableUiState.asStateFlow()
 
     init {
+        viewModelScope.launch {
+            fontSizePreferences.observeScalePercent().collect { percent ->
+                mutableUiState.update { it.copy(fontScalePercent = percent) }
+            }
+        }
         viewModelScope.launch {
             appearancePreferences.observeTheme().collect { theme ->
                 mutableUiState.update { it.copy(theme = theme) }
@@ -50,6 +58,8 @@ internal class AppearanceLanguageViewModel @Inject constructor(
     }
 
     fun setHideSpoilers(hide: Boolean) = save { spoilerPreferences.setHideSpoilers(hide) }
+
+    fun setFontScalePercent(percent: Int) = save { fontSizePreferences.setScalePercent(percent) }
 
     fun setTheme(theme: AppTheme) = save { appearancePreferences.setTheme(theme) }
 

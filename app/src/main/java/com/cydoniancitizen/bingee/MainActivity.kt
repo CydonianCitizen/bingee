@@ -14,6 +14,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.core.view.WindowInsetsControllerCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -26,6 +27,7 @@ import com.cydoniancitizen.bingee.data.notification.NotificationDetailIntent
 import com.cydoniancitizen.bingee.data.settings.AppLanguage
 import com.cydoniancitizen.bingee.data.settings.AppTheme
 import com.cydoniancitizen.bingee.data.settings.AppearancePreferences
+import com.cydoniancitizen.bingee.data.settings.FontSizePreferences
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -35,6 +37,9 @@ import kotlinx.coroutines.launch
 class MainActivity : ComponentActivity() {
     @Inject
     lateinit var appearancePreferences: AppearancePreferences
+
+    @Inject
+    lateinit var fontSizePreferences: FontSizePreferences
 
     /** Route requested by the launching intent: a notification's Details, or a launcher shortcut. */
     private val pendingRoute = MutableStateFlow<String?>(null)
@@ -52,6 +57,8 @@ class MainActivity : ComponentActivity() {
                 .collect(::applyNightMode)
         }
         setContent {
+            val fontScalePercent by remember { fontSizePreferences.observeScalePercent() }
+                .collectAsStateWithLifecycle(initialValue = FontSizePreferences.DEFAULT_PERCENT)
             val theme by appearancePreferences.observeTheme().collectAsStateWithLifecycle(
                 initialValue = AppTheme.SYSTEM_DEFAULT
             )
@@ -68,7 +75,7 @@ class MainActivity : ComponentActivity() {
                 }
             }
 
-            BingeeTheme(darkTheme = darkTheme) {
+            BingeeTheme(darkTheme = darkTheme, fontScaleMultiplier = fontScalePercent / 100f) {
                 // The root surface gives every screen the theme background and a matching content colour.
                 // Screens drawn outside a Scaffold, such as the startup check, otherwise fall back to black
                 // text on the window background, which is unreadable in the dark theme.

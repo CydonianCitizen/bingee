@@ -9,7 +9,9 @@ import com.cydoniancitizen.bingee.data.credential.TmdbCredentialFile
 import com.cydoniancitizen.bingee.data.credential.TmdbCredentialStore
 import com.cydoniancitizen.bingee.data.settings.AppearancePreferences
 import com.cydoniancitizen.bingee.data.settings.DataStoreFirstRunPreferences
+import com.cydoniancitizen.bingee.data.settings.DataStoreFontSizePreferences
 import com.cydoniancitizen.bingee.data.settings.FirstRunPreferences
+import com.cydoniancitizen.bingee.data.settings.FontSizePreferences
 import com.cydoniancitizen.bingee.data.settings.PortableAppearancePreferences
 import com.cydoniancitizen.bingee.data.settings.PortableProfileDisplayModePreferences
 import com.cydoniancitizen.bingee.data.settings.PortableSpoilerPreferences
@@ -58,6 +60,9 @@ internal abstract class CredentialModule {
 
     @Binds
     abstract fun bindAppearancePreferences(implementation: PortableAppearancePreferences): AppearancePreferences
+
+    @Binds
+    abstract fun bindFontSizePreferences(implementation: DataStoreFontSizePreferences): FontSizePreferences
 
     @Binds
     abstract fun bindSpoilerPreferences(implementation: PortableSpoilerPreferences): SpoilerPreferences

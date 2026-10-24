@@ -13,8 +13,11 @@ import androidx.compose.material3.Typography
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.ExperimentalTextApi
 import androidx.compose.ui.text.font.Font
@@ -22,6 +25,7 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontVariation
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
 import com.cydoniancitizen.bingee.R
 
@@ -182,13 +186,30 @@ object BingeePodiumColors {
 }
 
 @Composable
-fun BingeeTheme(darkTheme: Boolean = isSystemInDarkTheme(), content: @Composable () -> Unit) {
-    MaterialTheme(
-        colorScheme = if (darkTheme) DarkColorScheme else LightColorScheme,
-        typography = BingeeTypography,
-        shapes = BingeeShapes,
-        content = content
-    )
+fun BingeeTheme(
+    darkTheme: Boolean = isSystemInDarkTheme(),
+    fontScaleMultiplier: Float = 1f,
+    content: @Composable () -> Unit
+) {
+    val systemDensity = LocalDensity.current
+    val appDensity = remember(systemDensity, fontScaleMultiplier) {
+        if (fontScaleMultiplier == 1f) {
+            systemDensity
+        } else {
+            Density(
+                systemDensity.density,
+                systemDensity.fontScale * fontScaleMultiplier
+            )
+        }
+    }
+    CompositionLocalProvider(LocalDensity provides appDensity) {
+        MaterialTheme(
+            colorScheme = if (darkTheme) DarkColorScheme else LightColorScheme,
+            typography = BingeeTypography,
+            shapes = BingeeShapes,
+            content = content
+        )
+    }
 }
 
 @Preview(name = "Light", showBackground = true)

@@ -19,6 +19,7 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.outlined.FavoriteBorder
@@ -58,9 +59,11 @@ import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
@@ -544,6 +547,7 @@ internal fun WatchedDateSection(
         else -> R.string.available_completion_date_edit
     }
 
+    val editDescription = stringResource(editRes)
     Column(
         modifier = modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(BingeeDimensions.elementSpacing)
@@ -553,26 +557,34 @@ internal fun WatchedDateSection(
             modifier = Modifier.semantics { heading() },
             style = MaterialTheme.typography.titleLarge
         )
-        if (watchedDate != null) {
-            Text(watchedDate.formatLocalized(locale))
-        }
-        FlowRow(
+        Row(
+            modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(BingeeDimensions.elementSpacing),
-            verticalArrangement = Arrangement.spacedBy(BingeeDimensions.elementSpacing)
+            verticalAlignment = Alignment.CenterVertically
         ) {
+            if (watchedDate != null) {
+                Text(watchedDate.formatLocalized(locale), modifier = Modifier.weight(1f))
+            }
             FilledTonalButton(
                 onClick = { showDialog = true },
-                enabled = !isUpdating
+                enabled = !isUpdating,
+                modifier = Modifier.semantics { contentDescription = editDescription }
             ) {
-                Text(stringResource(editRes))
+                Text(stringResource(R.string.action_edit))
+                Icon(
+                    Icons.Default.Edit,
+                    contentDescription = null,
+                    modifier = Modifier.padding(start = BingeeDimensions.elementSpacing)
+                )
             }
-            if (canClear) {
-                TextButton(
-                    onClick = { onSetWatchedDate(null) },
-                    enabled = !isUpdating
-                ) {
-                    Text(stringResource(R.string.watched_date_clear))
-                }
+        }
+        if (canClear) {
+            FilledTonalButton(
+                onClick = { onSetWatchedDate(null) },
+                enabled = !isUpdating,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text(stringResource(R.string.watched_date_clear), textAlign = TextAlign.Center)
             }
         }
     }

@@ -3,10 +3,9 @@ package com.cydoniancitizen.bingee.feature.details
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.material3.Button
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalConfiguration
@@ -14,6 +13,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
+import androidx.compose.ui.text.style.TextAlign
 import com.cydoniancitizen.bingee.R
 import com.cydoniancitizen.bingee.core.designsystem.theme.BingeeDimensions
 import com.cydoniancitizen.bingee.core.model.MovieWatchState
@@ -71,14 +71,8 @@ internal fun MovieProgressSection(state: MovieProgressState, onToggle: () -> Uni
                         else -> R.string.detail_mark_watched
                     }
                 )
-                if (watched != null) {
-                    TextButton(onClick = onToggle, enabled = !state.updating, modifier = actionModifier) {
-                        Text(actionLabel)
-                    }
-                } else {
-                    Button(onClick = onToggle, enabled = !state.updating, modifier = actionModifier) {
-                        Text(actionLabel)
-                    }
+                FilledTonalButton(onClick = onToggle, enabled = !state.updating, modifier = actionModifier) {
+                    Text(actionLabel, textAlign = TextAlign.Center)
                 }
             }
         }

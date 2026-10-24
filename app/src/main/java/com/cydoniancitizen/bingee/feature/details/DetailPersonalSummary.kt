@@ -2,9 +2,9 @@ package com.cydoniancitizen.bingee.feature.details
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.material3.Button
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -13,6 +13,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import com.cydoniancitizen.bingee.R
 import com.cydoniancitizen.bingee.core.designsystem.theme.BingeeDimensions
@@ -52,18 +53,23 @@ internal fun DetailPersonalSummary(
         }
         when (state.isInLibrary) {
             null -> if (state.membershipError == null) Text(stringResource(R.string.library_action_updating))
-            false -> Button(onClick = onToggleLibrary, enabled = !updating) {
-                Text(stringResource(if (updating) R.string.library_action_updating else R.string.library_action_add))
+            false -> Button(onClick = onToggleLibrary, enabled = !updating, modifier = Modifier.fillMaxWidth()) {
+                Text(
+                    stringResource(if (updating) R.string.library_action_updating else R.string.library_action_add),
+                    textAlign = TextAlign.Center
+                )
             }
-            true -> FlowRow(horizontalArrangement = Arrangement.spacedBy(BingeeDimensions.elementSpacing)) {
-                TextButton(onClick = onToggleLibrary, enabled = !updating) {
-                    val removalLabel = if (updating) {
-                        R.string.library_action_updating
-                    } else {
-                        R.string.library_action_remove
-                    }
-                    Text(stringResource(removalLabel))
+            true -> FilledTonalButton(
+                onClick = onToggleLibrary,
+                enabled = !updating,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                val removalLabel = if (updating) {
+                    R.string.library_action_updating
+                } else {
+                    R.string.library_action_remove
                 }
+                Text(stringResource(removalLabel), textAlign = TextAlign.Center)
             }
         }
         if (details.mediaType == MediaType.MOVIE) {

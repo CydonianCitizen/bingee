@@ -99,7 +99,7 @@ class MediaDetailsStateMatrixTest(private val caseIndex: Int, private val caseNa
         }
         val rating = state.rating as DetailRatingState.Ready
         reach(
-            rating.rating?.let { context.getString(R.string.detail_rating_value, it.value) }
+            rating.rating?.let { context.getString(R.string.detail_rating_score, it.value) }
                 ?: context.getString(R.string.detail_rating_unrated)
         )
         composeRule.onAllNodesWithText(context.getString(R.string.detail_rating_set)).assertCountEquals(0)

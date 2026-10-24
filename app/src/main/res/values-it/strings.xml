@@ -267,7 +267,7 @@
     <string name="settings_open_source_description">bingee è open source. Puoi contribuire a migliorare l’app segnalando problemi, proponendo nuove funzionalità o collaborando al codice su GitHub.</string>
     <string name="settings_open_source_github_action">Visualizza su GitHub</string>
     <string name="settings_nav_appearance">Aspetto e lingua</string>
-    <string name="settings_nav_appearance_desc">Preferenze per tema e lingua</string>
+    <string name="settings_nav_appearance_desc">Tema, dimensione testo e lingua</string>
     <string name="settings_nav_notifications">Notifiche</string>
     <string name="settings_nav_notifications_desc">Opzioni e tempistiche per le notifiche di uscita</string>
     <string name="settings_nav_data_backup">Dati e backup</string>
@@ -625,4 +625,9 @@
         <item quantity="many">Mostra %1$d episodi</item>
         <item quantity="other">Mostra %1$d episodi</item>
     </plurals>
+    <string name="action_edit">Modifica</string>
+    <string name="settings_font_size_title">Dimensione testo</string>
+    <string name="settings_font_size_percent">%1$d%%</string>
+    <string name="settings_font_size_body" formatted="false">100% segue la dimensione di sistema. Si applica a tutta l’app al rilascio dello slider. Salvata su questo dispositivo.</string>
+    <string name="detail_rating_score">%1$d/10</string>
 </resources>

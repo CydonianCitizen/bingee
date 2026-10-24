@@ -254,7 +254,7 @@ class NotificationActivityNavigationTest {
             composeRule.onNodeWithText(context.getString(R.string.home_title)).assertIsDisplayed()
             deliver(scenario, MediaType.MOVIE, 990001)
             assertTitle("Navigation movie one")
-            val savedLabel = context.getString(R.string.detail_rating_value, 8)
+            val savedLabel = context.getString(R.string.detail_rating_score, 8)
             reach(hasText(savedLabel))
             composeRule.onNodeWithText(savedLabel).performClick()
             composeRule.onNode(slider(8)).performSemanticsAction(SemanticsActions.SetProgress) { it(9f) }
@@ -279,7 +279,7 @@ class NotificationActivityNavigationTest {
             composeRule.waitUntil(5_000) { savedRating()?.ratingValue == 9 }
             val saved = savedRating()
             recreateActivity()
-            val updatedLabel = context.getString(R.string.detail_rating_value, 9)
+            val updatedLabel = context.getString(R.string.detail_rating_score, 9)
             reach(hasText(updatedLabel))
             composeRule.onNodeWithText(updatedLabel).assertIsDisplayed()
             composeRule.onNode(slider(9)).assertDoesNotExist()

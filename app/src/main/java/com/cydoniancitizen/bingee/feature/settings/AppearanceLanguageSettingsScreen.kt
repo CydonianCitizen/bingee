@@ -12,6 +12,7 @@ import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -22,6 +23,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.cydoniancitizen.bingee.R
@@ -30,6 +34,8 @@ import com.cydoniancitizen.bingee.core.result.AppError
 import com.cydoniancitizen.bingee.core.ui.toUiError
 import com.cydoniancitizen.bingee.data.settings.AppLanguage
 import com.cydoniancitizen.bingee.data.settings.AppTheme
+import com.cydoniancitizen.bingee.data.settings.FontSizePreferences
+import kotlin.math.roundToInt
 
 @Composable
 internal fun AppearanceLanguageSettingsScreen(
@@ -46,6 +52,8 @@ internal fun AppearanceLanguageSettingsScreen(
         onSetLanguage = viewModel::setLanguage,
         hideSpoilers = state.hideSpoilers,
         onSetHideSpoilers = viewModel::setHideSpoilers,
+        fontScalePercent = state.fontScalePercent,
+        onSetFontScalePercent = viewModel::setFontScalePercent,
         error = state.error,
         onDismissError = viewModel::clearError,
         onBack = onBack,
@@ -64,7 +72,9 @@ internal fun AppearanceLanguageSettingsContent(
     hideSpoilers: Boolean = false,
     onSetHideSpoilers: (Boolean) -> Unit = {},
     error: AppError? = null,
-    onDismissError: () -> Unit = {}
+    onDismissError: () -> Unit = {},
+    fontScalePercent: Int = FontSizePreferences.DEFAULT_PERCENT,
+    onSetFontScalePercent: (Int) -> Unit = {}
 ) {
     var expandedDropdown by remember { mutableStateOf<SettingsDropdownKind?>(null) }
 
@@ -98,6 +108,10 @@ internal fun AppearanceLanguageSettingsContent(
 
         HorizontalDivider()
 
+        FontSizeSection(fontScalePercent, onSetFontScalePercent)
+
+        HorizontalDivider()
+
         LanguageSection(
             language = language,
             onSetLanguage = onSetLanguage,
@@ -127,6 +141,39 @@ internal fun AppearanceLanguageSettingsContent(
 }
 
 private enum class SettingsDropdownKind { THEME, LANGUAGE }
+
+@Composable
+private fun FontSizeSection(percent: Int, onSetPercent: (Int) -> Unit) {
+    var draft by remember { mutableStateOf<Int?>(null) }
+    val selected = draft ?: percent
+    val title = stringResource(R.string.settings_font_size_title)
+    val value = stringResource(R.string.settings_font_size_percent, selected)
+    Column(verticalArrangement = Arrangement.spacedBy(BingeeDimensions.elementSpacing)) {
+        Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            Text(title, modifier = Modifier.weight(1f), style = MaterialTheme.typography.titleMedium)
+            Text(value, style = MaterialTheme.typography.titleMedium)
+        }
+        Slider(
+            value = selected.toFloat(),
+            onValueChange = { draft = it.roundToInt() },
+            onValueChangeFinished = {
+                draft?.let(onSetPercent)
+                draft = null
+            },
+            valueRange = FontSizePreferences.RANGE.first.toFloat()..FontSizePreferences.RANGE.last.toFloat(),
+            steps = 6,
+            modifier = Modifier.fillMaxWidth().semantics {
+                contentDescription = title
+                stateDescription = value
+            }
+        )
+        Text(
+            stringResource(R.string.settings_font_size_body),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+    }
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

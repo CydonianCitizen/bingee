@@ -114,7 +114,7 @@ class MediaDetailsAccessibilityTest {
             }
         }
         connect()
-        val rating = context.getString(R.string.detail_rating_value, 8)
+        val rating = context.getString(R.string.detail_rating_score, 8)
         scrollTo(rating)
         assertTrue(action(rating).performAction(AccessibilityNodeInfo.ACTION_CLICK))
         compose.waitUntil { compose.onNodeWithText(context.getString(R.string.detail_rating_set)).isDisplayed() }
@@ -279,13 +279,14 @@ class MediaDetailsAccessibilityTest {
     }
 
     private fun scrollTo(label: String) {
-        compose.onNode(hasScrollAction()).performScrollToNode(hasText(label))
-        val bounds = compose.onNodeWithText(label).fetchSemanticsNode().touchBoundsInRoot
+        val matcher = hasText(label) or hasContentDescription(label)
+        compose.onNode(hasScrollAction()).performScrollToNode(matcher)
+        val bounds = compose.onNode(matcher).fetchSemanticsNode().touchBoundsInRoot
         val viewport = compose.onRoot().fetchSemanticsNode().boundsInRoot
         compose.onNode(hasScrollAction()).performSemanticsAction(SemanticsActions.ScrollBy) {
             it(0f, bounds.center.y - viewport.center.y)
         }
-        compose.onNodeWithText(label).assertIsDisplayed()
+        compose.onNode(matcher).assertIsDisplayed()
     }
 
     private fun assertButton(label: String, native: AccessibilityNodeInfo) {

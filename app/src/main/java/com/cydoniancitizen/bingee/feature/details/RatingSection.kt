@@ -19,6 +19,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
+import androidx.compose.ui.text.style.TextAlign
 import com.cydoniancitizen.bingee.R
 import com.cydoniancitizen.bingee.core.designsystem.theme.BingeeDimensions
 import com.cydoniancitizen.bingee.core.model.PersonalRating
@@ -59,17 +60,27 @@ internal fun RatingSection(
             )
             is DetailRatingState.Ready -> {
                 val currentDescription = state.rating?.let {
-                    stringResource(R.string.detail_rating_value, it.value)
+                    stringResource(R.string.detail_rating_score, it.value)
                 } ?: stringResource(R.string.detail_rating_unrated)
                 if (!editing) {
                     TextButton(onClick = {
                         onSelect(state.rating?.value ?: 5)
                         editing = true
-                    }, enabled = !state.updating) {
-                        Text(currentDescription)
+                    }, enabled = !state.updating, modifier = Modifier.fillMaxWidth()) {
+                        Text(
+                            currentDescription,
+                            modifier = Modifier.fillMaxWidth(),
+                            style = MaterialTheme.typography.headlineLarge,
+                            textAlign = TextAlign.Center
+                        )
                     }
                 } else {
-                    Text(currentDescription)
+                    Text(
+                        currentDescription,
+                        modifier = Modifier.fillMaxWidth(),
+                        style = MaterialTheme.typography.headlineLarge,
+                        textAlign = TextAlign.Center
+                    )
                     val selectedDescription = stringResource(R.string.detail_rating_slider, state.selectedValue)
                     Slider(
                         value = state.selectedValue.toFloat(),

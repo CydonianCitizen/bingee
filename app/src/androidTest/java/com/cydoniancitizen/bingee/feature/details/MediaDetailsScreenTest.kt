@@ -57,6 +57,7 @@ import androidx.compose.ui.test.performSemanticsAction
 import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.swipeDown
 import androidx.compose.ui.text.TextLayoutResult
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
 import androidx.test.platform.app.InstrumentationRegistry
@@ -86,6 +87,7 @@ import com.cydoniancitizen.bingee.core.model.TrackedEpisode
 import com.cydoniancitizen.bingee.core.model.deriveSeasonProgress
 import com.cydoniancitizen.bingee.core.model.deriveSeriesProgress
 import com.cydoniancitizen.bingee.core.result.AppError
+import com.cydoniancitizen.bingee.core.ui.formatLocalized
 import com.cydoniancitizen.bingee.testutil.TestLocaleRule
 import com.cydoniancitizen.bingee.testutil.localizedTestContext
 import java.time.Duration
@@ -248,7 +250,7 @@ class MediaDetailsScreenTest {
                 RatingSection(rating, { rating = rating.copy(selectedValue = it) }, { saves++ }, {}, {})
             }
         }
-        composeRule.onNodeWithText(context.getString(R.string.detail_rating_value, 8)).performClick()
+        composeRule.onNodeWithText(context.getString(R.string.detail_rating_score, 8)).performClick()
         composeRule.onNode(
             SemanticsMatcher.expectValue(
                 SemanticsProperties.StateDescription,
@@ -268,7 +270,7 @@ class MediaDetailsScreenTest {
     @Test
     fun ratingEditorStartsCollapsedAndOpensOnExplicitIntent() {
         setDetails(content(movie()).copy(rating = DetailRatingState.Ready(PersonalRating(8))))
-        val value = context.getString(R.string.detail_rating_value, 8)
+        val value = context.getString(R.string.detail_rating_score, 8)
         scrollTo(hasText(value))
         val slider = SemanticsMatcher.expectValue(
             SemanticsProperties.StateDescription,
@@ -298,7 +300,7 @@ class MediaDetailsScreenTest {
                 }
             )
         })
-        val original = context.getString(R.string.detail_rating_value, 8)
+        val original = context.getString(R.string.detail_rating_score, 8)
         scrollTo(hasText(original))
         composeRule.onNodeWithText(original).performClick()
         fun selectNine() {
@@ -323,8 +325,8 @@ class MediaDetailsScreenTest {
         selectNine()
         composeRule.onNodeWithText(context.getString(R.string.detail_rating_set)).performScrollTo().performClick()
         composeRule.waitForIdle()
-        scrollTo(hasText(context.getString(R.string.detail_rating_value, 9)))
-        composeRule.onNodeWithText(context.getString(R.string.detail_rating_value, 9)).assertIsDisplayed()
+        scrollTo(hasText(context.getString(R.string.detail_rating_score, 9)))
+        composeRule.onNodeWithText(context.getString(R.string.detail_rating_score, 9)).assertIsDisplayed()
         composeRule.onNodeWithText(context.getString(R.string.detail_rating_set)).assertDoesNotExist()
         assertEquals(2, saves)
     }
@@ -334,9 +336,9 @@ class MediaDetailsScreenTest {
         val cached = fetchedSeason(1, "Season 1", watched = 2, trackable = 2)
         setDetails(seriesState(listOf(cached)).copy(isInLibrary = true, seriesCompletedAt = Instant.EPOCH))
         val label = context.getString(R.string.available_completion_date_edit)
-        scrollTo(hasText(label))
-        composeRule.onNodeWithText(label).assertIsDisplayed()
-        composeRule.onNodeWithText(context.getString(R.string.completion_date_edit)).assertDoesNotExist()
+        scrollTo(hasContentDescription(label))
+        composeRule.onNodeWithContentDescription(label).assertIsDisplayed()
+        composeRule.onNodeWithContentDescription(context.getString(R.string.completion_date_edit)).assertDoesNotExist()
         composeRule.onNodeWithText(context.getString(R.string.watched_date_clear)).assertDoesNotExist()
     }
 
@@ -362,7 +364,7 @@ class MediaDetailsScreenTest {
                 )
             }
         }
-        val saved = context.getString(R.string.detail_rating_value, 8)
+        val saved = context.getString(R.string.detail_rating_score, 8)
         val remove = context.getString(R.string.detail_rating_remove)
         val cancel = context.getString(R.string.action_cancel)
         composeRule.onNodeWithText(saved).performClick()
@@ -408,7 +410,7 @@ class MediaDetailsScreenTest {
                 .copy(isInLibrary = true)
         )
         assertThrows(AssertionError::class.java) {
-            scrollTo(hasText(context.getString(R.string.completion_date_edit)))
+            scrollTo(hasContentDescription(context.getString(R.string.completion_date_edit)))
         }
     }
 
@@ -992,6 +994,60 @@ class MediaDetailsScreenTest {
     }
 
     @Test
+    fun personalActionsAreCenteredFullWidthAndRejectPendingTouches() {
+        var state by mutableStateOf(
+            content(movie()).copy(
+                isInLibrary = true,
+                movieProgress = MovieProgressState.Ready(MovieWatchState.Unwatched)
+            )
+        )
+        var removals = 0
+        var watches = 0
+        setDetailsState({ state }, onToggle = { removals++ }, onToggleMovie = { watches++ })
+        val remove = context.getString(R.string.library_action_remove)
+        val watch = context.getString(R.string.detail_mark_watched)
+        listOf(remove, watch).forEach { label ->
+            scrollTo(hasText(label))
+            val action = composeRule.onNodeWithText(label)
+            action.assert(SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.Button))
+            val bounds = action.fetchSemanticsNode().boundsInRoot
+            val root = composeRule.onRoot().fetchSemanticsNode().boundsInRoot
+            assertEquals(root.center.x, bounds.center.x, 1f)
+            with(composeRule.density) {
+                assertEquals(root.width - 48.dp.toPx(), bounds.width, 1f)
+            }
+            assertCenteredText(label)
+            action.performClick()
+        }
+        assertEquals(1, removals)
+        assertEquals(1, watches)
+        captureAdaptiveEditor("personal-actions", dialog = false)
+        composeRule.runOnIdle {
+            state = state.copy(
+                libraryAction = DetailLibraryActionState.UPDATING,
+                movieProgress = MovieProgressState.Ready(MovieWatchState.Unwatched, updating = true)
+            )
+        }
+        listOf(R.string.library_action_updating, R.string.detail_progress_updating).forEach { resource ->
+            val label = context.getString(resource)
+            scrollTo(hasText(label))
+            composeRule.onNodeWithText(label).assertIsNotEnabled().performTouchInput { click() }
+        }
+        assertEquals(1, removals)
+        assertEquals(1, watches)
+    }
+
+    private fun assertCenteredText(text: String, minimumSize: Float = 0f) {
+        val layouts = mutableListOf<TextLayoutResult>()
+        composeRule.onNodeWithText(text, useUnmergedTree = true)
+            .performSemanticsAction(SemanticsActions.GetTextLayoutResult) { it(layouts) }
+        val style = layouts.single().layoutInput.style
+        assertEquals(TextAlign.Center, style.textAlign)
+        assertTrue(style.fontSize.value >= minimumSize)
+        assertTextFits(text)
+    }
+
+    @Test
     fun clearDateActionCommunicatesRemovalAndPassesNull() {
         assertDateActions(
             content(movie()).copy(
@@ -1024,21 +1080,42 @@ class MediaDetailsScreenTest {
         var state by mutableStateOf(initialState)
         setDetailsState({ state }, onSetWatchedDate = { writes.add(it) })
 
-        scrollTo(hasText(editLabel))
+        scrollTo(hasContentDescription(editLabel))
+        // Centre the row before measuring: boundsInRoot clips multiline dates at the viewport edge.
+        val actionCenter = composeRule.onNodeWithContentDescription(editLabel).fetchSemanticsNode().boundsInRoot.center
+        val viewportCenter = composeRule.onRoot().fetchSemanticsNode().boundsInRoot.center
+        composeRule.onNode(hasScrollAction()).performSemanticsAction(SemanticsActions.ScrollBy) {
+            it(0f, actionCenter.y - viewportCenter.y)
+        }
+        val date = requireNotNull(initialState.watchedDate).formatLocalized(context.resources.configuration.locales[0])
+        val dateBounds = composeRule.onNodeWithText(date).fetchSemanticsNode().boundsInRoot
+        val editBounds = composeRule.onNodeWithContentDescription(editLabel).fetchSemanticsNode().boundsInRoot
+        assertTrue(dateBounds.right <= editBounds.left)
+        assertEquals(dateBounds.center.y, editBounds.center.y, 1f)
+        composeRule.onNodeWithText(context.getString(R.string.action_edit)).assertIsDisplayed()
+        assertTextFits(date)
+        assertTextFits(context.getString(R.string.action_edit))
         listOf(editLabel, clearLabel).forEach { label ->
-            val action = composeRule.onNodeWithText(label)
+            val action = if (label == editLabel) {
+                composeRule.onNodeWithContentDescription(label)
+            } else {
+                composeRule.onNodeWithText(label)
+            }
             action.performScrollTo().assertIsDisplayed()
                 .assert(SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.Button))
-            composeRule.onAllNodesWithText(label).assertCountEquals(1)
+            composeRule.onAllNodes(if (label == editLabel) hasContentDescription(label) else hasText(label))
+                .assertCountEquals(1)
             val target = action.fetchSemanticsNode().touchBoundsInRoot
             with(composeRule.density) {
                 assertTrue(target.width.toDp() >= 48.dp && target.height.toDp() >= 48.dp)
             }
         }
-        composeRule.onNodeWithText(editLabel).performScrollTo().performClick()
+        assertCenteredText(clearLabel)
+        captureAdaptiveEditor("${initialState.content.javaClass.simpleName}-personal-date", dialog = false)
+        composeRule.onNodeWithContentDescription(editLabel).performScrollTo().performClick()
         composeRule.onNodeWithText(cancelLabel).performClick()
         assertTrue(writes.isEmpty())
-        composeRule.onNodeWithText(editLabel).performClick()
+        composeRule.onNodeWithContentDescription(editLabel).performClick()
         composeRule.onNodeWithText(saveLabel).performClick()
         assertEquals(listOf(initialState.today), writes)
         composeRule.onNodeWithText(clearLabel).performScrollTo().performClick()
@@ -1046,7 +1123,7 @@ class MediaDetailsScreenTest {
 
         composeRule.runOnIdle { state = state.copy(watchedDateUpdating = true) }
         composeRule.onNodeWithText(clearLabel).assertIsNotEnabled()
-        composeRule.onNodeWithText(editLabel).performScrollTo().assertIsNotEnabled()
+        composeRule.onNodeWithContentDescription(editLabel).performScrollTo().assertIsNotEnabled()
     }
 
     @Test
@@ -1136,8 +1213,10 @@ class MediaDetailsScreenTest {
         }
         scrollTo(hasText(requireNotNull(details.overview)))
         assertTextFits(requireNotNull(details.overview))
-        val currentRating = context.getString(R.string.detail_rating_value, 8)
+        val currentRating = context.getString(R.string.detail_rating_score, 8)
         scrollTo(hasText(currentRating))
+        assertCenteredText(currentRating, minimumSize = 32f)
+        captureAdaptiveEditor("${details.mediaType}-personal-score", dialog = false)
         composeRule.onNodeWithText(currentRating).performSemanticsAction(SemanticsActions.OnClick) { it() }
         val slider = SemanticsMatcher.expectValue(
             SemanticsProperties.StateDescription,
@@ -1156,7 +1235,7 @@ class MediaDetailsScreenTest {
         val dateAction = context.getString(editDateRes)
         // Reset the personal item after collapsing rating; its old offset can put this action under the toolbar.
         composeRule.onNode(hasScrollAction()).performScrollToKey("personal")
-        composeRule.onNodeWithText(dateAction).performScrollTo().assertIsDisplayed().performClick()
+        composeRule.onNodeWithContentDescription(dateAction).performScrollTo().assertIsDisplayed().performClick()
         val save = context.getString(R.string.action_save)
         composeRule.waitUntil(5_000) {
             composeRule.onAllNodes(isDialog()).fetchSemanticsNodes().size == 1 &&
@@ -1171,7 +1250,7 @@ class MediaDetailsScreenTest {
         composeRule.onNodeWithText(cancel).performClick()
         assertTrue(dateWrites.isEmpty())
         composeRule.onNode(hasScrollAction()).performScrollToKey("personal")
-        composeRule.onNodeWithText(dateAction).performScrollTo().performClick()
+        composeRule.onNodeWithContentDescription(dateAction).performScrollTo().performClick()
         composeRule.waitUntil(5_000) {
             composeRule.onAllNodes(isDialog()).fetchSemanticsNodes().size == 1 &&
                 composeRule.onNode(isDialog()).isDisplayed()
@@ -1198,12 +1277,12 @@ class MediaDetailsScreenTest {
         InstrumentationRegistry.getArguments().getString("detailsFontScale")?.let {
             assertEquals("Applied font scale for: $text", it.toFloat(), layout.layoutInput.density.fontScale, 0.001f)
         }
-        val right = (0 until layout.lineCount).maxOf(layout::getLineRight)
+        val lineWidth = (0 until layout.lineCount).maxOf { layout.getLineRight(it) - layout.getLineLeft(it) }
         // TextLayoutResult can report fractional paragraph overflow after pixel rounding.
-        val clipped = layout.didOverflowHeight || right > layout.size.width + 1f
+        val clipped = layout.didOverflowHeight || lineWidth > layout.size.width + 1f
         assertEquals(
             "Text must not overflow: $text; size=${layout.size}, lines=${layout.lineCount}, " +
-                "right=$right, paragraph=${layout.multiParagraph.width}, height=${layout.didOverflowHeight}",
+                "lineWidth=$lineWidth, paragraph=${layout.multiParagraph.width}, height=${layout.didOverflowHeight}",
             false,
             clipped
         )
@@ -1692,9 +1771,9 @@ class MediaDetailsScreenTest {
             onRemoveRating = { removed.set(true) }
         )
 
-        scrollTo(hasText(context.getString(R.string.detail_rating_value, 10)))
+        scrollTo(hasText(context.getString(R.string.detail_rating_score, 10)))
         composeRule.onNodeWithText(
-            context.getString(R.string.detail_rating_value, 10)
+            context.getString(R.string.detail_rating_score, 10)
         ).assertIsDisplayed().performClick()
         composeRule.onNode(
             SemanticsMatcher.expectValue(
