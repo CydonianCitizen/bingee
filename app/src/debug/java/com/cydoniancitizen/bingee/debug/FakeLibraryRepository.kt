@@ -93,28 +93,6 @@ class FakeLibraryRepository(
         return AppResult.Success(Unit)
     }
 
-    override suspend fun setFavorite(result: MediaSearchResult, isFavorite: Boolean): AppResult<Unit> {
-        writeFailure?.let { return AppResult.Failure(it) }
-        val existing = entries.value.firstOrNull { it.isFor(result.externalRef, result.mediaType) }
-        val updated = if (existing != null) {
-            existing.copy(isFavorite = isFavorite)
-        } else {
-            LibraryEntry(
-                mediaRef = result.externalRef,
-                mediaType = result.mediaType,
-                title = result.title,
-                originalTitle = result.originalTitle,
-                posterUrl = result.posterUrl,
-                releaseDate = result.releaseDate,
-                overview = result.overview,
-                addedAt = now,
-                isFavorite = isFavorite
-            )
-        }
-        entries.value = entries.value.filterNot { it.isFor(result.externalRef, result.mediaType) } + updated
-        return AppResult.Success(Unit)
-    }
-
     override suspend fun setWatchedDate(
         ref: ExternalMediaRef,
         mediaType: MediaType,

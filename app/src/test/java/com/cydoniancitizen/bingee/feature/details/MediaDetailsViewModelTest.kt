@@ -726,8 +726,6 @@ class MediaDetailsViewModelTest {
             mediaType: MediaType,
             isFavorite: Boolean
         ): AppResult<Unit> = AppResult.Success(Unit)
-        override suspend fun setFavorite(result: MediaSearchResult, isFavorite: Boolean): AppResult<Unit> =
-            AppResult.Success(Unit)
         override suspend fun setWatchedDate(
             ref: ExternalMediaRef,
             mediaType: MediaType,
@@ -787,8 +785,6 @@ class MediaDetailsViewModelTest {
             movie.value = AppResult.Success(MovieWatchState.Unwatched)
             return AppResult.Success(Unit)
         }
-        override suspend fun markSeriesWatched(reference: ExternalMediaRef) = success("series-watched")
-        override suspend fun markSeriesUnwatched(reference: ExternalMediaRef) = success("series-unwatched")
 
         private fun success(action: String): AppResult<Unit> {
             actions += action

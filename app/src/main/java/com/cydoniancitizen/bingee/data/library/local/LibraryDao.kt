@@ -114,19 +114,12 @@ internal abstract class LibraryDao {
         LEFT JOIN library_entries USING(local_media_id)
         WHERE (library_entries.local_media_id IS NOT NULL OR media_entries.is_favorite = 1)
           AND (:mediaType IS NULL OR media_entries.media_type = :mediaType)
-          AND (
-              LOWER(media_entries.title) LIKE :searchPattern ESCAPE '\'
-              OR LOWER(COALESCE(media_entries.original_title, '')) LIKE :searchPattern ESCAPE '\'
-          )
         ORDER BY COALESCE(library_entries.added_at, media_entries.created_at) DESC,
                  LOWER(media_entries.title) ASC,
                  media_entries.local_media_id ASC
         """
     )
-    abstract fun observeLibraryItems(
-        mediaType: MediaType? = null,
-        searchPattern: String = "%"
-    ): Flow<List<LibraryItemWithRefs>>
+    abstract fun observeLibraryItems(mediaType: MediaType? = null): Flow<List<LibraryItemWithRefs>>
 
     @Transaction
     @Query(
@@ -753,43 +746,6 @@ internal abstract class LibraryDao {
         insertMembership(LibraryMembershipEntity(localMediaId, addedAt))
         return checkNotNull(getLibraryItem(localMediaId)) {
             "Library transaction completed without a readable membership"
-        }
-    }
-
-    @Transaction
-    open suspend fun ensureMediaAndSetFavorite(
-        candidate: MediaEntity,
-        source: MediaSource,
-        externalId: String,
-        isFavorite: Boolean
-    ) {
-        val existing = getMediaByExternalRef(source, candidate.mediaType, externalId)
-        if (existing == null) {
-            val insertedId = insertMedia(
-                candidate.copy(
-                    isFavorite = isFavorite,
-                    favoriteAddedAt = candidate.favoriteAddedAt.takeIf { isFavorite }
-                )
-            )
-            insertExternalRef(
-                ExternalRefEntity(
-                    localMediaId = insertedId,
-                    source = source,
-                    mediaType = candidate.mediaType,
-                    externalId = externalId
-                )
-            )
-        } else {
-            updateMedia(
-                existing.copy(
-                    isFavorite = isFavorite,
-                    favoriteAddedAt = when {
-                        isFavorite && !existing.isFavorite -> candidate.favoriteAddedAt
-                        isFavorite -> existing.favoriteAddedAt
-                        else -> null
-                    }
-                )
-            )
         }
     }
 

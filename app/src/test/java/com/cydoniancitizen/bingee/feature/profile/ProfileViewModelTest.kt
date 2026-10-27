@@ -180,6 +180,30 @@ class ProfileViewModelTest {
     }
 
     @Test
+    fun collectionSearchMatchesLocalizedOriginalTitlesAndLiteralPunctuation() = runTest {
+        val watched = LibraryProgress.Movie(MovieWatchState.Watched(Instant.EPOCH))
+        val entries = listOf(
+            entry("1", MediaType.MOVIE, watched, title = "Amélie").copy(originalTitle = "Le Fabuleux Destin"),
+            entry("2", MediaType.MOVIE, watched, title = "100% Real_Story").copy(originalTitle = "Director's Cut")
+        )
+        val viewModel = createViewModel(FakeLibraryRepo(entries), FakeDisplayModePrefs())
+        listOf(
+            "AMÉLIE" to listOf("1"),
+            "fabuleux" to listOf("1"),
+            "100% real_" to listOf("2"),
+            "director's" to listOf("2"),
+            "%" to listOf("2"),
+            "_" to listOf("2"),
+            "missing" to emptyList(),
+            " " to listOf("1", "2")
+        ).forEach { (query, expected) ->
+            viewModel.onSearchQueryChanged(query)
+            testDispatcher.scheduler.advanceUntilIdle()
+            assertEquals(query, expected, viewModel.uiState.value.entries.map { it.mediaRef.externalId })
+        }
+    }
+
+    @Test
     fun statisticsUseOneFocusedPersonalViewingObservation() = runTest {
         val watchedMovie = entry("1", MediaType.MOVIE, LibraryProgress.Movie(MovieWatchState.Watched(Instant.EPOCH)))
         val watchedSeries = entry("2", MediaType.SERIES, LibraryProgress.Series(SeriesProgress(1, 10, 0, 1, false)))
@@ -801,8 +825,6 @@ class ProfileViewModelTest {
             mediaType: MediaType,
             isFavorite: Boolean
         ): AppResult<Unit> = AppResult.Success(Unit)
-        override suspend fun setFavorite(result: MediaSearchResult, isFavorite: Boolean): AppResult<Unit> =
-            AppResult.Success(Unit)
         override suspend fun setWatchedDate(
             ref: ExternalMediaRef,
             mediaType: MediaType,

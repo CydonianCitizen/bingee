@@ -5,7 +5,6 @@ import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.cydoniancitizen.bingee.core.model.MediaType
-import com.cydoniancitizen.bingee.data.library.toSqlLikePattern
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import org.junit.After
@@ -31,28 +30,29 @@ class LibraryQueryDaoTest {
     fun closeDatabase() = database.close()
 
     @Test
-    fun activeLocalizedAndOriginalTitleSearchTreatsWildcardsLiterally() = runBlocking {
-        assertEquals(listOf("Amélie"), titles(" AMÉLIE "))
-        assertEquals(listOf("Amélie"), titles("fabuleux"))
-        assertEquals(listOf("100% Real_Story"), titles("100% real_"))
-        assertEquals(listOf("100% Real_Story"), titles("director's"))
-        assertEquals(emptyList<String>(), titles("inactive"))
-        assertEquals(2, titles(" ").size)
+    fun membershipAndFavoritesStayVisibleButInactiveCachedTitlesDoNot() = runBlocking {
+        insert(4, "MOVIE", "Favorite outside collection", null, active = false)
+        database.openHelper.writableDatabase.execSQL(
+            "UPDATE media_entries SET is_favorite = 1 WHERE local_media_id = 4"
+        )
+        val rows = database.libraryDao().observeLibraryItems().first()
+        assertEquals(
+            listOf("100% Real_Story", "Amélie", "Favorite outside collection"),
+            rows.map { it.media.title }
+        )
     }
 
     @Test
-    fun mediaTypeRestrictionCombinesWithSearch() = runBlocking {
-        val rows = database.libraryDao().observeLibraryItems(
-            MediaType.SERIES,
-            "real".toSqlLikePattern()
-        ).first()
-        assertEquals(listOf("100% Real_Story"), rows.map { it.media.title })
+    fun mediaTypeRestrictionKeepsOnlyRequestedActiveTitles() = runBlocking {
+        val dao = database.libraryDao()
+        assertEquals(
+            listOf("100% Real_Story"),
+            dao.observeLibraryItems(MediaType.SERIES).first().map {
+                it.media.title
+            }
+        )
+        assertEquals(listOf("Amélie"), dao.observeLibraryItems(MediaType.MOVIE).first().map { it.media.title })
     }
-
-    private suspend fun titles(query: String): List<String> = database.libraryDao()
-        .observeLibraryItems(searchPattern = query.toSqlLikePattern())
-        .first()
-        .map { it.media.title }
 
     private fun insert(id: Long, type: String, title: String, original: String?, active: Boolean) {
         val escapedTitle = title.replace("'", "''")

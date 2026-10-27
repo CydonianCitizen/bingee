@@ -35,8 +35,6 @@ interface LibraryRepository {
 
     suspend fun setFavorite(ref: ExternalMediaRef, mediaType: MediaType, isFavorite: Boolean): AppResult<Unit>
 
-    suspend fun setFavorite(result: MediaSearchResult, isFavorite: Boolean): AppResult<Unit>
-
     suspend fun setWatchedDate(ref: ExternalMediaRef, mediaType: MediaType, watchedDate: LocalDate?): AppResult<Unit>
 
     suspend fun setSeriesAbandoned(ref: ExternalMediaRef, isAbandoned: Boolean): AppResult<Unit>

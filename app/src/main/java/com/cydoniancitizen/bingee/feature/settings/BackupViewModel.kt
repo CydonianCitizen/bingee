@@ -74,38 +74,16 @@ internal class BackupViewModel @Inject constructor(
         }
     }
 
-    fun saveTo(uri: Uri) {
-        if (!operationLock.tryLock()) return
-        viewModelScope.launch {
-            try {
-                mutableUiState.update { it.copy(operation = BackupOperation.SAVING, failure = null) }
-                val failure = fileGateway.write(uri, dataStore.createPortableBackup(clock.instant()))
-                mutableUiState.update {
-                    it.copy(
-                        operation = if (failure == null) BackupOperation.SUCCESS else BackupOperation.FAILURE,
-                        failure = failure
-                    )
-                }
-            } catch (failure: BackupExportFailure) {
-                fail(failure.kind)
-            } catch (cancellation: CancellationException) {
-                throw cancellation
-            } catch (_: Exception) {
-                mutableUiState.update {
-                    it.copy(operation = BackupOperation.FAILURE, failure = BackupFailureKind.WRITE_FAILED)
-                }
-            } finally {
-                operationLock.unlock()
-            }
-        }
-    }
+    fun saveTo(uri: Uri) = export(BackupOperation.SAVING) { bytes -> fileGateway.write(uri, bytes) }
 
-    fun share() {
+    fun share() = export(BackupOperation.SHARING, fileGateway::share)
+
+    private fun export(operation: BackupOperation, write: suspend (ByteArray) -> BackupFailureKind?) {
         if (!operationLock.tryLock()) return
         viewModelScope.launch {
             try {
-                mutableUiState.update { it.copy(operation = BackupOperation.SHARING, failure = null) }
-                val failure = fileGateway.share(dataStore.createPortableBackup(clock.instant()))
+                mutableUiState.update { it.copy(operation = operation, failure = null) }
+                val failure = write(dataStore.createPortableBackup(clock.instant()))
                 mutableUiState.update {
                     it.copy(
                         operation = if (failure == null) BackupOperation.SUCCESS else BackupOperation.FAILURE,

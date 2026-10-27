@@ -546,12 +546,18 @@ class SeriesAndProgressDaoTest {
     }
 
     @Test
-    fun seriesCommandsCannotCreateOrEditCompletionWhileIncomplete() = runBlocking {
+    fun incompleteSeriesCannotAcquireCompletionThroughDateEdits() = runBlocking {
         storeRegularEpisodes()
 
         assertEquals(
             ProgressWriteOutcome.INCOMPLETE,
-            progressDao.markSeriesWatched(MediaSource.TMDB, "100", now, today)
+            progressDao.setMediaWatchedDate(
+                MediaSource.TMDB,
+                MediaType.SERIES,
+                "100",
+                LocalDate.of(2026, 8, 1),
+                now
+            )
         )
         assertTrue(database.portableSnapshotDao().readSnapshot().seriesProgress.isEmpty())
 

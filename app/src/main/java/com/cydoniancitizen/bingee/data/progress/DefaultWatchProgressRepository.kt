@@ -102,18 +102,6 @@ internal class DefaultWatchProgressRepository @Inject constructor(
     override suspend fun markMovieUnwatched(reference: ExternalMediaRef): AppResult<Unit> =
         reference.write { dao.markMovieUnwatched(it.source, it.externalId) }
 
-    override suspend fun markSeriesWatched(reference: ExternalMediaRef): AppResult<Unit> = reference.write {
-        dao.markSeriesWatched(
-            source = it.source,
-            externalId = it.externalId,
-            completedAt = clock.instant(),
-            today = dateSource.currentDate()
-        )
-    }
-
-    override suspend fun markSeriesUnwatched(reference: ExternalMediaRef): AppResult<Unit> =
-        reference.write { dao.markSeriesUnwatched(it.source, it.externalId) }
-
     private suspend fun ExternalMediaRef.write(
         block: suspend (ExternalMediaRef) -> ProgressWriteOutcome
     ): AppResult<Unit> {

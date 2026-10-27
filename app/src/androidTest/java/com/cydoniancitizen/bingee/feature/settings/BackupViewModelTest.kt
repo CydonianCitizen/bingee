@@ -1,6 +1,9 @@
 package com.cydoniancitizen.bingee.feature.settings
 
+import android.content.ActivityNotFoundException
 import android.content.Context
+import android.content.ContextWrapper
+import android.content.Intent
 import android.net.Uri
 import androidx.lifecycle.viewModelScope
 import androidx.room.Room
@@ -18,6 +21,7 @@ import com.cydoniancitizen.bingee.data.importexport.BackupFileGateway
 import com.cydoniancitizen.bingee.data.importexport.BackupJsonCodec
 import com.cydoniancitizen.bingee.data.importexport.BackupLibraryEntry
 import com.cydoniancitizen.bingee.data.importexport.BackupMedia
+import com.cydoniancitizen.bingee.data.importexport.BackupParseResult
 import com.cydoniancitizen.bingee.data.importexport.BackupPreferences
 import com.cydoniancitizen.bingee.data.importexport.BackupRef
 import com.cydoniancitizen.bingee.data.importexport.BackupShareFileStore
@@ -33,7 +37,9 @@ import java.time.Clock
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneOffset
+import java.util.concurrent.CountDownLatch
 import java.util.concurrent.LinkedBlockingQueue
+import java.util.concurrent.TimeUnit
 import kotlin.coroutines.CoroutineContext
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.cancel
@@ -42,8 +48,10 @@ import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -58,6 +66,18 @@ class BackupViewModelTest {
     private lateinit var database: BingeeDatabase
     private lateinit var store: BackupDataStore
     private lateinit var validation: HeldDispatcher
+
+    @Volatile private var sharedIntent: Intent? = null
+
+    @Volatile private var rejectShare = false
+    private var beforeShare: (() -> Unit)? = null
+    private val exportContext = object : ContextWrapper(context) {
+        override fun startActivity(intent: Intent) {
+            beforeShare?.invoke()
+            if (rejectShare) throw ActivityNotFoundException("synthetic missing share target")
+            sharedIntent = intent.getParcelableExtra(Intent.EXTRA_INTENT, Intent::class.java)
+        }
+    }
 
     @Before
     fun setUp() = runBlocking {
@@ -151,10 +171,81 @@ class BackupViewModelTest {
         dismissed.viewModelScope.cancel()
     }
 
-    private fun viewModel() = BackupViewModel(
+    @Test
+    fun savingAndSharingExportRestorableUserData() = runBlocking {
+        val viewModel = viewModel(exportContext)
+        try {
+            viewModel.saveTo(Uri.fromFile(backupFile))
+            viewModel.awaitOperation(BackupOperation.SUCCESS)
+            val saved = backupFile.inputStream().use { BackupJsonCodec.parse(it) } as BackupParseResult.Success
+            assertEquals(3, saved.document.schemaVersion)
+            assertEquals(listOf("1"), saved.document.data.media.map { it.primaryRef.externalId })
+
+            viewModel.dismissFeedback()
+            viewModel.share()
+            viewModel.awaitOperation(BackupOperation.SUCCESS)
+            val intent = checkNotNull(sharedIntent)
+            assertEquals(Intent.ACTION_SEND, intent.action)
+            val uri = checkNotNull(intent.getParcelableExtra(Intent.EXTRA_STREAM, Uri::class.java))
+            val shared = context.contentResolver.openInputStream(uri).use {
+                BackupJsonCodec.parse(checkNotNull(it))
+            } as BackupParseResult.Success
+            assertEquals(saved.document, shared.document)
+        } finally {
+            viewModel.viewModelScope.cancel()
+        }
+    }
+
+    @Test
+    fun failedSaveAndShareReportWriteFailureAndAllowRetry() = runBlocking {
+        val viewModel = viewModel(exportContext)
+        try {
+            viewModel.saveTo(Uri.fromFile(context.cacheDir))
+            assertEquals(BackupFailureKind.WRITE_FAILED, viewModel.awaitOperation(BackupOperation.FAILURE).failure)
+            viewModel.saveTo(Uri.fromFile(backupFile))
+            assertEquals(null, viewModel.awaitOperation(BackupOperation.SUCCESS).failure)
+            assertTrue(backupFile.isFile)
+
+            rejectShare = true
+            viewModel.share()
+            assertEquals(BackupFailureKind.WRITE_FAILED, viewModel.awaitOperation(BackupOperation.FAILURE).failure)
+            rejectShare = false
+            viewModel.share()
+            assertEquals(null, viewModel.awaitOperation(BackupOperation.SUCCESS).failure)
+            assertNotNull(sharedIntent)
+        } finally {
+            viewModel.viewModelScope.cancel()
+        }
+    }
+
+    @Test
+    fun sharingRejectsConcurrentSaveWithoutWritingItsDestination() = runBlocking {
+        val started = CountDownLatch(1)
+        val release = CountDownLatch(1)
+        beforeShare = {
+            started.countDown()
+            check(release.await(TIMEOUT_MILLIS, TimeUnit.MILLISECONDS))
+        }
+        val viewModel = viewModel(exportContext)
+        try {
+            viewModel.share()
+            assertTrue(started.await(TIMEOUT_MILLIS, TimeUnit.MILLISECONDS))
+            viewModel.saveTo(Uri.fromFile(backupFile))
+            assertEquals(BackupOperation.SHARING, viewModel.uiState.value.operation)
+            assertFalse(backupFile.exists())
+            release.countDown()
+            viewModel.awaitOperation(BackupOperation.SUCCESS)
+            assertFalse(backupFile.exists())
+        } finally {
+            release.countDown()
+            viewModel.viewModelScope.cancel()
+        }
+    }
+
+    private fun viewModel(fileContext: Context = context) = BackupViewModel(
         clock = Clock.fixed(exportedAt, ZoneOffset.UTC),
         dataStore = store,
-        fileGateway = BackupFileGateway(context, BackupShareFileStore(context)),
+        fileGateway = BackupFileGateway(fileContext, BackupShareFileStore(context)),
         preferencesRepository = preferences(),
         scheduler = object : BackgroundWorkScheduler {
             override fun ensureCalendarRefresh() = Unit

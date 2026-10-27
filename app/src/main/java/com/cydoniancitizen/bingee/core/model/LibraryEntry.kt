@@ -25,8 +25,6 @@ data class LibraryEntry(
         require(title.isNotBlank()) { "Library title must not be blank" }
     }
 
-    val libraryState: LibraryState get() = progress.deriveLibraryState()
-
     val serialState: SeriesTrackingState?
         get() = if (mediaType == MediaType.SERIES) {
             resolveSeriesTrackingState(

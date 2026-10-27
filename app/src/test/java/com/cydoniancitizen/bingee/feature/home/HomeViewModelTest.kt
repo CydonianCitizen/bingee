@@ -647,8 +647,6 @@ class HomeViewModelTest {
         override suspend fun markSeasonUnwatched(seasonRef: ExternalMediaRef) = result
         override suspend fun markMovieWatched(reference: ExternalMediaRef) = result
         override suspend fun markMovieUnwatched(reference: ExternalMediaRef) = result
-        override suspend fun markSeriesWatched(reference: ExternalMediaRef) = result
-        override suspend fun markSeriesUnwatched(reference: ExternalMediaRef) = result
     }
 
     private fun event(
@@ -742,9 +740,6 @@ class HomeViewModelTest {
             mediaType: MediaType,
             isFavorite: Boolean
         ): AppResult<Unit> = AppResult.Success(Unit)
-
-        override suspend fun setFavorite(result: MediaSearchResult, isFavorite: Boolean): AppResult<Unit> =
-            AppResult.Success(Unit)
 
         override suspend fun setWatchedDate(
             ref: ExternalMediaRef,

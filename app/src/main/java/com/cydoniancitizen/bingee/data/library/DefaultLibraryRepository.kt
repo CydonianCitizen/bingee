@@ -14,10 +14,9 @@ import com.cydoniancitizen.bingee.core.model.MediaSource
 import com.cydoniancitizen.bingee.core.model.MediaType
 import com.cydoniancitizen.bingee.core.model.PersonalViewingEntry
 import com.cydoniancitizen.bingee.core.model.SeriesProgress
-import com.cydoniancitizen.bingee.core.model.applyLibraryStateAndSort
 import com.cydoniancitizen.bingee.core.model.distinctByCanonicalIdentity
 import com.cydoniancitizen.bingee.core.model.isSeriesComplete
-import com.cydoniancitizen.bingee.core.model.normalizeLibrarySearch
+import com.cydoniancitizen.bingee.core.model.sortLibraryEntries
 import com.cydoniancitizen.bingee.core.model.tmdbIdOrNull
 import com.cydoniancitizen.bingee.core.result.AppError
 import com.cydoniancitizen.bingee.core.result.AppResult
@@ -130,10 +129,7 @@ internal class DefaultLibraryRepository @Inject constructor(
             )
 
     override fun observeEntries(query: LibraryQuery): Flow<AppResult<List<LibraryEntry>>> = combine(
-        libraryDao.observeLibraryItems(
-            query.mediaFilter.mediaType,
-            query.searchQuery.toSqlLikePattern()
-        ).distinctUntilChanged(),
+        libraryDao.observeLibraryItems(query.mediaFilter.mediaType).distinctUntilChanged(),
         libraryProgress,
         ratingDao.observeActiveLibraryRatings().distinctUntilChanged()
     ) { rows, progressResult, ratings ->
@@ -147,7 +143,7 @@ internal class DefaultLibraryRepository @Inject constructor(
                     rating = ratingsByMedia[localMediaId]
                 )
             }
-            applyLibraryStateAndSort(entries, query)
+            sortLibraryEntries(entries)
         }
     }.asPersistenceResult { it.getOrThrow() }.flowOn(projectionDispatcher)
 
@@ -295,19 +291,6 @@ internal class DefaultLibraryRepository @Inject constructor(
         }
     }
 
-    override suspend fun setFavorite(result: MediaSearchResult, isFavorite: Boolean): AppResult<Unit> =
-        withNormalizedExternalId(result.externalRef) { externalId ->
-            persistenceRead {
-                val now = clock.instant()
-                libraryDao.ensureMediaAndSetFavorite(
-                    candidate = result.toMediaEntity(now).copy(favoriteAddedAt = now.takeIf { isFavorite }),
-                    source = result.externalRef.source,
-                    externalId = externalId,
-                    isFavorite = isFavorite
-                )
-            }
-        }
-
     override suspend fun setWatchedDate(
         ref: ExternalMediaRef,
         mediaType: MediaType,
@@ -381,18 +364,6 @@ private fun LibraryDao.ContinueWatchingRow.toDomain() = ContinueWatchingItem(
         null
     }
 )
-
-internal fun String.toSqlLikePattern(): String {
-    val normalized = normalizeLibrarySearch(this)
-    if (normalized.isEmpty()) return "%"
-    val escaped = buildString(normalized.length) {
-        normalized.forEach { character ->
-            if (character == '\\' || character == '%' || character == '_') append('\\')
-            append(character)
-        }
-    }
-    return "%$escaped%"
-}
 
 private data class PreparedLibraryAdd(val ref: ExternalMediaRef, val media: MediaEntity, val addedAt: Instant)
 
